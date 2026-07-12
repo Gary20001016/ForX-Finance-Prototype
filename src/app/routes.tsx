@@ -1,6 +1,5 @@
 import { createBrowserRouter } from 'react-router-dom';
 import AdminLayout from '../layout/AdminLayout';
-import PlaceholderPage from '../pages/PlaceholderPage';
 import DashboardPage from '../pages/dashboard/DashboardPage';
 import TaskListPage from '../pages/tasks/TaskListPage';
 import TemplateListPage from '../pages/templates/TemplateListPage';
@@ -9,14 +8,11 @@ import EventListPage from '../pages/events/EventListPage';
 import AutomationListPage from '../pages/automations/AutomationListPage';
 import CreateTaskPage from '../pages/tasks/CreateTaskPage';
 import ApprovalCenterPage from '../pages/approvals/ApprovalCenterPage';
-
-const placeholders = [
-  ['deliveries', '发送记录'],
-  ['analytics', '数据分析'],
-  ['channels', '渠道管理'],
-  ['compliance', '合规策略'],
-  ['settings', '系统配置'],
-] as const;
+import DeliveryPage from '../pages/deliveries/DeliveryPage';
+import AnalyticsPage from '../pages/analytics/AnalyticsPage';
+import ChannelManagementPage from '../pages/channels/ChannelManagementPage';
+import CompliancePage from '../pages/compliance/CompliancePage';
+import SettingsPage from '../pages/settings/SettingsPage';
 
 export const appRouter = createBrowserRouter([
   {
@@ -32,7 +28,11 @@ export const appRouter = createBrowserRouter([
       { path:'automations', element:<AutomationListPage /> },
       { path:'events', element:<EventListPage /> },
       { path:'approvals', element:<ApprovalCenterPage /> },
-      ...placeholders.map(([path, title]) => ({ path, element: <PlaceholderPage title={title} /> })),
+      { path:'deliveries', element:<DeliveryPage /> },
+      { path:'analytics', element:<AnalyticsPage /> },
+      { path:'channels', element:<ChannelManagementPage /> },
+      { path:'compliance', element:<CompliancePage /> },
+      { path:'settings', element:<SettingsPage /> },
     ],
   },
 ]);
