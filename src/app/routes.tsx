@@ -1,14 +1,14 @@
 import { createBrowserRouter } from 'react-router-dom';
 import AdminLayout from '../layout/AdminLayout';
 import PlaceholderPage from '../pages/PlaceholderPage';
+import DashboardPage from '../pages/dashboard/DashboardPage';
+import TaskListPage from '../pages/tasks/TaskListPage';
+import TemplateListPage from '../pages/templates/TemplateListPage';
+import SegmentListPage from '../pages/segments/SegmentListPage';
+import EventListPage from '../pages/events/EventListPage';
+import AutomationListPage from '../pages/automations/AutomationListPage';
 
 const placeholders = [
-  ['dashboard', '工作台'],
-  ['tasks', '消息任务'],
-  ['templates', '消息模板'],
-  ['segments', '用户分群'],
-  ['automations', '自动化流程'],
-  ['events', '事件管理'],
   ['approvals', '审核中心'],
   ['deliveries', '发送记录'],
   ['analytics', '数据分析'],
@@ -22,7 +22,13 @@ export const appRouter = createBrowserRouter([
     path: '/',
     element: <AdminLayout />,
     children: [
-      { index: true, element: <PlaceholderPage title="工作台" /> },
+      { index: true, element: <DashboardPage /> },
+      { path:'dashboard', element:<DashboardPage /> },
+      { path:'tasks', element:<TaskListPage /> },
+      { path:'templates', element:<TemplateListPage /> },
+      { path:'segments', element:<SegmentListPage /> },
+      { path:'automations', element:<AutomationListPage /> },
+      { path:'events', element:<EventListPage /> },
       ...placeholders.map(([path, title]) => ({ path, element: <PlaceholderPage title={title} /> })),
     ],
   },

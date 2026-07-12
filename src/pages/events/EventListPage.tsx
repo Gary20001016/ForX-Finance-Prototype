@@ -1,0 +1,12 @@
+import { Button, Input, Select, Tag, Typography } from '@arco-design/web-react';
+import { IconPlus } from '@arco-design/web-react/icon';
+import PageHeader from '../../components/PageHeader'; import FilterBar from '../../components/FilterBar'; import ResourceTable from '../../components/ResourceTable'; import StatusTag from '../../components/StatusTag';
+
+const events = [
+  {id:'withdrawal.status.changed',name:'提现状态变更',line:'资金',version:'2.3.0',template:'withdraw_success v12',caller:'withdrawal-service',calls:'18.4K',failure:'0.02%',last:'18:06:42',status:'运行正常'},
+  {id:'security.login.risk',name:'异常登录风险',line:'安全',version:'3.1.0',template:'login_risk v16',caller:'risk-engine',calls:'7.6K',failure:'0.01%',last:'18:06:38',status:'运行正常'},
+  {id:'futures.liquidation.warning',name:'合约强平预警',line:'合约',version:'4.6.0',template:'liquidation_warning v21',caller:'futures-risk',calls:'12.3K',failure:'1.84%',last:'18:06:35',status:'轻微延迟'},
+  {id:'deposit.confirmed',name:'充值到账',line:'资金',version:'2.8.1',template:'deposit_success v9',caller:'wallet-gateway',calls:'42.8K',failure:'0.04%',last:'18:06:31',status:'运行正常'},
+  {id:'kyc.review.completed',name:'KYC 审核完成',line:'合规',version:'1.9.0',template:'kyc_result v6',caller:'kyc-platform',calls:'3.2K',failure:'0.08%',last:'18:05:52',status:'运行正常'},
+];
+export default function EventListPage(){return <section className="page-stack"><PageHeader title="事件管理" description="管理业务事件契约、模板绑定、幂等与调用质量。" actions={<Button type="primary" icon={<IconPlus />}>注册事件</Button>}/><FilterBar><Input.Search placeholder="搜索事件编码或名称" style={{width:280}}/><Select placeholder="业务线" style={{width:140}}/><Select placeholder="调用状态" style={{width:140}}/></FilterBar><ResourceTable data={events} rowKey="id" columns={[{title:'事件',width:280,render:(_,r)=><div><Typography.Text className="strong">{r.name}</Typography.Text><div className="mono muted">{r.id}</div></div>},{title:'业务线',dataIndex:'line',width:90},{title:'版本',dataIndex:'version',width:90},{title:'绑定模板',dataIndex:'template',width:180},{title:'调用方',dataIndex:'caller',width:170,render:v=><Tag>{v}</Tag>},{title:'近24h调用',dataIndex:'calls',width:110},{title:'失败率',dataIndex:'failure',width:90},{title:'最后调用',dataIndex:'last',width:120},{title:'状态',width:110,render:(_,r)=><StatusTag status={r.status}/>}]} /></section>}
