@@ -1,0 +1,13 @@
+import { useMemo, useState } from 'react';
+import { Alert, Button, Input, Select, Tabs, Tag, Typography } from '@arco-design/web-react';
+import type { TableColumnProps } from '@arco-design/web-react';
+import PageHeader from '../../components/PageHeader'; import FilterBar from '../../components/FilterBar'; import ResourceTable from '../../components/ResourceTable'; import StatusTag from '../../components/StatusTag'; import ApprovalDrawer from './ApprovalDrawer';
+import { approvals } from '../../mocks/data'; import type { ApprovalItem } from '../../domain/types';
+
+export default function ApprovalCenterPage({ currentAdminId='admin-01' }: { currentAdminId?:string }) {
+  const [tab,setTab]=useState('mine'); const [selected,setSelected]=useState<ApprovalItem>();
+  const data=useMemo(()=>tab==='emergency'?approvals.filter(a=>a.emergency):approvals,[tab]);
+  const columns:TableColumnProps<ApprovalItem>[]=[{title:'审批对象',width:260,render:(_,r)=><div><Typography.Text className="strong">{r.name}</Typography.Text><div className="mono muted">{r.id} · {r.objectType} · {r.version}</div></div>},{title:'风险',width:90,render:(_,r)=><Tag color={r.risk==='关键'?'red':r.risk==='高'?'orangered':'orange'}>{r.risk}</Tag>},{title:'影响范围',width:140,render:(_,r)=><div>{r.audience?r.audience.toLocaleString()+' 人':'模板发布'}<div className="muted">{r.cost}</div></div>},{title:'计划时间',dataIndex:'schedule',width:180},{title:'当前节点',dataIndex:'step',width:130},{title:'提交人',width:130,render:(_,r)=><div>{r.submitter}<div className="muted">{r.submittedAt}</div></div>},{title:'状态',width:110,render:(_,r)=><StatusTag status={r.status}/>},{title:'操作',fixed:'right',width:90,render:(_,r)=><Button type="text" onClick={()=>setSelected(r)}>审核</Button>}];
+  const selfItem=approvals.find(a=>a.submitterId===currentAdminId);
+  return <section className="page-stack"><PageHeader eyebrow="MAKER–CHECKER" title="审核中心" description="按风险等级执行独立审批、合规加签和紧急授权。"/><Alert type="info" showIcon content="高风险任务必须由不同人员完成两个审批节点；审批内容哈希将在发送前再次校验。"/>{selfItem&&<div className="self-review-note"><strong>不可审核本人创建的任务</strong><span> · {selfItem.name} 已自动限制操作，可转交同级审核人。</span></div>}<Tabs activeTab={tab} onChange={setTab}><Tabs.TabPane key="mine" title={`待我审核 (${approvals.length})`}/><Tabs.TabPane key="all" title="全部工单"/><Tabs.TabPane key="emergency" title="紧急审批 (1)"/></Tabs><FilterBar><Input.Search placeholder="搜索审批单或对象" style={{width:280}}/><Select placeholder="风险等级" style={{width:140}}/><Select placeholder="对象类型" style={{width:140}}/></FilterBar><ResourceTable data={data} columns={columns} rowKey="id"/><ApprovalDrawer item={selected} visible={Boolean(selected)} onClose={()=>setSelected(undefined)} currentAdminId={currentAdminId}/></section>;
+}

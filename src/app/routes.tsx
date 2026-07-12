@@ -7,9 +7,10 @@ import TemplateListPage from '../pages/templates/TemplateListPage';
 import SegmentListPage from '../pages/segments/SegmentListPage';
 import EventListPage from '../pages/events/EventListPage';
 import AutomationListPage from '../pages/automations/AutomationListPage';
+import CreateTaskPage from '../pages/tasks/CreateTaskPage';
+import ApprovalCenterPage from '../pages/approvals/ApprovalCenterPage';
 
 const placeholders = [
-  ['approvals', '审核中心'],
   ['deliveries', '发送记录'],
   ['analytics', '数据分析'],
   ['channels', '渠道管理'],
@@ -25,10 +26,12 @@ export const appRouter = createBrowserRouter([
       { index: true, element: <DashboardPage /> },
       { path:'dashboard', element:<DashboardPage /> },
       { path:'tasks', element:<TaskListPage /> },
+      { path:'tasks/create', element:<CreateTaskPage /> },
       { path:'templates', element:<TemplateListPage /> },
       { path:'segments', element:<SegmentListPage /> },
       { path:'automations', element:<AutomationListPage /> },
       { path:'events', element:<EventListPage /> },
+      { path:'approvals', element:<ApprovalCenterPage /> },
       ...placeholders.map(([path, title]) => ({ path, element: <PlaceholderPage title={title} /> })),
     ],
   },
