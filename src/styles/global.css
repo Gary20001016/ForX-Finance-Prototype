@@ -109,6 +109,11 @@ button, input, textarea, select { font: inherit; }
   .admin-content { padding: 22px; }
 }
 @media (max-width: 720px) {
+  .admin-sider { width:56px !important; min-width:56px !important; max-width:56px !important; flex:0 0 56px !important; }
+  .brand-lockup { padding:0 10px; }
+  .brand-mark { width:32px; height:32px; border-radius:8px; }
+  .admin-menu { padding:8px 4px; }
+  .admin-menu .arco-menu-item { padding-left:16px !important; padding-right:16px !important; }
   .admin-header { padding: 0 14px; }
   .admin-header .arco-breadcrumb { display: none; }
   .admin-content { padding: 16px; }
