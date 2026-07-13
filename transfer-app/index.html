@@ -1096,6 +1096,91 @@
       margin: 0 auto;
     }
 
+    .gallery-card,
+    .error-gallery-card {
+      min-width: 0;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 25px;
+      background: #090c0a;
+      box-shadow: 0 24px 70px rgba(0, 0, 0, 0.28);
+    }
+
+    .gallery-device-slot {
+      position: relative;
+      width: 343px;
+      height: 743px;
+      margin: 22px auto 0;
+      overflow: hidden;
+      border-radius: 32px;
+    }
+
+    .gallery-phone {
+      width: 390px;
+      height: 844px;
+      min-height: 844px;
+      transform: scale(0.88);
+      transform-origin: left top;
+      pointer-events: none;
+    }
+
+    .gallery-caption {
+      display: grid;
+      gap: 5px;
+      padding: 19px 20px 21px;
+      border-top: 1px solid var(--line);
+    }
+
+    .gallery-caption strong {
+      font-size: 12px;
+      font-weight: 680;
+    }
+
+    .gallery-caption span {
+      color: var(--muted);
+      font-size: 9px;
+      line-height: 1.5;
+    }
+
+    .error-gallery-card {
+      border-color: rgba(255, 133, 133, 0.12);
+      background: #0b0808;
+    }
+
+    .error-gallery-card .gallery-caption strong { color: #ffc0c0; }
+
+    .gallery-phone .amount-entry.is-error-field {
+      border-color: rgba(255, 133, 133, 0.68);
+      box-shadow: 0 8px 24px rgba(255, 133, 133, 0.04);
+    }
+
+    .gallery-warning {
+      display: flex;
+      align-items: flex-start;
+      gap: 7px;
+      margin: 12px 2px 0;
+      padding: 10px;
+      border: 1px solid rgba(241, 200, 107, 0.2);
+      border-radius: 12px;
+      color: var(--amber);
+      background: rgba(241, 200, 107, 0.055);
+      font-size: 9px;
+      line-height: 1.45;
+    }
+
+    .gallery-warning::before {
+      display: grid;
+      flex: 0 0 auto;
+      place-items: center;
+      width: 14px;
+      height: 14px;
+      border: 1px solid currentColor;
+      border-radius: 50%;
+      font-size: 8px;
+      font-weight: 800;
+      content: "!";
+    }
+
     @keyframes route-flow {
       0%, 100% { transform: translateY(-8px); opacity: 0.35; }
       50% { transform: translateY(8px); opacity: 1; }
@@ -1118,6 +1203,11 @@
       .error-gallery-grid { grid-template-columns: minmax(0, 390px); }
     }
 
+    @media (max-width: 1260px) and (min-width: 901px) {
+      .gallery-grid,
+      .error-gallery-grid { grid-template-columns: repeat(2, minmax(0, 390px)); }
+    }
+
     @media (max-width: 430px) {
       .prototype-shell { display: block; min-height: 100svh; padding: 0; }
       .prototype-meta { display: none; }
@@ -1125,6 +1215,8 @@
       .phone::after { display: none; }
       .screen-gallery,
       .error-gallery { padding: 64px 16px 78px; }
+      .gallery-device-slot { width: 320px; height: 692px; }
+      .gallery-phone { transform: scale(0.82); }
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -1505,10 +1597,14 @@
     }
 
     amountInput.addEventListener('input', () => {
-      const sanitized = amountInput.value.replace(/[^\d.]/g, '');
-      const [whole = '', ...decimals] = sanitized.split('.');
-      state.amount = decimals.length ? `${whole}.${decimals.join('').slice(0, 6)}` : whole;
-      if (amountInput.value !== state.amount) amountInput.value = state.amount;
+      const raw = amountInput.value.trim();
+      if (/^\d*(?:\.\d*)?$/.test(raw)) {
+        const [whole = '', decimal = ''] = raw.split('.');
+        state.amount = raw.includes('.') ? `${whole}.${decimal.slice(0, 6)}` : whole;
+        if (amountInput.value !== state.amount) amountInput.value = state.amount;
+      } else {
+        state.amount = raw;
+      }
       renderComposer();
     });
 
@@ -1541,6 +1637,143 @@
     };
 
     renderComposer();
+
+    function freezeGalleryPhone(phone) {
+      phone.querySelectorAll('[id]').forEach((node) => node.removeAttribute('id'));
+      phone.querySelectorAll('*').forEach((node) => {
+        [...node.attributes]
+          .filter((attribute) => attribute.name.startsWith('data-'))
+          .forEach((attribute) => node.removeAttribute(attribute.name));
+      });
+      phone.querySelectorAll('button').forEach((button) => {
+        button.disabled = true;
+        button.tabIndex = -1;
+      });
+      phone.querySelectorAll('input').forEach((input) => {
+        input.readOnly = true;
+        input.tabIndex = -1;
+      });
+      phone.querySelectorAll('[aria-live]').forEach((node) => node.removeAttribute('aria-live'));
+    }
+
+    function isolateGalleryView(view) {
+      const phone = document.querySelector('.phone').cloneNode(true);
+      phone.classList.add('gallery-phone');
+      const targetScreen = view === 'review' || view === 'failure' || view.startsWith('composer')
+        ? 'composer'
+        : view;
+
+      phone.querySelectorAll('[data-screen]').forEach((screen) => {
+        if (screen.dataset.screen !== targetScreen) screen.remove();
+        else screen.hidden = false;
+      });
+
+      phone.querySelectorAll('[data-layer]').forEach((layer) => {
+        const keepLayer = layer.dataset.layer === view;
+        if (!keepLayer) layer.remove();
+        else layer.hidden = false;
+      });
+
+      if (view === 'composer-reverse') {
+        phone.querySelector('[data-source-name]').textContent = '合约账户';
+        phone.querySelector('[data-destination-name]').textContent = '资金账户';
+        const routeNodes = phone.querySelectorAll('.route-node');
+        routeNodes[0].querySelector('.route-balance strong').textContent = '0.00 USDC';
+        routeNodes[1].querySelector('.route-balance strong').textContent = '20.00 USDC';
+        phone.querySelector('[data-available-balance]').textContent = '0.00 USDC';
+      }
+
+      if (view === 'review') {
+        phone.querySelector('#amount-input').value = '10';
+        phone.querySelector('[data-estimated-balance]').textContent = '10.00 USDC';
+        phone.querySelector('[data-review-amount]').textContent = '10.00 USDC';
+        phone.querySelector('[data-review-source-after]').textContent = '10.00 USDC';
+        phone.querySelector('[data-review-destination-after]').textContent = '10.00 USDC';
+      }
+
+      if (view === 'success') {
+        phone.querySelector('[data-receipt-amount]').textContent = '10.00 USDC';
+        phone.querySelector('[data-success-fund-balance]').textContent = '10.00 USDC';
+        phone.querySelector('[data-success-contract-balance]').textContent = '10.00 USDC';
+      }
+
+      freezeGalleryPhone(phone);
+      return phone;
+    }
+
+    function createGalleryCard(definition, error = false) {
+      const card = document.createElement('article');
+      card.className = error ? 'error-gallery-card' : 'gallery-card';
+      const slot = document.createElement('div');
+      slot.className = 'gallery-device-slot';
+      const phone = isolateGalleryView(definition.view);
+      if (definition.decorate) definition.decorate(phone);
+      slot.append(phone);
+      const caption = document.createElement('div');
+      caption.className = 'gallery-caption';
+      const title = document.createElement('strong');
+      title.textContent = definition.title;
+      const detail = document.createElement('span');
+      detail.textContent = definition.detail;
+      caption.append(title, detail);
+      card.append(slot, caption);
+      return card;
+    }
+
+    function buildScreenGallery() {
+      const definitions = [
+        { view: 'composer-fund', title: '01 · 资金至合约', detail: '默认资金路线与可用余额' },
+        { view: 'composer-reverse', title: '02 · 合约至资金', detail: '固定双账户的反向路线' },
+        { view: 'review', title: '03 · 核对划转', detail: '金额、路线与划转后余额' },
+        { view: 'processing', title: '04 · 更新余额', detail: '避免重复操作的短暂处理中状态' },
+        { view: 'success', title: '05 · 完成回执', detail: '到账结果与两个账户的新余额' }
+      ];
+      const grid = document.getElementById('gallery-grid');
+      definitions.forEach((definition) => grid.append(createGalleryCard(definition)));
+    }
+
+    function setComposerError(phone, value, message) {
+      const input = phone.querySelector('.amount-entry input');
+      input.value = value;
+      input.setAttribute('aria-invalid', 'true');
+      input.closest('.amount-entry').classList.add('is-error-field');
+      phone.querySelector('.amount-error').textContent = message;
+    }
+
+    function buildErrorGallery() {
+      const definitions = [
+        {
+          view: 'composer-fund', title: 'E01 · 金额格式错误', detail: '仅支持大于 0、最多六位小数的 USDC 金额',
+          decorate: (phone) => setComposerError(phone, '--', '请输入有效的划转金额')
+        },
+        {
+          view: 'composer-fund', title: 'E02 · 低于最低金额', detail: '保留输入并说明最低划转门槛',
+          decorate: (phone) => setComposerError(phone, '5', '最低划转 10 USDC')
+        },
+        {
+          view: 'composer-fund', title: 'E03 · 可用余额不足', detail: '明确当前来源账户余额不足',
+          decorate: (phone) => setComposerError(phone, '25', '可用余额不足')
+        },
+        {
+          view: 'composer-fund', title: 'E04 · 服务暂不可用', detail: '不清空金额，提示稍后重试',
+          decorate: (phone) => {
+            const notice = document.createElement('p');
+            notice.className = 'gallery-warning';
+            notice.textContent = '划转服务暂时不可用，请稍后再试';
+            phone.querySelector('.primary-action').before(notice);
+          }
+        },
+        {
+          view: 'failure', title: 'E05 · 划转未完成', detail: '余额不变，可重试或返回修改',
+          decorate: () => {}
+        }
+      ];
+      const grid = document.getElementById('error-gallery-grid');
+      definitions.forEach((definition) => grid.append(createGalleryCard(definition, true)));
+    }
+
+    buildScreenGallery();
+    buildErrorGallery();
   </script>
 </body>
 </html>

@@ -5,6 +5,18 @@ import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
 const { chromium } = require('playwright');
+let browser;
+
+test.before(async () => {
+  browser = await chromium.launch({
+    headless: true,
+    executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
+  });
+});
+
+test.after(async () => {
+  await browser?.close();
+});
 
 const htmlPath = new URL('./index.html', import.meta.url);
 
@@ -30,16 +42,12 @@ test('standalone prototype uses the approved account model and format', async ()
 });
 
 async function withPage(run, viewport = { width: 1280, height: 1000 }) {
-  const browser = await chromium.launch({
-    headless: true,
-    executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
-  });
   const page = await browser.newPage({ viewport });
   try {
     await page.goto(htmlPath.href);
     await run(page);
   } finally {
-    await browser.close();
+    await page.close();
   }
 }
 
@@ -55,6 +63,15 @@ test('shows the insufficient balance error', async () => {
   await withPage(async (page) => {
     await page.locator('#amount-input').fill('25');
     assert.match(await page.locator('#amount-error').textContent(), /可用余额不足/);
+    assert.equal(await page.locator('#review-transfer').isDisabled(), true);
+  });
+});
+
+test('explains invalid numeric input instead of silently clearing it', async () => {
+  await withPage(async (page) => {
+    await page.locator('#amount-input').fill('abc');
+    assert.equal(await page.locator('#amount-input').inputValue(), 'abc');
+    assert.match(await page.locator('#amount-error').textContent(), /请输入有效的划转金额/);
     assert.equal(await page.locator('#review-transfer').isDisabled(), true);
   });
 });
@@ -118,4 +135,31 @@ test('reset restores the starting route and balances', async () => {
     assert.equal(await page.locator('[data-account-balance="fund"]').first().textContent(), '20.00 USDC');
     assert.equal(await page.locator('[data-account-balance="contract"]').first().textContent(), '0.00 USDC');
   });
+});
+
+test('renders complete static review galleries without network requests', async () => {
+  const requests = [];
+  await withPage(async (page) => {
+    page.on('request', (request) => {
+      if (!request.url().startsWith('file:')) requests.push(request.url());
+    });
+    await page.reload();
+    assert.equal(await page.locator('#gallery-grid .gallery-card').count(), 5);
+    assert.equal(await page.locator('#error-gallery-grid .error-gallery-card').count(), 5);
+    assert.equal(requests.length, 0);
+    assert.equal(await page.locator('[role="dialog"]').count() >= 2, true);
+    assert.equal(await page.locator('[aria-live="polite"]').count() > 0, true);
+  }, { width: 1440, height: 1000 });
+});
+
+test('keeps the phone usable at a 390 by 844 viewport', async () => {
+  await withPage(async (page) => {
+    const phone = page.locator('.phone').first();
+    const box = await phone.boundingBox();
+    assert.ok(box);
+    assert.equal(Math.round(box.width), 390);
+    assert.equal(Math.round(box.height), 844);
+    assert.equal(await page.locator('#amount-input').isVisible(), true);
+    assert.equal(await page.locator('#review-transfer').isVisible(), true);
+  }, { width: 390, height: 844 });
 });
