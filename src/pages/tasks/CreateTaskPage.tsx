@@ -4,6 +4,7 @@ import { IconArrowLeft, IconCheck, IconSave } from '@arco-design/web-react/icon'
 import { useNavigate } from 'react-router-dom';
 import PageHeader from '../../components/PageHeader';
 import TaskSummary from './TaskSummary';
+import { openPrototypeDialog } from '../../utils/prototypeActions';
 
 const FormItem = Form.Item;
 const channels = ['站内信','Push','邮件','短信'];
@@ -42,7 +43,7 @@ export default function CreateTaskPage() {
           <Grid.Col xs={24} md={12}><FormItem label="排除分群" field="exclude"><Select mode="multiple" placeholder="可选择多个排除分群"><Select.Option value="eu-optout">EU 营销退订 · 120,480</Select.Option><Select.Option value="risk">高风险账户 · 8,241</Select.Option></Select></FormItem></Grid.Col>
           <Grid.Col xs={24} md={12}><FormItem label="目标国家/地区" field="regions"><Select mode="multiple" placeholder="选择地区"><Select.Option value="SG">Singapore</Select.Option><Select.Option value="EU">EU/EEA</Select.Option><Select.Option value="TR">Türkiye</Select.Option></Select></FormItem></Grid.Col>
           <Grid.Col xs={24} md={12}><FormItem label="用户去重" field="dedupe" triggerPropName="checked"><Switch checkedText="按 UID 去重" uncheckedText="关闭"/></FormItem></Grid.Col>
-        </Grid.Row><div className="audience-preview"><div><span>原始分群</span><strong>352,840</strong></div><i>→</i><div><span>合规过滤</span><strong>- 16,420</strong></div><i>→</i><div><span>预计可发送</span><strong>328,400</strong></div><Button>刷新人数</Button></div></div>}
+        </Grid.Row><div className="audience-preview"><div><span>原始分群</span><strong>352,840</strong></div><i>→</i><div><span>合规过滤</span><strong>- 16,420</strong></div><i>→</i><div><span>预计可发送</span><strong>328,400</strong></div><Button onClick={() => openPrototypeDialog('受众计算完成','最新分群快照已计算：原始 352,840 人，合规及偏好过滤后预计可发送 328,400 人。')}>刷新人数</Button></div></div>}
         {current===2 && <div className="form-section"><h3>发送与渠道策略</h3><p>营销消息必须遵守用户本地安静时段与全局频控。</p><Grid.Row gutter={20}>
           <Grid.Col xs={24} md={8}><FormItem label="发送模式" field="scheduleMode"><Select defaultValue="scheduled"><Select.Option value="now">立即发送</Select.Option><Select.Option value="scheduled">指定时间</Select.Option><Select.Option value="local">用户本地时间</Select.Option></Select></FormItem></Grid.Col>
           <Grid.Col xs={24} md={8}><FormItem label="计划发送时间" field="scheduledAt"><DatePicker showTime style={{width:'100%'}}/></FormItem></Grid.Col>

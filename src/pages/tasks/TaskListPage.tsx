@@ -9,6 +9,7 @@ import ResourceTable from '../../components/ResourceTable';
 import StatusTag from '../../components/StatusTag';
 import { tasks } from '../../mocks/data';
 import type { MessageTask } from '../../domain/types';
+import { confirmPrototypeAction, openPrototypeDialog } from '../../utils/prototypeActions';
 
 const channelColors: Record<string,string> = { 站内信:'arcoblue', Push:'purple', 邮件:'cyan', 短信:'orange' };
 
@@ -21,6 +22,13 @@ export default function TaskListPage() {
     return hit && (!status || task.status === status);
   }), [keyword, status]);
 
+  const handleTaskAction = (key: string, row: MessageTask) => {
+    if (key === 'view') openPrototypeDialog(`任务详情 · ${row.name}`, `${row.id} · ${row.template} · ${row.audienceCount.toLocaleString()} 人 · ${row.status}`);
+    if (key === 'copy') openPrototypeDialog(`复制任务 · ${row.name}`, '将创建一份新的草稿，并清空原任务的审批记录和计划发送时间。');
+    if (key === 'pause') confirmPrototypeAction(`暂停任务 · ${row.name}`, '已生成但未发送的用户消息将保留，恢复后继续调度。', '任务已暂停');
+    if (key === 'cancel') confirmPrototypeAction(`取消任务 · ${row.name}`, '取消后不会继续生成或发送新实例，已经送达的消息无法撤回。', '任务已取消');
+  };
+
   const columns: TableColumnProps<MessageTask>[] = [
     { title:'任务', width:240, render:(_, row) => <div><Typography.Text className="strong">{row.name}</Typography.Text><div className="mono muted">{row.id}</div></div> },
     { title:'类型 / 分类', width:150, render:(_, row) => <div>{row.type}<div className="muted">{row.category} · {row.nature}</div></div> },
@@ -32,7 +40,7 @@ export default function TaskListPage() {
     { title:'状态', width:118, render:(_, row) => <div><StatusTag status={row.status} /><div className="muted approval-copy">{row.approval}</div></div> },
     { title:'进度', width:120, render:(_, row) => row.progress ? <Progress percent={row.progress} size="small" showText={false} /> : <span className="muted">—</span> },
     { title:'创建人', width:120, render:(_, row) => <div>{row.creator}<div className="muted">{row.team}</div></div> },
-    { title:'操作', fixed:'right', width:76, render:(_, row) => <Dropdown trigger="click" droplist={<Menu><Menu.Item key="view">查看详情</Menu.Item><Menu.Item key="copy">复制任务</Menu.Item><Menu.Item key="pause" disabled={row.status !== '发送中'}>暂停发送</Menu.Item><Menu.Item key="cancel">取消任务</Menu.Item></Menu>}><Button type="text" icon={<IconMore />} aria-label={`操作 ${row.name}`} /></Dropdown> },
+    { title:'操作', fixed:'right', width:76, render:(_, row) => <Dropdown trigger="click" droplist={<Menu onClickMenuItem={(key) => handleTaskAction(key, row)}><Menu.Item key="view">查看详情</Menu.Item><Menu.Item key="copy">复制任务</Menu.Item><Menu.Item key="pause" disabled={row.status !== '发送中'}>暂停发送</Menu.Item><Menu.Item key="cancel">取消任务</Menu.Item></Menu>}><Button type="text" icon={<IconMore />} aria-label={`操作 ${row.name}`} /></Dropdown> },
   ];
 
   return <section className="page-stack">

@@ -22,6 +22,7 @@ import {
 } from '@arco-design/web-react/icon';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { labelForPath, navigationItems } from '../app/navigation';
+import { openPrototypeDialog } from '../utils/prototypeActions';
 
 const { Sider, Header, Content } = Layout;
 
@@ -90,7 +91,7 @@ export default function AdminLayout() {
               placeholder="搜索任务、模板、用户"
             />
             <Typography.Text type="secondary" className="timezone-label">UTC+8</Typography.Text>
-            <Badge count={12} dot><Button type="text" icon={<IconNotification />} aria-label="通知" /></Badge>
+            <Badge count={12} dot><Button type="text" icon={<IconNotification />} aria-label="通知" onClick={() => openPrototypeDialog('通知中心', '12 项待处理：5 项审批、3 项渠道告警、4 项系统通知。')} /></Badge>
             <Dropdown droplist={<Menu><Menu.Item key="profile">个人设置</Menu.Item><Menu.Item key="logout">退出</Menu.Item></Menu>}>
               <Space className="user-control">
                 <Avatar size={32}>GM</Avatar>
