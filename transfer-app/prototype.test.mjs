@@ -78,3 +78,44 @@ test('opens a transfer review for a valid amount', async () => {
     assert.match(await page.locator('[data-review-amount]').textContent(), /10\.00 USDC/);
   });
 });
+
+test('moves balances exactly once after a successful transfer', async () => {
+  await withPage(async (page) => {
+    await page.locator('#amount-input').fill('10');
+    await page.locator('#review-transfer').click();
+    await page.locator('#confirm-transfer').click();
+    await page.locator('[data-screen="success"]:visible').waitFor({ timeout: 3500 });
+    assert.match(await page.locator('[data-receipt-amount]').textContent(), /10\.00 USDC/);
+    await page.locator('#done-transfer').click();
+    assert.equal(await page.locator('[data-account-balance="fund"]').first().textContent(), '10.00 USDC');
+    assert.equal(await page.locator('[data-account-balance="contract"]').first().textContent(), '10.00 USDC');
+    await page.waitForTimeout(1100);
+    assert.equal(await page.locator('[data-account-balance="fund"]').first().textContent(), '10.00 USDC');
+  });
+});
+
+test('preserves balances on failure and succeeds on retry', async () => {
+  await withPage(async (page) => {
+    await page.evaluate(() => window.transferPrototype.armFailure());
+    await page.locator('#amount-input').fill('10');
+    await page.locator('#review-transfer').click();
+    await page.locator('#confirm-transfer').click();
+    await page.locator('[data-layer="failure"]:visible').waitFor({ timeout: 3500 });
+    assert.equal(await page.locator('[data-account-balance="fund"]').first().textContent(), '20.00 USDC');
+    assert.equal(await page.locator('[data-account-balance="contract"]').first().textContent(), '0.00 USDC');
+    await page.locator('#retry-transfer').click();
+    await page.locator('[data-screen="success"]:visible').waitFor({ timeout: 3500 });
+    assert.equal(await page.locator('[data-success-fund-balance]').textContent(), '10.00 USDC');
+    assert.equal(await page.locator('[data-success-contract-balance]').textContent(), '10.00 USDC');
+  });
+});
+
+test('reset restores the starting route and balances', async () => {
+  await withPage(async (page) => {
+    await page.locator('#swap-route').click();
+    await page.locator('#prototype-reset').click();
+    assert.equal(await page.locator('[data-source-name]').textContent(), '资金账户');
+    assert.equal(await page.locator('[data-account-balance="fund"]').first().textContent(), '20.00 USDC');
+    assert.equal(await page.locator('[data-account-balance="contract"]').first().textContent(), '0.00 USDC');
+  });
+});

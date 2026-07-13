@@ -829,6 +829,224 @@
 
     .sheet .primary-action { margin-top: 0; }
 
+    .center-state {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      align-content: center;
+      justify-items: center;
+      padding: 30px;
+      text-align: center;
+    }
+
+    .center-state h2 {
+      margin: 25px 0 0;
+      font-size: 22px;
+      font-weight: 580;
+      letter-spacing: -0.045em;
+    }
+
+    .center-state p {
+      margin: 8px 0 0;
+      color: var(--muted);
+      font-size: 10px;
+      line-height: 1.55;
+    }
+
+    .processing-route {
+      position: relative;
+      width: 112px;
+      height: 174px;
+    }
+
+    .processing-node {
+      position: absolute;
+      left: 31px;
+      display: grid;
+      place-items: center;
+      width: 50px;
+      height: 50px;
+      border: 1px solid var(--line-strong);
+      border-radius: 17px;
+      color: var(--muted-strong);
+      background: var(--surface-raised);
+    }
+
+    .processing-node:first-child { top: 0; }
+    .processing-node:last-child { bottom: 0; }
+
+    .processing-line {
+      position: absolute;
+      left: 55px;
+      top: 49px;
+      width: 2px;
+      height: 76px;
+      overflow: hidden;
+      background: rgba(115, 246, 154, 0.16);
+    }
+
+    .processing-line::after {
+      position: absolute;
+      inset: -42px 0 auto;
+      height: 42px;
+      border-radius: 99px;
+      background: linear-gradient(180deg, transparent, var(--green));
+      box-shadow: 0 0 14px var(--green);
+      content: "";
+      animation: processing-flow 1s ease-in-out infinite;
+    }
+
+    .processing-coin {
+      display: grid;
+      place-items: center;
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      color: #061a20;
+      background: #82c8ff;
+      font-size: 12px;
+      font-weight: 850;
+    }
+
+    .success-screen { overflow-y: auto; }
+
+    .success-body {
+      min-height: 100%;
+      padding: 50px 17px 22px;
+    }
+
+    .success-heading { text-align: center; }
+
+    .success-mark {
+      position: relative;
+      display: grid;
+      place-items: center;
+      width: 62px;
+      height: 62px;
+      margin: 0 auto 18px;
+      border: 1px solid rgba(115, 246, 154, 0.3);
+      border-radius: 20px;
+      color: var(--green-ink);
+      background: var(--green);
+      box-shadow: 0 0 42px rgba(115, 246, 154, 0.17);
+      font-size: 26px;
+      font-weight: 800;
+    }
+
+    .success-heading h2 {
+      margin: 0;
+      font-size: 24px;
+      font-weight: 580;
+      letter-spacing: -0.05em;
+    }
+
+    .success-heading p {
+      margin: 8px 0 0;
+      color: var(--muted);
+      font-size: 10px;
+    }
+
+    .receipt-card {
+      margin-top: 28px;
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      background:
+        radial-gradient(circle at 100% 0%, rgba(115, 246, 154, 0.08), transparent 34%),
+        var(--surface);
+    }
+
+    .receipt-amount {
+      padding-bottom: 17px;
+      border-bottom: 1px dashed var(--line-strong);
+      text-align: center;
+    }
+
+    .receipt-amount span {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--muted);
+      font-size: 9px;
+    }
+
+    .receipt-amount strong {
+      font-size: 29px;
+      font-weight: 560;
+      letter-spacing: -0.05em;
+    }
+
+    .receipt-route {
+      margin: 16px 0 0;
+      color: var(--muted-strong);
+      font-size: 11px;
+      font-weight: 620;
+      text-align: center;
+    }
+
+    .receipt-list {
+      display: grid;
+      gap: 12px;
+      margin: 18px 0 0;
+    }
+
+    .receipt-list div {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .receipt-list dt,
+    .receipt-list dd { margin: 0; font-size: 10px; }
+    .receipt-list dt { color: var(--muted); }
+    .receipt-list dd { color: var(--muted-strong); }
+    .receipt-list .complete { color: var(--green); }
+
+    .success-balances {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 9px;
+      margin-top: 11px;
+    }
+
+    .success-balance {
+      padding: 13px;
+      border: 1px solid var(--line);
+      border-radius: 15px;
+      background: rgba(255, 255, 255, 0.018);
+    }
+
+    .success-balance span {
+      display: block;
+      margin-bottom: 7px;
+      color: var(--muted);
+      font-size: 8px;
+    }
+
+    .success-balance strong {
+      font-size: 11px;
+      font-weight: 650;
+    }
+
+    .success-actions {
+      display: grid;
+      gap: 8px;
+      margin-top: 18px;
+    }
+
+    .failure-symbol {
+      display: grid;
+      place-items: center;
+      width: 42px;
+      height: 42px;
+      margin-bottom: 16px;
+      border: 1px solid rgba(255, 133, 133, 0.3);
+      border-radius: 14px;
+      color: var(--error);
+      background: rgba(255, 133, 133, 0.07);
+      font-size: 19px;
+      font-weight: 750;
+    }
+
     .sr-only {
       position: absolute;
       width: 1px;
@@ -885,6 +1103,7 @@
 
     @keyframes layer-in { from { opacity: 0; } to { opacity: 1; } }
     @keyframes sheet-in { from { transform: translateY(28px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    @keyframes processing-flow { from { transform: translateY(0); } to { transform: translateY(118px); } }
 
     @media (max-width: 900px) {
       .prototype-shell {
@@ -990,6 +1209,45 @@
           </main>
         </section>
 
+        <section class="screen" data-screen="processing" hidden aria-busy="true">
+          <div class="center-state">
+            <div class="processing-route" aria-hidden="true">
+              <div class="processing-node"><span class="processing-coin">$</span></div>
+              <div class="processing-line"></div>
+              <div class="processing-node"><span class="processing-coin">$</span></div>
+            </div>
+            <h2 tabindex="-1">正在更新账户余额</h2>
+            <p>资金正在沿 ForX 内部路线划转<br>请保持当前页面开启</p>
+          </div>
+        </section>
+
+        <section class="screen success-screen" data-screen="success" hidden>
+          <div class="success-body">
+            <header class="success-heading">
+              <div class="success-mark" aria-hidden="true">✓</div>
+              <h2 tabindex="-1">划转完成</h2>
+              <p>两个账户余额已同步更新</p>
+            </header>
+            <section class="receipt-card" aria-label="划转回执">
+              <div class="receipt-amount"><span>到账金额</span><strong data-receipt-amount>0.00 USDC</strong></div>
+              <p class="receipt-route" data-receipt-route>资金账户 → 合约账户</p>
+              <dl class="receipt-list">
+                <div><dt>状态</dt><dd class="complete">已完成</dd></div>
+                <div><dt>手续费</dt><dd>0 USDC</dd></div>
+                <div><dt>完成时间</dt><dd>刚刚</dd></div>
+              </dl>
+            </section>
+            <div class="success-balances">
+              <div class="success-balance"><span>资金账户余额</span><strong data-success-fund-balance>20.00 USDC</strong></div>
+              <div class="success-balance"><span>合约账户余额</span><strong data-success-contract-balance>0.00 USDC</strong></div>
+            </div>
+            <div class="success-actions">
+              <button id="done-transfer" class="primary-action" type="button">完成</button>
+              <button id="transfer-again" class="secondary-action" type="button">再次划转</button>
+            </div>
+          </div>
+        </section>
+
         <section class="layer" data-layer="review" role="dialog" aria-modal="true" aria-labelledby="review-title" hidden>
           <div class="sheet">
             <div class="sheet-grabber" aria-hidden="true"></div>
@@ -1011,6 +1269,25 @@
             <div class="sheet-actions">
               <button id="confirm-transfer" class="primary-action" type="button">确认划转</button>
               <button id="edit-transfer" class="secondary-action" type="button">返回修改</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="layer" data-layer="failure" role="dialog" aria-modal="true" aria-labelledby="failure-title" hidden>
+          <div class="sheet">
+            <div class="sheet-grabber" aria-hidden="true"></div>
+            <div class="failure-symbol" aria-hidden="true">!</div>
+            <div class="sheet-heading">
+              <div><h2 id="failure-title" tabindex="-1">划转暂未完成</h2><p>账户余额未发生变化，可直接重试或返回修改金额。</p></div>
+            </div>
+            <div class="review-route" data-failure-route>
+              <div class="review-account"><small>转出</small><strong data-failure-source>资金账户</strong></div>
+              <span class="review-arrow" aria-hidden="true">→</span>
+              <div class="review-account"><small>转入</small><strong data-failure-destination>合约账户</strong></div>
+            </div>
+            <div class="sheet-actions" style="margin-top: 18px">
+              <button id="retry-transfer" class="primary-action" type="button">重试划转</button>
+              <button id="failure-edit" class="secondary-action" type="button">返回修改</button>
             </div>
           </div>
         </section>
@@ -1049,7 +1326,8 @@
       minimum: 10,
       fee: 0,
       busy: false,
-      failureArmed: false
+      failureArmed: false,
+      pendingOperation: null
     });
 
     const state = initialState();
@@ -1057,9 +1335,11 @@
     const amountError = document.getElementById('amount-error');
     const reviewButton = document.getElementById('review-transfer');
     const reviewLayer = document.querySelector('[data-layer="review"]');
+    const failureLayer = document.querySelector('[data-layer="failure"]');
     const reviewTitle = document.getElementById('review-title');
     const liveStatus = document.getElementById('live-status');
     let layerReturnFocus = null;
+    const committedOperations = new Set();
 
     function formatAmount(value) {
       return `${Number(value).toFixed(2)} USDC`;
@@ -1105,6 +1385,15 @@
       document.querySelectorAll('[data-estimated-balance]').forEach((node) => { node.textContent = formatAmount(estimate); });
     }
 
+    function showScreen(name) {
+      state.screen = name;
+      document.querySelectorAll('[data-screen]').forEach((screen) => {
+        screen.hidden = screen.dataset.screen !== name;
+      });
+      const target = document.querySelector(`[data-screen="${name}"]`);
+      window.setTimeout(() => target?.querySelector('h2, input, button')?.focus({ preventScroll: true }), 0);
+    }
+
     function swapRoute() {
       [state.source, state.destination] = [state.destination, state.source];
       state.amount = '';
@@ -1133,6 +1422,88 @@
       announce('已返回划转编辑');
     }
 
+    function applyTransferOnce(operation) {
+      if (!operation || committedOperations.has(operation.id)) return;
+      state.balances[operation.source] -= operation.value;
+      state.balances[operation.destination] += operation.value;
+      committedOperations.add(operation.id);
+    }
+
+    function showSuccess(operation) {
+      applyTransferOnce(operation);
+      document.querySelector('[data-receipt-amount]').textContent = formatAmount(operation.value);
+      document.querySelector('[data-receipt-route]').textContent = `${accountNames[operation.source]} → ${accountNames[operation.destination]}`;
+      document.querySelector('[data-success-fund-balance]').textContent = formatAmount(state.balances.fund);
+      document.querySelector('[data-success-contract-balance]').textContent = formatAmount(state.balances.contract);
+      state.busy = false;
+      showScreen('success');
+      renderComposer();
+      announce('划转完成，账户余额已更新');
+    }
+
+    function showFailure(operation) {
+      state.busy = false;
+      document.querySelector('[data-failure-source]').textContent = accountNames[operation.source];
+      document.querySelector('[data-failure-destination]').textContent = accountNames[operation.destination];
+      failureLayer.hidden = false;
+      window.setTimeout(() => document.getElementById('failure-title').focus({ preventScroll: true }), 0);
+      announce('划转暂未完成，余额未发生变化');
+    }
+
+    function processTransfer({ retry = false } = {}) {
+      if (state.busy) return;
+      const result = validateAmount(state.amount);
+      if (!result.valid) return;
+
+      if (!retry || !state.pendingOperation) {
+        state.pendingOperation = {
+          id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+          source: state.source,
+          destination: state.destination,
+          value: result.value
+        };
+      }
+
+      const operation = state.pendingOperation;
+      state.busy = true;
+      reviewLayer.hidden = true;
+      failureLayer.hidden = true;
+      showScreen('processing');
+      announce('正在更新账户余额');
+
+      window.setTimeout(() => {
+        if (state.failureArmed) {
+          state.failureArmed = false;
+          showFailure(operation);
+          return;
+        }
+        showSuccess(operation);
+      }, 820);
+    }
+
+    function returnToComposer({ clearAmount = true } = {}) {
+      if (clearAmount) {
+        state.amount = '';
+        amountInput.value = '';
+      }
+      state.pendingOperation = null;
+      failureLayer.hidden = true;
+      reviewLayer.hidden = true;
+      showScreen('composer');
+      renderComposer();
+    }
+
+    function resetPrototype() {
+      Object.assign(state, initialState());
+      committedOperations.clear();
+      amountInput.value = '';
+      failureLayer.hidden = true;
+      reviewLayer.hidden = true;
+      showScreen('composer');
+      renderComposer();
+      announce('原型已重置');
+    }
+
     amountInput.addEventListener('input', () => {
       const sanitized = amountInput.value.replace(/[^\d.]/g, '');
       const [whole = '', ...decimals] = sanitized.split('.');
@@ -1155,9 +1526,19 @@
     reviewButton.addEventListener('click', openReview);
     document.getElementById('close-review').addEventListener('click', closeReview);
     document.getElementById('edit-transfer').addEventListener('click', closeReview);
+    document.getElementById('confirm-transfer').addEventListener('click', () => processTransfer());
+    document.getElementById('retry-transfer').addEventListener('click', () => processTransfer({ retry: true }));
+    document.getElementById('failure-edit').addEventListener('click', () => returnToComposer({ clearAmount: false }));
+    document.getElementById('done-transfer').addEventListener('click', () => returnToComposer());
+    document.getElementById('transfer-again').addEventListener('click', () => returnToComposer());
+    document.getElementById('prototype-reset').addEventListener('click', resetPrototype);
     document.addEventListener('keydown', (event) => {
       if (event.key === 'Escape' && !reviewLayer.hidden) closeReview();
     });
+
+    window.transferPrototype = {
+      armFailure() { state.failureArmed = true; }
+    };
 
     renderComposer();
   </script>
