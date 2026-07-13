@@ -1,0 +1,1621 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="dark">
+  <title>ForX Finance · 登录原型</title>
+  <style>
+    :root {
+      --bg: #050706;
+      --panel: #0d100f;
+      --surface: #121614;
+      --surface-strong: #171c19;
+      --text: #f2f6f3;
+      --muted: #858e89;
+      --muted-strong: #aeb7b2;
+      --line: rgba(255, 255, 255, 0.1);
+      --line-strong: rgba(255, 255, 255, 0.17);
+      --green: #8dfaa9;
+      --green-strong: #53d782;
+      --green-ink: #08210f;
+      --error: #ff7a7a;
+      --warning: #f8ca6c;
+      --radius-phone: 34px;
+      --radius-sheet: 24px;
+      --radius-control: 12px;
+      --shadow: 0 30px 90px rgba(0, 0, 0, 0.48);
+    }
+
+    * { box-sizing: border-box; }
+
+    html { background: #030403; }
+
+    body {
+      margin: 0;
+      min-height: 100svh;
+      overflow-x: hidden;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 50% -10%, rgba(83, 215, 130, 0.15), transparent 34%),
+        radial-gradient(circle at 15% 90%, rgba(70, 117, 255, 0.07), transparent 30%),
+        linear-gradient(155deg, #0b0f0c 0%, #050706 52%, #020302 100%);
+      font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    button,
+    input { font: inherit; }
+
+    button { color: inherit; }
+
+    button:focus-visible,
+    input:focus-visible {
+      outline: 2px solid var(--green);
+      outline-offset: 3px;
+    }
+
+    .prototype-shell {
+      display: grid;
+      grid-template-columns: minmax(220px, 300px) minmax(320px, 390px);
+      gap: clamp(28px, 6vw, 88px);
+      align-items: center;
+      justify-content: center;
+      min-height: 100svh;
+      padding: 24px;
+    }
+
+    .prototype-meta { align-self: center; }
+
+    .meta-kicker {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 22px;
+      color: var(--green);
+      font-size: 11px;
+      font-weight: 650;
+      letter-spacing: 0.14em;
+    }
+
+    .meta-kicker::before {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 14px rgba(141, 250, 169, 0.65);
+      content: "";
+    }
+
+    .prototype-meta h1 {
+      max-width: 290px;
+      margin: 0;
+      font-size: clamp(36px, 5vw, 58px);
+      font-weight: 520;
+      letter-spacing: -0.055em;
+      line-height: 0.95;
+    }
+
+    .prototype-meta > p {
+      max-width: 275px;
+      margin: 22px 0 28px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.65;
+    }
+
+    .flow-key {
+      display: grid;
+      gap: 10px;
+      margin: 0 0 26px;
+      padding: 0;
+      list-style: none;
+      counter-reset: flow;
+    }
+
+    .flow-key li {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--muted-strong);
+      font-size: 12px;
+      counter-increment: flow;
+    }
+
+    .flow-key li::before {
+      display: grid;
+      place-items: center;
+      width: 21px;
+      height: 21px;
+      border: 1px solid var(--line-strong);
+      border-radius: 50%;
+      color: var(--green);
+      font-size: 9px;
+      content: counter(flow, decimal-leading-zero);
+    }
+
+    .prototype-reset {
+      min-height: 42px;
+      padding: 0 16px;
+      border: 1px solid var(--line-strong);
+      border-radius: 999px;
+      color: var(--text);
+      background: rgba(255, 255, 255, 0.03);
+      cursor: pointer;
+      transition: border-color 180ms ease, background 180ms ease;
+    }
+
+    .prototype-reset:hover {
+      border-color: rgba(141, 250, 169, 0.55);
+      background: rgba(141, 250, 169, 0.07);
+    }
+
+    .phone-wrap { position: relative; }
+
+    .phone-wrap::before {
+      position: absolute;
+      inset: 8% -18% -8%;
+      border-radius: 50%;
+      background: rgba(52, 142, 82, 0.09);
+      filter: blur(54px);
+      pointer-events: none;
+      content: "";
+    }
+
+    .phone {
+      position: relative;
+      width: min(390px, calc(100vw - 24px));
+      height: min(844px, calc(100svh - 32px));
+      min-height: 680px;
+      overflow: hidden;
+      border: 1px solid var(--line-strong);
+      border-radius: var(--radius-phone);
+      background: var(--bg);
+      box-shadow: var(--shadow), inset 0 0 0 5px rgba(255, 255, 255, 0.018);
+      isolation: isolate;
+    }
+
+    .phone::after {
+      position: absolute;
+      inset: 0;
+      z-index: 20;
+      border-radius: inherit;
+      box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.56);
+      pointer-events: none;
+      content: "";
+    }
+
+    .phone-status {
+      position: absolute;
+      inset: 0 0 auto;
+      z-index: 15;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 38px;
+      padding: 6px 21px 0;
+      color: rgba(242, 246, 243, 0.9);
+      font-size: 11px;
+      font-weight: 650;
+      letter-spacing: 0.02em;
+      pointer-events: none;
+    }
+
+    .screen {
+      position: absolute;
+      inset: 38px 0 0;
+      z-index: 2;
+      overflow: hidden;
+      background: var(--bg);
+      animation: screen-in 280ms cubic-bezier(.2, .85, .2, 1) both;
+    }
+
+    .screen[hidden] { display: none; }
+
+    .appbar {
+      position: relative;
+      z-index: 6;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 54px;
+      padding: 8px 18px;
+    }
+
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      font-size: 13px;
+      font-weight: 650;
+      letter-spacing: -0.015em;
+    }
+
+    .brand-mark {
+      position: relative;
+      display: inline-block;
+      width: 24px;
+      height: 24px;
+      border-radius: 7px;
+      background: linear-gradient(145deg, #b8ffca, var(--green));
+      box-shadow: 0 0 24px rgba(141, 250, 169, 0.25);
+    }
+
+    .brand-mark::before,
+    .brand-mark::after {
+      position: absolute;
+      left: 6px;
+      right: 6px;
+      top: 11px;
+      height: 2px;
+      border-radius: 2px;
+      background: var(--green-ink);
+      transform: rotate(45deg);
+      content: "";
+    }
+
+    .brand-mark::after { transform: rotate(-45deg); }
+
+    .network-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      min-height: 24px;
+      padding: 0 9px;
+      border: 1px solid rgba(141, 250, 169, 0.2);
+      border-radius: 999px;
+      color: var(--green);
+      background: rgba(141, 250, 169, 0.055);
+      font-size: 8px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+    }
+
+    .network-pill::before {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: currentColor;
+      box-shadow: 0 0 8px currentColor;
+      content: "";
+    }
+
+    .market-scene {
+      position: absolute;
+      inset: 54px 0 auto;
+      height: 390px;
+      overflow: hidden;
+      padding: 31px 19px 0;
+      background:
+        linear-gradient(to right, transparent 24.8%, rgba(255,255,255,.035) 25%, transparent 25.2%, transparent 49.8%, rgba(255,255,255,.035) 50%, transparent 50.2%, transparent 74.8%, rgba(255,255,255,.035) 75%, transparent 75.2%),
+        linear-gradient(to bottom, transparent 24.8%, rgba(255,255,255,.035) 25%, transparent 25.2%, transparent 49.8%, rgba(255,255,255,.035) 50%, transparent 50.2%, transparent 74.8%, rgba(255,255,255,.035) 75%, transparent 75.2%);
+      mask-image: linear-gradient(to bottom, #000 0 70%, transparent 100%);
+    }
+
+    .market-scene::before {
+      position: absolute;
+      inset: 88px -20px 22px;
+      opacity: 0.36;
+      background: linear-gradient(to top, rgba(61, 222, 114, 0.25), transparent 64%);
+      clip-path: polygon(0 74%, 9% 68%, 17% 77%, 25% 53%, 34% 60%, 42% 41%, 52% 47%, 61% 28%, 71% 36%, 80% 18%, 90% 25%, 100% 8%, 100% 100%, 0 100%);
+      content: "";
+    }
+
+    .market-scene::after {
+      position: absolute;
+      inset: 112px -12px auto;
+      height: 2px;
+      opacity: 0.88;
+      background: linear-gradient(90deg, transparent, var(--green) 7%, var(--green) 92%, transparent);
+      transform: rotate(-11deg);
+      box-shadow: 48px 23px 0 -0.5px rgba(141,250,169,.8), 96px -7px 0 -0.5px rgba(141,250,169,.8), 161px 14px 0 -0.5px rgba(141,250,169,.8);
+      content: "";
+    }
+
+    .market-symbol {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      color: var(--muted-strong);
+      font-size: 10px;
+      letter-spacing: 0.03em;
+    }
+
+    .market-symbol span { color: var(--green); }
+
+    .market-price {
+      display: block;
+      margin-top: 7px;
+      font-size: 29px;
+      font-weight: 510;
+      letter-spacing: -0.045em;
+    }
+
+    .market-metrics {
+      display: flex;
+      gap: 18px;
+      margin-top: 9px;
+      color: rgba(174, 183, 178, 0.55);
+      font-size: 8px;
+      letter-spacing: 0.04em;
+    }
+
+    .market-headline {
+      position: absolute;
+      left: 19px;
+      top: 244px;
+      z-index: 3;
+    }
+
+    .market-headline span {
+      color: var(--green);
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.13em;
+      text-transform: uppercase;
+    }
+
+    .market-headline strong {
+      display: block;
+      max-width: 250px;
+      margin-top: 8px;
+      font-size: 27px;
+      font-weight: 520;
+      letter-spacing: -0.045em;
+      line-height: 1.03;
+    }
+
+    .auth-sheet {
+      position: absolute;
+      left: 8px;
+      right: 8px;
+      bottom: 8px;
+      z-index: 8;
+      padding: 19px 16px 14px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-sheet);
+      background: rgba(13, 16, 15, 0.975);
+      box-shadow: 0 -28px 72px rgba(0, 0, 0, 0.54);
+      backdrop-filter: blur(22px);
+    }
+
+    .sheet-grabber {
+      width: 32px;
+      height: 3px;
+      margin: -8px auto 13px;
+      border-radius: 999px;
+      background: #343a37;
+    }
+
+    .auth-sheet h2,
+    .screen-title {
+      margin: 0;
+      font-size: 20px;
+      font-weight: 560;
+      letter-spacing: -0.035em;
+    }
+
+    .auth-sheet > p,
+    .screen-subtitle {
+      margin: 6px 0 16px;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.5;
+    }
+
+    .field-label {
+      display: block;
+      margin: 0 0 6px;
+      color: var(--muted-strong);
+      font-size: 10px;
+      font-weight: 560;
+    }
+
+    .text-input {
+      width: 100%;
+      height: 46px;
+      padding: 0 13px;
+      border: 1px solid var(--line-strong);
+      border-radius: var(--radius-control);
+      color: var(--text);
+      background: #090b0a;
+      caret-color: var(--green);
+      transition: border-color 160ms ease, box-shadow 160ms ease;
+    }
+
+    .text-input::placeholder { color: #59615d; }
+
+    .text-input:focus {
+      border-color: rgba(141, 250, 169, 0.65);
+      box-shadow: 0 0 0 3px rgba(141, 250, 169, 0.06);
+    }
+
+    .primary,
+    .secondary,
+    .ghost-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      min-height: 46px;
+      padding: 0 14px;
+      border-radius: var(--radius-control);
+      font-size: 12px;
+      font-weight: 650;
+      cursor: pointer;
+      transition: transform 150ms ease, filter 150ms ease, border-color 150ms ease, background 150ms ease;
+    }
+
+    .primary {
+      border: 0;
+      color: var(--green-ink);
+      background: linear-gradient(180deg, #a7ffbb, var(--green));
+      box-shadow: 0 8px 24px rgba(83, 215, 130, 0.12);
+    }
+
+    .secondary {
+      border: 1px solid var(--line-strong);
+      color: var(--text);
+      background: #0a0d0b;
+    }
+
+    .ghost-button {
+      border: 0;
+      color: var(--muted-strong);
+      background: transparent;
+    }
+
+    .primary:hover,
+    .secondary:hover,
+    .ghost-button:hover { filter: brightness(1.07); }
+
+    .primary:active,
+    .secondary:active,
+    .ghost-button:active { transform: scale(0.985); }
+
+    button:disabled { cursor: default; opacity: 0.48; transform: none; }
+
+    .email-form { display: grid; gap: 9px; }
+
+    .divider {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      gap: 10px;
+      align-items: center;
+      margin: 12px 0;
+      color: #5f6763;
+      font-size: 9px;
+    }
+
+    .divider::before,
+    .divider::after {
+      height: 1px;
+      background: var(--line);
+      content: "";
+    }
+
+    .wallet-button-content {
+      display: inline-flex;
+      align-items: center;
+      gap: 11px;
+    }
+
+    .wallet-icon-stack { display: flex; margin-right: 2px; }
+
+    .mini-wallet {
+      display: grid;
+      place-items: center;
+      width: 19px;
+      height: 19px;
+      margin-left: -4px;
+      border: 1px solid #0a0d0b;
+      border-radius: 6px;
+      color: #111;
+      background: #ff9b49;
+      font-size: 7px;
+      font-weight: 800;
+    }
+
+    .mini-wallet:first-child { margin-left: 0; }
+    .mini-wallet:nth-child(2) { background: #f3f5f4; }
+    .mini-wallet:nth-child(3) { color: #fff; background: #3478f6; }
+
+    .legal-copy {
+      display: block;
+      margin-top: 11px;
+      color: #626a66;
+      font-size: 8px;
+      line-height: 1.45;
+      text-align: center;
+    }
+
+    .screen-header { padding: 7px 18px 0; }
+
+    .screen-topline {
+      display: grid;
+      grid-template-columns: 36px 1fr 36px;
+      align-items: center;
+      min-height: 52px;
+      margin-bottom: 16px;
+    }
+
+    .screen-topline .brand { justify-self: center; }
+
+    .back-button {
+      display: grid;
+      place-items: center;
+      width: 36px;
+      height: 36px;
+      padding: 0;
+      border: 1px solid transparent;
+      border-radius: 11px;
+      color: var(--text);
+      background: transparent;
+      font-size: 27px;
+      font-weight: 300;
+      line-height: 1;
+      cursor: pointer;
+    }
+
+    .back-button:hover {
+      border-color: var(--line);
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .screen-body { padding: 0 18px 22px; }
+
+    .screen-body > .screen-subtitle { margin-bottom: 0; }
+
+    .email-highlight { color: var(--text); font-weight: 540; }
+
+    .otp-form { margin-top: 27px; }
+
+    .otp-fieldset {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 7px;
+      margin: 0;
+      padding: 0;
+      border: 0;
+    }
+
+    .otp-input {
+      width: 100%;
+      height: 48px;
+      padding: 0;
+      border: 1px solid var(--line-strong);
+      border-radius: 11px;
+      color: var(--text);
+      background: #090b0a;
+      font-size: 17px;
+      font-weight: 620;
+      text-align: center;
+      caret-color: var(--green);
+    }
+
+    .otp-input:focus {
+      border-color: var(--green);
+      box-shadow: 0 0 0 3px rgba(141, 250, 169, 0.07);
+    }
+
+    .resend-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-top: 14px;
+      color: var(--muted);
+      font-size: 10px;
+    }
+
+    .text-action {
+      min-height: 32px;
+      padding: 0;
+      border: 0;
+      color: var(--green);
+      background: transparent;
+      font-size: 10px;
+      font-weight: 620;
+      cursor: pointer;
+    }
+
+    .text-action:disabled { color: #626a66; }
+
+    .otp-actions {
+      position: absolute;
+      left: 18px;
+      right: 18px;
+      bottom: 23px;
+      display: grid;
+      gap: 9px;
+    }
+
+    .field-error,
+    .inline-notice {
+      margin: 6px 0 0;
+      color: var(--error);
+      font-size: 9px;
+      line-height: 1.45;
+    }
+
+    .inline-notice {
+      min-height: 20px;
+      color: var(--muted-strong);
+    }
+
+    .center-state {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      align-content: center;
+      justify-items: center;
+      padding: 24px;
+      text-align: center;
+    }
+
+    .center-state h2 {
+      margin: 0;
+      font-size: 22px;
+      font-weight: 560;
+      letter-spacing: -0.035em;
+    }
+
+    .center-state p {
+      margin: 9px 0 0;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.55;
+    }
+
+    .orbit {
+      position: relative;
+      width: 116px;
+      height: 116px;
+      margin-bottom: 29px;
+      border: 1px solid rgba(141, 250, 169, 0.17);
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(141, 250, 169, 0.11), transparent 64%);
+      box-shadow: 0 0 60px rgba(141, 250, 169, 0.08);
+      animation: orbit-pulse 1.8s ease-in-out infinite;
+    }
+
+    .orbit::before {
+      position: absolute;
+      inset: 25px;
+      border: 1px solid rgba(255, 255, 255, 0.13);
+      transform: rotate(45deg);
+      content: "";
+    }
+
+    .orbit::after {
+      position: absolute;
+      inset: 42px;
+      display: grid;
+      place-items: center;
+      border-radius: 9px;
+      color: var(--green-ink);
+      background: var(--green);
+      box-shadow: 0 0 24px rgba(141, 250, 169, 0.3);
+      font-size: 22px;
+      font-weight: 500;
+      content: "×";
+    }
+
+    .progress {
+      width: 148px;
+      height: 4px;
+      margin-top: 22px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: #1c221f;
+    }
+
+    .progress::before {
+      display: block;
+      width: 48%;
+      height: 100%;
+      border-radius: inherit;
+      background: var(--green);
+      animation: progress-slide 1.2s ease-in-out infinite;
+      content: "";
+    }
+
+    .wallet-list {
+      display: grid;
+      gap: 9px;
+      margin-top: 22px;
+    }
+
+    .wallet-option {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      min-height: 56px;
+      padding: 0 13px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      color: var(--text);
+      background: #090b0a;
+      cursor: pointer;
+      transition: border-color 150ms ease, transform 150ms ease, background 150ms ease;
+    }
+
+    .wallet-option:hover {
+      border-color: rgba(141, 250, 169, 0.4);
+      background: #0c100d;
+    }
+
+    .wallet-option:active { transform: scale(0.99); }
+
+    .wallet-identity {
+      display: inline-flex;
+      align-items: center;
+      gap: 11px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .wallet-logo {
+      display: grid;
+      place-items: center;
+      width: 31px;
+      height: 31px;
+      border-radius: 10px;
+      color: #101010;
+      background: linear-gradient(145deg, #ffbc78, #ff8e38);
+      font-size: 10px;
+      font-weight: 850;
+    }
+
+    .wallet-option:nth-child(2) .wallet-logo { background: linear-gradient(145deg, #fff, #a7adaa); }
+    .wallet-option:nth-child(3) .wallet-logo { color: #fff; background: linear-gradient(145deg, #629cff, #215ed3); }
+    .wallet-option:nth-child(4) .wallet-logo { color: #fff; background: linear-gradient(145deg, #80a3ff, #3a67dd); }
+
+    .installed-tag {
+      padding: 4px 7px;
+      border-radius: 999px;
+      color: var(--green);
+      background: rgba(141, 250, 169, 0.08);
+      font-size: 8px;
+      font-weight: 650;
+    }
+
+    .wallet-footnote {
+      position: absolute;
+      left: 18px;
+      right: 18px;
+      bottom: 26px;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      gap: 7px;
+      color: var(--muted);
+      font-size: 9px;
+      line-height: 1.4;
+      text-align: center;
+    }
+
+    .wallet-footnote::before {
+      display: grid;
+      flex: 0 0 auto;
+      place-items: center;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      color: var(--green-ink);
+      background: var(--green);
+      font-size: 9px;
+      font-weight: 800;
+      content: "i";
+    }
+
+    .signature-card {
+      margin-top: 24px;
+      padding: 15px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: var(--surface);
+    }
+
+    .signature-account {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      padding-bottom: 15px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .signature-account .wallet-logo { flex: 0 0 auto; }
+
+    .signature-account strong {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 12px;
+      font-weight: 650;
+    }
+
+    .signature-account span {
+      color: var(--muted);
+      font-size: 9px;
+    }
+
+    .signature-details {
+      display: grid;
+      gap: 12px;
+      margin: 15px 0 0;
+    }
+
+    .signature-details div {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .signature-details dt,
+    .signature-details dd {
+      margin: 0;
+      font-size: 10px;
+    }
+
+    .signature-details dt { color: var(--muted); }
+    .signature-details dd { color: var(--muted-strong); }
+    .signature-details .fee { color: var(--green); }
+
+    .safety-note {
+      display: flex;
+      gap: 9px;
+      margin: 15px 2px 0;
+      color: var(--muted);
+      font-size: 9px;
+      line-height: 1.5;
+    }
+
+    .safety-note::before {
+      display: grid;
+      flex: 0 0 auto;
+      place-items: center;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      color: var(--green-ink);
+      background: var(--green);
+      font-size: 9px;
+      font-weight: 800;
+      content: "✓";
+    }
+
+    .signature-actions {
+      position: absolute;
+      left: 18px;
+      right: 18px;
+      bottom: 22px;
+      display: grid;
+      gap: 9px;
+    }
+
+    .success-mark {
+      position: relative;
+      display: grid;
+      place-items: center;
+      width: 116px;
+      height: 116px;
+      margin-bottom: 28px;
+      border: 1px solid rgba(141, 250, 169, 0.18);
+      border-radius: 50%;
+      color: var(--green-ink);
+      background: radial-gradient(circle, var(--green) 0 23%, rgba(141, 250, 169, 0.11) 24% 52%, transparent 53%);
+      box-shadow: 0 0 55px rgba(141, 250, 169, 0.08);
+      font-size: 23px;
+      font-weight: 800;
+    }
+
+    .success-mark::after {
+      position: absolute;
+      inset: -9px;
+      border: 1px solid rgba(141, 250, 169, 0.08);
+      border-radius: inherit;
+      content: "";
+    }
+
+    .account-pill {
+      margin-top: 18px;
+      padding: 8px 11px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--muted-strong);
+      background: #0b0e0c;
+      font-size: 9px;
+    }
+
+    .success-actions {
+      position: absolute;
+      left: 18px;
+      right: 18px;
+      bottom: 25px;
+    }
+
+    .completion-toast {
+      position: absolute;
+      left: 50%;
+      bottom: 84px;
+      z-index: 12;
+      min-width: 150px;
+      padding: 10px 13px;
+      border: 1px solid rgba(141, 250, 169, 0.22);
+      border-radius: 999px;
+      color: var(--green);
+      background: rgba(17, 29, 20, 0.96);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.34);
+      font-size: 10px;
+      text-align: center;
+      transform: translateX(-50%);
+    }
+
+    .sr-only {
+      position: absolute !important;
+      width: 1px !important;
+      height: 1px !important;
+      padding: 0 !important;
+      margin: -1px !important;
+      overflow: hidden !important;
+      clip: rect(0, 0, 0, 0) !important;
+      white-space: nowrap !important;
+      border: 0 !important;
+    }
+
+    @keyframes screen-in {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes orbit-pulse {
+      0%, 100% { transform: scale(0.96); opacity: 0.78; }
+      50% { transform: scale(1.03); opacity: 1; }
+    }
+
+    @keyframes progress-slide {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(220%); }
+    }
+
+    @media (max-height: 760px) and (min-width: 521px) {
+      .phone { height: calc(100svh - 24px); min-height: 640px; transform: scale(0.9); }
+    }
+
+    @media (max-width: 820px) {
+      .prototype-shell { grid-template-columns: minmax(320px, 390px); }
+      .prototype-meta { display: none; }
+    }
+
+    @media (max-width: 520px) {
+      body { background: var(--bg); }
+      .prototype-shell { display: block; min-height: 100svh; padding: 0; }
+      .phone-wrap::before { display: none; }
+      .phone { width: 100vw; height: 100svh; min-height: 0; border: 0; border-radius: 0; box-shadow: none; }
+      .phone::after { display: none; }
+      .auth-sheet { bottom: max(8px, env(safe-area-inset-bottom)); }
+      .otp-actions, .signature-actions, .success-actions { bottom: max(22px, env(safe-area-inset-bottom)); }
+    }
+
+    @media (max-width: 340px) {
+      .auth-sheet { padding-inline: 13px; }
+      .otp-fieldset { gap: 4px; }
+      .otp-input { height: 44px; border-radius: 9px; }
+      .market-headline strong { font-size: 24px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        scroll-behavior: auto !important;
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+
+    .screen-gallery {
+      width: min(1320px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 88px 0 120px;
+      border-top: 1px solid var(--line);
+    }
+
+    .gallery-heading { margin-bottom: 32px; }
+
+    .gallery-heading .meta-kicker { margin-bottom: 14px; }
+
+    .gallery-heading h2 {
+      margin: 0;
+      font-size: clamp(30px, 5vw, 52px);
+      font-weight: 540;
+      letter-spacing: -0.045em;
+    }
+
+    .gallery-heading p {
+      margin: 12px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .gallery-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 390px));
+      gap: 50px 28px;
+      align-items: start;
+      justify-content: center;
+    }
+
+    .gallery-card { min-width: 0; }
+
+    .gallery-device-slot {
+      width: 390px;
+      height: 844px;
+    }
+
+    .gallery-phone {
+      width: 390px !important;
+      height: 844px !important;
+      min-height: 844px !important;
+      border: 1px solid var(--line-strong) !important;
+      border-radius: var(--radius-phone) !important;
+      box-shadow: var(--shadow) !important;
+      transform-origin: top left;
+    }
+
+    .gallery-phone::after { display: block !important; }
+    .gallery-phone .screen { animation: none; }
+
+    .gallery-phone button:disabled,
+    .gallery-phone input:disabled {
+      opacity: 1;
+      cursor: default;
+    }
+
+    .gallery-caption { margin-top: 15px; }
+
+    .gallery-caption strong {
+      display: block;
+      font-size: 14px;
+      font-weight: 620;
+    }
+
+    .gallery-caption span {
+      display: block;
+      margin-top: 5px;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.45;
+    }
+
+    @media (max-width: 1260px) {
+      .gallery-grid { grid-template-columns: repeat(2, minmax(0, 390px)); }
+    }
+
+    @media (max-width: 860px) {
+      .screen-gallery { padding-top: 64px; }
+      .gallery-grid { grid-template-columns: minmax(0, 390px); }
+    }
+
+    @media (max-width: 430px) {
+      .gallery-device-slot { width: 335px; height: 726px; }
+      .gallery-phone { transform: scale(0.86); }
+    }
+
+    @media (max-width: 360px) {
+      .gallery-device-slot { width: 281px; height: 608px; }
+      .gallery-phone { transform: scale(0.72); }
+    }
+  </style>
+</head>
+<body>
+  <main class="prototype-shell">
+    <header class="prototype-meta">
+      <span class="meta-kicker">INTERACTIVE PROTOTYPE</span>
+      <h1>Markets<br>never sleep.</h1>
+      <p>ForX Finance 移动端登录体验。邮箱 OTP 与外部钱包是两条完整、同等可见的登录路径。</p>
+      <ol class="flow-key" aria-label="原型流程">
+        <li>选择登录方式</li>
+        <li>完成身份验证</li>
+        <li>进入 ForX Finance</li>
+      </ol>
+      <button id="prototype-reset" class="prototype-reset" type="button">重置原型</button>
+    </header>
+
+    <div class="phone-wrap">
+      <section class="phone" aria-label="ForX Finance 登录 App 原型">
+        <div class="phone-status" aria-hidden="true"><span>9:41</span><span>▮▮▮ ◉</span></div>
+
+        <section class="screen is-active" data-screen="login">
+          <header class="appbar">
+            <div class="brand"><span class="brand-mark" aria-hidden="true"></span>ForX Finance</div>
+            <span class="network-pill">MAINNET</span>
+          </header>
+
+          <div class="market-scene" aria-hidden="true">
+            <div class="market-symbol"><span>BTC-PERP</span><span>+2.84%</span></div>
+            <strong class="market-price">$68,420.8</strong>
+            <div class="market-metrics"><span>24H VOL&nbsp; 1.2B</span><span>OI&nbsp; 84.2M</span></div>
+          </div>
+
+          <div class="market-headline" aria-hidden="true">
+            <span>Trade without limits</span>
+            <strong>在每次波动中，找到你的方向。</strong>
+          </div>
+
+          <div class="auth-sheet">
+            <div class="sheet-grabber" aria-hidden="true"></div>
+            <h2 tabindex="-1">登录 ForX Finance</h2>
+            <p>进入全天候永续合约市场</p>
+            <form id="email-form" class="email-form" novalidate>
+              <div>
+                <label class="field-label" for="email-input">邮箱</label>
+                <input id="email-input" class="text-input" type="email" autocomplete="email" placeholder="name@example.com" aria-describedby="email-error">
+                <p id="email-error" class="field-error" hidden></p>
+              </div>
+              <button class="primary" type="submit">使用邮箱继续</button>
+            </form>
+            <div class="divider"><span>或</span></div>
+            <button id="wallet-login" class="secondary" type="button">
+              <span class="wallet-button-content">
+                <span class="wallet-icon-stack" aria-hidden="true"><span class="mini-wallet">M</span><span class="mini-wallet">O</span><span class="mini-wallet">W</span></span>
+                连接外部钱包
+              </span>
+            </button>
+            <small class="legal-copy">继续即表示你同意服务条款与风险披露</small>
+          </div>
+        </section>
+
+        <section class="screen" data-screen="otp" hidden>
+          <header class="screen-header">
+            <div class="screen-topline">
+              <button class="back-button" type="button" data-back-to="login" aria-label="返回登录">‹</button>
+              <div class="brand"><span class="brand-mark" aria-hidden="true"></span>ForX Finance</div>
+              <span></span>
+            </div>
+            <h2 class="screen-title" tabindex="-1">检查你的邮箱</h2>
+            <p class="screen-subtitle">验证码已发送至<br><strong id="otp-email" class="email-highlight">gary@example.com</strong></p>
+          </header>
+          <div class="screen-body">
+            <form id="otp-form" class="otp-form" novalidate>
+              <fieldset class="otp-fieldset">
+                <legend class="sr-only">六位邮箱验证码</legend>
+                <input class="otp-input" data-otp-index="0" inputmode="numeric" autocomplete="one-time-code" maxlength="1" aria-label="验证码第 1 位">
+                <input class="otp-input" data-otp-index="1" inputmode="numeric" maxlength="1" aria-label="验证码第 2 位">
+                <input class="otp-input" data-otp-index="2" inputmode="numeric" maxlength="1" aria-label="验证码第 3 位">
+                <input class="otp-input" data-otp-index="3" inputmode="numeric" maxlength="1" aria-label="验证码第 4 位">
+                <input class="otp-input" data-otp-index="4" inputmode="numeric" maxlength="1" aria-label="验证码第 5 位">
+                <input class="otp-input" data-otp-index="5" inputmode="numeric" maxlength="1" aria-label="验证码第 6 位">
+              </fieldset>
+              <div class="resend-row">
+                <span>没有收到验证码？</span>
+                <button id="resend-code" class="text-action" type="button" data-ready-label="重新发送验证码" disabled>48 秒后重新发送</button>
+              </div>
+              <p id="otp-error" class="field-error" hidden></p>
+              <div class="otp-actions">
+                <button class="primary" type="submit">验证并继续</button>
+                <button id="change-email" class="ghost-button" type="button" data-back-to="login">修改邮箱</button>
+                <small class="legal-copy">验证码将在 10 分钟后失效</small>
+              </div>
+            </form>
+          </div>
+        </section>
+
+        <section class="screen" data-screen="preparing" hidden aria-busy="true">
+          <div class="center-state">
+            <div class="orbit" aria-hidden="true"></div>
+            <h2 tabindex="-1">正在准备 ForX 账户</h2>
+            <p>验证登录并创建你的交易钱包<br>请勿关闭应用</p>
+            <div class="progress" aria-label="账户准备中"></div>
+          </div>
+        </section>
+
+        <section class="screen" data-screen="wallets" hidden>
+          <header class="screen-header">
+            <div class="screen-topline">
+              <button class="back-button" type="button" data-back-to="login" aria-label="返回登录">‹</button>
+              <div class="brand"><span class="brand-mark" aria-hidden="true"></span>ForX Finance</div>
+              <span></span>
+            </div>
+            <h2 class="screen-title" tabindex="-1">连接钱包</h2>
+            <p class="screen-subtitle">选择钱包完成安全登录</p>
+          </header>
+          <div class="screen-body">
+            <p id="wallet-notice" class="inline-notice" aria-live="polite"></p>
+            <div id="wallet-list" class="wallet-list">
+              <button class="wallet-option" type="button" data-wallet="MetaMask"><span class="wallet-identity"><span class="wallet-logo">M</span>MetaMask</span><span class="installed-tag">已安装</span></button>
+              <button class="wallet-option" type="button" data-wallet="OKX Wallet"><span class="wallet-identity"><span class="wallet-logo">O</span>OKX Wallet</span><span class="installed-tag">已安装</span></button>
+              <button class="wallet-option" type="button" data-wallet="Coinbase Wallet"><span class="wallet-identity"><span class="wallet-logo">C</span>Coinbase Wallet</span><span aria-hidden="true">›</span></button>
+              <button class="wallet-option" type="button" data-wallet="WalletConnect"><span class="wallet-identity"><span class="wallet-logo">W</span>WalletConnect</span><span aria-hidden="true">›</span></button>
+            </div>
+          </div>
+          <p class="wallet-footnote">连接钱包不会触发交易或产生费用</p>
+        </section>
+
+        <section class="screen" data-screen="signature" hidden>
+          <header class="screen-header">
+            <div class="screen-topline">
+              <button class="back-button" type="button" data-back-to="wallets" aria-label="返回钱包列表">‹</button>
+              <div class="brand"><span class="brand-mark" aria-hidden="true"></span>ForX Finance</div>
+              <span></span>
+            </div>
+            <h2 class="screen-title" tabindex="-1">确认登录</h2>
+            <p class="screen-subtitle">请在钱包中签署登录消息</p>
+          </header>
+          <div class="screen-body">
+            <div class="signature-card">
+              <div class="signature-account">
+                <span class="wallet-logo" data-selected-wallet-initial>M</span>
+                <div><strong data-selected-wallet>MetaMask</strong><span>0x7A2F…9C18</span></div>
+              </div>
+              <dl class="signature-details">
+                <div><dt>请求</dt><dd>Sign in with Ethereum</dd></div>
+                <div><dt>网络</dt><dd>Arbitrum One</dd></div>
+                <div><dt>费用</dt><dd class="fee">$0.00</dd></div>
+              </dl>
+            </div>
+            <p class="safety-note">此签名仅用于验证钱包所有权，不会授权资产转移。</p>
+            <p id="signature-error" class="field-error" hidden></p>
+            <div class="signature-actions">
+              <button id="confirm-signature" class="primary" type="button">打开 <span data-selected-wallet>MetaMask</span></button>
+              <button id="cancel-signature" class="secondary" type="button">取消</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="screen" data-screen="success" hidden>
+          <div class="center-state">
+            <div class="success-mark" aria-hidden="true">✓</div>
+            <h2 tabindex="-1">欢迎来到 ForX Finance</h2>
+            <p>你的账户已准备好<br>市场机会，随时开始</p>
+            <div id="success-account" class="account-pill">MetaMask · 0x7A2F…9C18</div>
+          </div>
+          <div class="success-actions"><button id="start-trading" class="primary" type="button">开始交易</button></div>
+          <p id="prototype-complete" class="completion-toast" role="status" hidden>原型体验已完成</p>
+        </section>
+
+        <div id="live-status" class="sr-only" aria-live="polite"></div>
+      </section>
+    </div>
+  </main>
+
+  <section class="screen-gallery" aria-labelledby="gallery-title">
+    <div class="gallery-heading">
+      <span class="meta-kicker">SCREEN BREAKDOWN</span>
+      <h2 id="gallery-title">单页面拆分</h2>
+      <p>完整登录流程静态画板，便于逐页评审与开发交接。</p>
+    </div>
+    <div id="gallery-grid" class="gallery-grid"></div>
+  </section>
+
+  <script id="prototype-script">
+    const state = {
+      screen: 'login',
+      email: '',
+      otp: Array(6).fill(''),
+      selectedWallet: '',
+      accountType: '',
+      resendRemaining: 48,
+      resendTimer: null,
+      busy: false
+    };
+
+    const screens = [...document.querySelectorAll('[data-screen]')];
+    const liveStatus = document.getElementById('live-status');
+    const emailForm = document.getElementById('email-form');
+    const emailInput = document.getElementById('email-input');
+    const emailError = document.getElementById('email-error');
+    const otpForm = document.getElementById('otp-form');
+    const otpInputs = [...document.querySelectorAll('[data-otp-index]')];
+    const otpError = document.getElementById('otp-error');
+    const resendButton = document.getElementById('resend-code');
+    const otpEmail = document.getElementById('otp-email');
+    const successAccount = document.getElementById('success-account');
+    const walletLoginButton = document.getElementById('wallet-login');
+    const walletNotice = document.getElementById('wallet-notice');
+    const signatureError = document.getElementById('signature-error');
+    const confirmSignatureButton = document.getElementById('confirm-signature');
+    const cancelSignatureButton = document.getElementById('cancel-signature');
+    const startTradingButton = document.getElementById('start-trading');
+    const prototypeComplete = document.getElementById('prototype-complete');
+    let walletConnectFailedOnce = false;
+
+    function showScreen(name) {
+      state.screen = name;
+      screens.forEach((screen) => {
+        const active = screen.dataset.screen === name;
+        screen.hidden = !active;
+        screen.classList.toggle('is-active', active);
+      });
+
+      const target = document.querySelector(`[data-screen="${name}"]`);
+      const focusTarget = name === 'login'
+        ? emailInput
+        : name === 'otp'
+          ? otpInputs[0]
+          : target?.querySelector('h2, button, input');
+      window.setTimeout(() => focusTarget?.focus({preventScroll: true}), 0);
+    }
+
+    function announce(message) {
+      liveStatus.textContent = '';
+      window.requestAnimationFrame(() => { liveStatus.textContent = message; });
+    }
+
+    function hideError(node) {
+      node.hidden = true;
+      node.textContent = '';
+    }
+
+    function showError(node, message) {
+      node.textContent = message;
+      node.hidden = false;
+      announce(message);
+    }
+
+    function readOtp() {
+      return otpInputs.map((input) => input.value).join('');
+    }
+
+    function setBusy(isBusy) {
+      state.busy = isBusy;
+      const controls = [...document.querySelectorAll(`[data-screen="${state.screen}"] button`)];
+      controls.forEach((control) => { control.disabled = isBusy; });
+
+      if (state.screen !== 'signature') return;
+      if (isBusy) {
+        confirmSignatureButton.dataset.previousLabel = confirmSignatureButton.textContent;
+        confirmSignatureButton.textContent = '正在等待钱包…';
+      } else if (confirmSignatureButton.dataset.previousLabel) {
+        confirmSignatureButton.textContent = confirmSignatureButton.dataset.previousLabel;
+      }
+    }
+
+    function startResendCountdown(seconds) {
+      window.clearInterval(state.resendTimer);
+      state.resendRemaining = seconds;
+
+      const render = () => {
+        resendButton.disabled = state.resendRemaining > 0;
+        resendButton.textContent = state.resendRemaining > 0
+          ? `${state.resendRemaining} 秒后重新发送`
+          : '重新发送验证码';
+      };
+
+      render();
+      state.resendTimer = window.setInterval(() => {
+        state.resendRemaining -= 1;
+        render();
+        if (state.resendRemaining <= 0) window.clearInterval(state.resendTimer);
+      }, 1000);
+    }
+
+    function resetPrototype() {
+      window.clearInterval(state.resendTimer);
+      walletConnectFailedOnce = false;
+      Object.assign(state, {
+        screen: 'login',
+        email: '',
+        otp: Array(6).fill(''),
+        selectedWallet: '',
+        accountType: '',
+        resendRemaining: 48,
+        resendTimer: null,
+        busy: false
+      });
+      emailForm.reset();
+      otpForm.reset();
+      otpInputs.forEach((input) => { input.value = ''; });
+      hideError(emailError);
+      hideError(otpError);
+      hideError(signatureError);
+      walletNotice.textContent = '';
+      confirmSignatureButton.textContent = '打开钱包';
+      prototypeComplete.hidden = true;
+      showScreen('login');
+      announce('原型已重置');
+    }
+
+    function completeWalletLogin() {
+      state.accountType = state.selectedWallet;
+      successAccount.textContent = `${state.selectedWallet} · 0x7A2F…9C18`;
+      showScreen('success');
+      announce('钱包登录成功');
+    }
+
+    emailForm.addEventListener('submit', (event) => {
+      event.preventDefault();
+      const email = emailInput.value.trim();
+      const validEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+
+      if (!validEmail) {
+        showError(emailError, '请输入有效的邮箱地址');
+        emailInput.focus();
+        return;
+      }
+
+      state.email = email;
+      state.otp = Array(6).fill('');
+      otpEmail.textContent = email;
+      otpInputs.forEach((input) => { input.value = ''; });
+      hideError(emailError);
+      hideError(otpError);
+      startResendCountdown(48);
+      showScreen('otp');
+      announce('验证码已发送');
+    });
+
+    otpInputs.forEach((input) => {
+      const index = Number(input.dataset.otpIndex);
+
+      input.addEventListener('input', () => {
+        input.value = input.value.replace(/\D/g, '').slice(-1);
+        state.otp[index] = input.value;
+        hideError(otpError);
+        if (input.value) otpInputs[index + 1]?.focus();
+      });
+
+      input.addEventListener('keydown', (event) => {
+        if (event.key === 'Backspace' && !input.value) otpInputs[index - 1]?.focus();
+      });
+    });
+
+    otpInputs[0].addEventListener('paste', (event) => {
+      const digits = event.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
+      if (!digits) return;
+      event.preventDefault();
+      digits.split('').forEach((digit, index) => {
+        otpInputs[index].value = digit;
+        state.otp[index] = digit;
+      });
+      otpInputs[Math.min(digits.length, 6) - 1].focus();
+      hideError(otpError);
+    });
+
+    otpForm.addEventListener('submit', (event) => {
+      event.preventDefault();
+      const code = readOtp();
+
+      if (code.length !== 6) {
+        showError(otpError, '请输入完整的 6 位验证码');
+        otpInputs.find((input) => !input.value)?.focus();
+        return;
+      }
+
+      if (code !== '824824') {
+        showError(otpError, '验证码不正确，请重试');
+        otpInputs[0].focus();
+        return;
+      }
+
+      hideError(otpError);
+      window.clearInterval(state.resendTimer);
+      state.accountType = '邮箱账户';
+      showScreen('preparing');
+      announce('正在准备 ForX 账户');
+
+      window.setTimeout(() => {
+        successAccount.textContent = state.email;
+        showScreen('success');
+        announce('邮箱登录成功');
+      }, 1400);
+    });
+
+    resendButton.addEventListener('click', () => {
+      announce('验证码已重新发送');
+      startResendCountdown(60);
+    });
+
+    walletLoginButton.addEventListener('click', () => {
+      walletNotice.textContent = '';
+      showScreen('wallets');
+    });
+
+    document.querySelectorAll('[data-wallet]').forEach((button) => {
+      button.addEventListener('click', () => {
+        state.selectedWallet = button.dataset.wallet;
+        document.querySelectorAll('[data-selected-wallet]').forEach((node) => {
+          node.textContent = state.selectedWallet;
+        });
+        document.querySelector('[data-selected-wallet-initial]').textContent = state.selectedWallet.charAt(0);
+        confirmSignatureButton.textContent = `打开 ${state.selectedWallet}`;
+        hideError(signatureError);
+        showScreen('signature');
+      });
+    });
+
+    cancelSignatureButton.addEventListener('click', () => {
+      showScreen('wallets');
+      walletNotice.textContent = '签名已取消，你可以重新选择钱包。';
+      announce('已取消钱包签名');
+    });
+
+    confirmSignatureButton.addEventListener('click', () => {
+      hideError(signatureError);
+      setBusy(true);
+
+      window.setTimeout(() => {
+        setBusy(false);
+        if (state.selectedWallet === 'WalletConnect' && !walletConnectFailedOnce) {
+          walletConnectFailedOnce = true;
+          showError(signatureError, '模拟连接失败，请重试。');
+          confirmSignatureButton.textContent = '重试连接';
+          announce('模拟连接失败');
+          return;
+        }
+        completeWalletLogin();
+      }, 1200);
+    });
+
+    startTradingButton.addEventListener('click', () => {
+      prototypeComplete.hidden = false;
+      announce('原型体验已完成');
+    });
+
+    document.querySelectorAll('[data-back-to]').forEach((button) => {
+      button.addEventListener('click', () => showScreen(button.dataset.backTo));
+    });
+
+    document.getElementById('prototype-reset').addEventListener('click', resetPrototype);
+
+    function buildStaticGallery() {
+      const definitions = [
+        {screen: 'login', title: '01 · 登录首页', detail: '邮箱与外部钱包同时可见'},
+        {screen: 'otp', title: '02A · OTP 倒计时', detail: '重新发送操作可见但暂不可用', otp: 'countdown'},
+        {screen: 'otp', title: '02B · OTP 可重新发送', detail: '倒计时结束后的可点击状态', otp: 'ready'},
+        {screen: 'preparing', title: '03 · 账户准备', detail: 'Privy 账户与嵌入式钱包准备状态'},
+        {screen: 'wallets', title: '04 · 钱包选择', detail: '已安装钱包优先展示'},
+        {screen: 'signature', title: '05 · 签名确认', detail: '请求、网络、费用与安全说明'},
+        {screen: 'success', title: '06 · 登录成功', detail: '邮箱与钱包路径的统一出口'}
+      ];
+      const sourcePhone = document.querySelector('.phone');
+      const grid = document.getElementById('gallery-grid');
+      if (!sourcePhone || !grid) return;
+
+      definitions.forEach((definition) => {
+        const card = document.createElement('article');
+        card.className = 'gallery-card';
+        const slot = document.createElement('div');
+        slot.className = 'gallery-device-slot';
+        const phone = sourcePhone.cloneNode(true);
+        phone.classList.add('gallery-phone');
+
+        phone.querySelectorAll('[id]').forEach((node) => node.removeAttribute('id'));
+        phone.querySelectorAll('[data-screen]').forEach((screen) => {
+          if (screen.dataset.screen !== definition.screen) {
+            screen.remove();
+          } else {
+            screen.hidden = false;
+            screen.classList.add('is-active');
+          }
+        });
+        phone.querySelectorAll('*').forEach((node) => {
+          [...node.attributes]
+            .filter((attribute) => attribute.name.startsWith('data-'))
+            .forEach((attribute) => node.removeAttribute(attribute.name));
+        });
+        phone.querySelectorAll('button, input').forEach((control) => {
+          control.disabled = true;
+          control.tabIndex = -1;
+        });
+
+        if (definition.otp === 'ready') {
+          const resend = phone.querySelector('.resend-row button');
+          resend.textContent = '重新发送验证码';
+        }
+
+        slot.append(phone);
+        const caption = document.createElement('div');
+        caption.className = 'gallery-caption';
+        caption.innerHTML = `<strong>${definition.title}</strong><span>${definition.detail}</span>`;
+        card.append(slot, caption);
+        grid.append(card);
+      });
+    }
+
+    buildStaticGallery();
+  </script>
+</body>
+</html>
