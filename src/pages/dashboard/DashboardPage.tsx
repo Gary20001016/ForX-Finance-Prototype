@@ -7,7 +7,21 @@ import { tasks } from '../../mocks/data';
 import { openPrototypeDialog } from '../../utils/prototypeActions';
 
 const { Row, Col } = Grid;
-const days = [58,72,66,84,75,92,88];
+const trendDays = [
+  { label:'07/07', height:58, shares:[48,24,17,11] },
+  { label:'07/08', height:72, shares:[44,27,18,11] },
+  { label:'07/09', height:66, shares:[46,25,18,11] },
+  { label:'07/10', height:84, shares:[42,28,19,11] },
+  { label:'07/11', height:75, shares:[45,26,18,11] },
+  { label:'07/12', height:92, shares:[41,29,19,11] },
+  { label:'07/13', height:88, shares:[40,30,19,11] },
+];
+const trendChannels = [
+  { name:'站内信', className:'channel-inbox' },
+  { name:'Push', className:'channel-push' },
+  { name:'邮件', className:'channel-email' },
+  { name:'短信', className:'channel-sms' },
+];
 
 export default function DashboardPage() {
   return <section className="page-stack">
@@ -20,8 +34,8 @@ export default function DashboardPage() {
       <Col xs={24} sm={12} lg={6}><MetricCard title="今日成本" value="¥86,420" change="4.1%" positive={false} icon={<IconEmail />} /></Col>
     </Row>
     <div className="dashboard-grid">
-      <Card className="surface chart-card" title="发送趋势" extra={<Space><Tag>站内信</Tag><Tag color="purple">Push</Tag><Tag color="cyan">邮件</Tag><Tag color="orange">短信</Tag></Space>} bordered={false}>
-        <div className="bar-chart">{days.map((height, index) => <div className="bar-group" key={index}><div className="bar-stack" style={{height:`${height}%`}}><i /><i /><i /></div><span>{['07/07','07/08','07/09','07/10','07/11','07/12','07/13'][index]}</span></div>)}</div>
+      <Card className="surface chart-card" title="发送趋势" extra={<Space><Tag color="arcoblue">站内信</Tag><Tag color="purple">Push</Tag><Tag color="cyan">邮件</Tag><Tag color="orange">短信</Tag></Space>} bordered={false}>
+        <div className="bar-chart" role="img" aria-label="近 7 日发送趋势，按站内信、Push、邮件和短信堆叠展示">{trendDays.map((day) => <div className="bar-group" key={day.label}><div className="bar-stack" style={{height:`${day.height}%`}}>{trendChannels.map((channel,index)=><span className={`bar-segment ${channel.className}`} style={{height:`${day.shares[index]}%`}} aria-label={`${day.label} ${channel.name}占比 ${day.shares[index]}%`} key={channel.name}/>)}</div><span>{day.label}</span></div>)}</div>
       </Card>
       <Card className="surface" title="渠道健康" bordered={false}>
         {[['站内信','99.999%',100,'正常'],['Push','99.82%',98,'正常'],['邮件','99.41%',91,'轻微延迟'],['短信','98.94%',95,'正常']].map(([name,rate,percent,status]) => <div className="health-row" key={name as string}><div><strong>{name}</strong><span>{rate} 成功</span></div><Progress percent={percent as number} size="small" showText={false} status={status === '正常' ? 'success':'warning'} /><StatusTag status={status as string === '正常' ? '运行正常' : '轻微延迟'} /></div>)}
