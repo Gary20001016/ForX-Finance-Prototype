@@ -1090,13 +1090,151 @@
       line-height: 1.45;
     }
 
+    .error-gallery {
+      width: min(1320px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 88px 0 120px;
+      border-top: 1px solid var(--line);
+    }
+
+    .error-gallery-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 646px));
+      gap: 56px 28px;
+      align-items: start;
+      justify-content: center;
+    }
+
+    .error-gallery-card { min-width: 0; }
+
+    .error-board {
+      display: grid;
+      grid-template-columns: 390px minmax(0, 228px);
+      gap: 20px;
+      align-items: start;
+    }
+
+    .error-notes {
+      position: sticky;
+      top: 24px;
+      padding: 18px;
+      border: 1px solid rgba(255, 122, 122, 0.24);
+      border-radius: 18px;
+      background: linear-gradient(145deg, rgba(255, 122, 122, 0.075), rgba(255, 255, 255, 0.025));
+    }
+
+    .error-notes-label {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--error);
+      font-size: 9px;
+      font-weight: 720;
+      letter-spacing: 0.12em;
+    }
+
+    .error-location {
+      margin: 0;
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 620;
+      line-height: 1.45;
+    }
+
+    .recovery-copy {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin: 16px 0 0;
+      padding-top: 14px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 10px;
+    }
+
+    .recovery-copy strong {
+      color: var(--green);
+      font-size: 10px;
+      font-weight: 650;
+      text-align: right;
+    }
+
+    .error-note-list {
+      display: grid;
+      gap: 8px;
+      margin: 14px 0 0;
+      padding: 14px 0 0;
+      border-top: 1px solid var(--line);
+      list-style: none;
+    }
+
+    .error-note-list li {
+      position: relative;
+      padding-left: 12px;
+      color: var(--muted-strong);
+      font-size: 10px;
+      line-height: 1.5;
+    }
+
+    .error-note-list li::before {
+      position: absolute;
+      top: 0.6em;
+      left: 0;
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      background: var(--error);
+      content: "";
+    }
+
+    .error-board .field-error:not([hidden]),
+    .error-board .inline-notice.is-error {
+      display: flex;
+      align-items: flex-start;
+      gap: 5px;
+      color: var(--error);
+    }
+
+    .error-board .field-error:not([hidden])::before,
+    .error-board .inline-notice.is-error::before {
+      display: inline-grid;
+      flex: 0 0 auto;
+      place-items: center;
+      width: 12px;
+      height: 12px;
+      margin-top: 1px;
+      border: 1px solid currentColor;
+      border-radius: 50%;
+      font-size: 7px;
+      font-weight: 800;
+      content: "!";
+    }
+
+    .error-board .is-error-field {
+      border-color: rgba(255, 122, 122, 0.68) !important;
+      box-shadow: 0 0 0 2px rgba(255, 122, 122, 0.08);
+    }
+
+    .install-tag {
+      color: var(--error);
+      background: rgba(255, 122, 122, 0.08);
+    }
+
     @media (max-width: 1260px) {
       .gallery-grid { grid-template-columns: repeat(2, minmax(0, 390px)); }
+      .error-gallery-grid { grid-template-columns: minmax(0, 646px); }
     }
 
     @media (max-width: 860px) {
-      .screen-gallery { padding-top: 64px; }
+      .screen-gallery,
+      .error-gallery { padding-top: 64px; }
       .gallery-grid { grid-template-columns: minmax(0, 390px); }
+    }
+
+    @media (max-width: 700px) {
+      .error-gallery-grid { grid-template-columns: minmax(0, 390px); }
+      .error-board { grid-template-columns: minmax(0, 390px); }
+      .error-notes { position: static; }
     }
 
     @media (max-width: 430px) {
@@ -1289,6 +1427,24 @@
     </div>
     <div id="gallery-grid" class="gallery-grid"></div>
   </section>
+
+  <section class="error-gallery" aria-labelledby="error-gallery-title">
+    <div class="gallery-heading">
+      <span class="meta-kicker">ERROR STATES</span>
+      <h2 id="error-gallery-title">错误场景拆分</h2>
+      <p>按提示位置整合相似异常；主状态放入真实页面，同位替换文案集中备注。</p>
+    </div>
+    <div id="error-gallery-grid" class="error-gallery-grid"></div>
+  </section>
+
+  <script type="application/json" id="error-gallery-data">
+    [
+      {"screen":"login","title":"E01 · 登录表单错误","detail":"邮箱输入框下方","mainError":"请输入有效的邮箱地址","recovery":"重新输入邮箱","variants":[],"state":"email-invalid"},
+      {"screen":"otp","title":"E02 · OTP 错误","detail":"验证码区域下方","mainError":"验证码不正确，请重试","recovery":"清空后重新输入","variants":["请输入完整的 6 位验证码","验证码已过期，请重新发送","验证码发送失败，请重试"],"state":"otp-invalid"},
+      {"screen":"wallets","title":"E03 · 钱包列表提示","detail":"钱包列表上方","mainError":"未检测到 WalletConnect，请先安装钱包","recovery":"安装钱包","variants":["当前网络不匹配，请切换至 Arbitrum One","签名已取消，你可以重新选择钱包"],"state":"wallet-missing"},
+      {"screen":"signature","title":"E04 · 钱包签名错误","detail":"安全说明与按钮之间","mainError":"钱包连接失败，请重试","recovery":"重试连接","variants":["用户拒绝了签名请求"],"state":"signature-failed"}
+    ]
+  </script>
 
   <script id="prototype-script">
     const state = {
@@ -1560,6 +1716,33 @@
 
     document.getElementById('prototype-reset').addEventListener('click', resetPrototype);
 
+    function isolateGalleryScreen(sourcePhone, screenName) {
+      const phone = sourcePhone.cloneNode(true);
+      phone.classList.add('gallery-phone');
+      phone.querySelectorAll('[id]').forEach((node) => node.removeAttribute('id'));
+      phone.querySelectorAll('[data-screen]').forEach((screen) => {
+        if (screen.dataset.screen !== screenName) {
+          screen.remove();
+        } else {
+          screen.hidden = false;
+          screen.classList.add('is-active');
+        }
+      });
+      return phone;
+    }
+
+    function freezeGalleryScreen(phone) {
+      phone.querySelectorAll('*').forEach((node) => {
+        [...node.attributes]
+          .filter((attribute) => attribute.name.startsWith('data-'))
+          .forEach((attribute) => node.removeAttribute(attribute.name));
+      });
+      phone.querySelectorAll('button, input').forEach((control) => {
+        control.disabled = true;
+        control.tabIndex = -1;
+      });
+    }
+
     function buildStaticGallery() {
       const definitions = [
         {screen: 'login', title: '01 · 登录首页', detail: '邮箱与外部钱包同时可见'},
@@ -1579,33 +1762,14 @@
         card.className = 'gallery-card';
         const slot = document.createElement('div');
         slot.className = 'gallery-device-slot';
-        const phone = sourcePhone.cloneNode(true);
-        phone.classList.add('gallery-phone');
-
-        phone.querySelectorAll('[id]').forEach((node) => node.removeAttribute('id'));
-        phone.querySelectorAll('[data-screen]').forEach((screen) => {
-          if (screen.dataset.screen !== definition.screen) {
-            screen.remove();
-          } else {
-            screen.hidden = false;
-            screen.classList.add('is-active');
-          }
-        });
-        phone.querySelectorAll('*').forEach((node) => {
-          [...node.attributes]
-            .filter((attribute) => attribute.name.startsWith('data-'))
-            .forEach((attribute) => node.removeAttribute(attribute.name));
-        });
-        phone.querySelectorAll('button, input').forEach((control) => {
-          control.disabled = true;
-          control.tabIndex = -1;
-        });
+        const phone = isolateGalleryScreen(sourcePhone, definition.screen);
 
         if (definition.otp === 'ready') {
           const resend = phone.querySelector('.resend-row button');
           resend.textContent = '重新发送验证码';
         }
 
+        freezeGalleryScreen(phone);
         slot.append(phone);
         const caption = document.createElement('div');
         caption.className = 'gallery-caption';
@@ -1615,7 +1779,89 @@
       });
     }
 
+    function applyErrorState(phone, definition) {
+      if (definition.state === 'email-invalid') {
+        const input = phone.querySelector('.text-input');
+        input.value = 'gary@forx';
+        input.classList.add('is-error-field');
+        const error = phone.querySelector('.field-error');
+        error.hidden = false;
+        error.textContent = definition.mainError;
+      }
+
+      if (definition.state === 'otp-invalid') {
+        [...phone.querySelectorAll('.otp-input')].forEach((input, index) => {
+          input.value = '824825'[index];
+          input.classList.add('is-error-field');
+        });
+        const error = phone.querySelector('.field-error');
+        error.hidden = false;
+        error.textContent = definition.mainError;
+      }
+
+      if (definition.state === 'wallet-missing') {
+        const notice = phone.querySelector('.inline-notice');
+        notice.textContent = definition.mainError;
+        notice.classList.add('is-error');
+        const wallet = phone.querySelector('[data-wallet="WalletConnect"]');
+        const action = wallet?.lastElementChild;
+        if (action) {
+          action.textContent = definition.recovery;
+          action.className = 'installed-tag install-tag';
+        }
+      }
+
+      if (definition.state === 'signature-failed') {
+        const error = phone.querySelector('.field-error');
+        error.hidden = false;
+        error.textContent = definition.mainError;
+        phone.querySelector('.signature-actions .primary').textContent = definition.recovery;
+      }
+    }
+
+    function buildErrorGallery() {
+      const sourcePhone = document.querySelector('.phone');
+      const grid = document.getElementById('error-gallery-grid');
+      const data = document.getElementById('error-gallery-data');
+      if (!sourcePhone || !grid || !data) return;
+
+      const definitions = JSON.parse(data.textContent);
+      definitions.forEach((definition) => {
+        const card = document.createElement('article');
+        card.className = 'error-gallery-card';
+        const board = document.createElement('div');
+        board.className = 'error-board';
+        const slot = document.createElement('div');
+        slot.className = 'gallery-device-slot';
+        const phone = isolateGalleryScreen(sourcePhone, definition.screen);
+
+        applyErrorState(phone, definition);
+        freezeGalleryScreen(phone);
+        slot.append(phone);
+
+        const notesShell = document.createElement('div');
+        const variants = definition.variants.length
+          ? `<ul class="error-note-list">${definition.variants.map((variant) => `<li>${variant}</li>`).join('')}</ul>`
+          : '';
+        notesShell.innerHTML = `
+          <aside class="error-notes" aria-label="${definition.title} 同位提示备注">
+            <span class="error-notes-label">ERROR POSITION</span>
+            <p class="error-location">${definition.detail}</p>
+            <p class="recovery-copy"><span>恢复操作</span><strong>${definition.recovery}</strong></p>
+            ${variants}
+          </aside>`;
+        board.append(slot, notesShell.firstElementChild);
+
+        const caption = document.createElement('div');
+        caption.className = 'gallery-caption';
+        caption.innerHTML = `<strong>${definition.title}</strong><span>${definition.mainError}</span>`;
+        card.append(board, caption);
+        grid.append(card);
+      });
+    }
+
     buildStaticGallery();
+    buildErrorGallery();
   </script>
 </body>
 </html>
