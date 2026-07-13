@@ -5,16 +5,20 @@ import { useNavigate } from 'react-router-dom';
 import PageHeader from '../../components/PageHeader';
 import TaskSummary from './TaskSummary';
 import { openPrototypeDialog } from '../../utils/prototypeActions';
+import { templates } from '../../mocks/data';
 
 const FormItem = Form.Item;
 const channels = ['Web 站内信','App Push（预留）'];
 const categoryOptions = ['系统公告','交易通知','资产通知','安全通知','奖励通知','活动通知','风控通知'];
+const approvedTemplates = templates.filter((template)=>template.translationReadiness==='全部审核通过');
 
 export default function CreateTaskPage() {
   const navigate = useNavigate();
   const [current, setCurrent] = useState(0);
   const [audienceType, setAudienceType] = useState('all');
+  const [templateId, setTemplateId] = useState(approvedTemplates[0]?.id);
   const [form] = Form.useForm();
+  const selectedTemplate = approvedTemplates.find((template)=>template.id===templateId) || approvedTemplates[0];
 
   const next = async () => {
     if (current === 0) {
@@ -27,7 +31,7 @@ export default function CreateTaskPage() {
     <PageHeader eyebrow="CREATE CAMPAIGN" title="新建消息任务" description="所有内容与发送配置在提交审核后锁定，修改将使审批失效。" actions={<><Button icon={<IconSave />} onClick={() => Message.success('草稿已保存在本地原型')}>保存草稿</Button><Button icon={<IconArrowLeft />} onClick={() => navigate('/tasks')}>返回列表</Button></>} />
     <Card bordered={false} className="surface wizard-shell">
       <Steps current={current} lineless labelPlacement="vertical" className="task-steps"><Steps.Step title="基础信息与模板" description="定义任务与内容"/><Steps.Step title="目标用户" description="配置受众与排除"/><Steps.Step title="发送策略" description="时间、频控与降级"/><Steps.Step title="检查并提交" description="风险和审批链"/></Steps>
-      <Form form={form} layout="vertical" initialValues={{ nature:'事务', risk:'中', locales:['zh-CN','en-US'], channels:['Web 站内信'], audienceType:'all', timezone:'Asia/Shanghai', priority:'普通', quiet:'遵守并延迟', dedupe:true, rate:1200 }}>
+      <Form form={form} layout="vertical" initialValues={{ nature:'事务', risk:'中', template:approvedTemplates[0]?.id, locales:selectedTemplate?.locales, channels:['Web 站内信'], audienceType:'all', timezone:'Asia/Shanghai', priority:'普通', quiet:'遵守并延迟', dedupe:true, rate:1200 }}>
         {current===0 && <div className="form-section"><h3>任务基础信息</h3><p>内部识别信息不会展示给终端用户。</p><Grid.Row gutter={20}>
           <Grid.Col xs={24} md={12}><FormItem label="任务名称" field="name" required rules={[{required:true,message:'请输入任务名称'}]}><Input placeholder="例如：夏季交易赛召回" maxLength={100} showWordLimit /></FormItem></Grid.Col>
           <Grid.Col xs={24} md={12}><FormItem label="业务线" field="business" required><Select placeholder="选择业务线"><Select.Option value="growth">增长运营</Select.Option><Select.Option value="wallet">资金平台</Select.Option><Select.Option value="risk">风险控制</Select.Option></Select></FormItem></Grid.Col>
@@ -35,8 +39,9 @@ export default function CreateTaskPage() {
           <Grid.Col xs={24} md={8}><FormItem label="消息性质" field="nature"><Radio.Group type="button"><Radio value="事务">事务</Radio><Radio value="营销">营销</Radio></Radio.Group></FormItem></Grid.Col>
           <Grid.Col xs={24} md={8}><FormItem label="风险等级" field="risk"><Select disabled><Select.Option value="中">中 · 系统自动判定</Select.Option></Select></FormItem></Grid.Col>
         </Grid.Row><div className="section-divider"/><h3>模板与渠道</h3><Grid.Row gutter={20}>
-          <Grid.Col xs={24} md={12}><FormItem label="消息模板" field="template" required><Select placeholder="选择已发布模板" showSearch><Select.Option value="summer_trade">夏季交易赛 · v4</Select.Option><Select.Option value="maintenance">系统维护公告 · v8</Select.Option></Select></FormItem></Grid.Col>
-          <Grid.Col xs={24} md={12}><FormItem label="目标语言" field="locales"><Select mode="multiple"><Select.Option value="zh-CN">简体中文</Select.Option><Select.Option value="en-US">English</Select.Option><Select.Option value="tr-TR">Türkçe</Select.Option></Select></FormItem></Grid.Col>
+          <Grid.Col xs={24} md={12}><FormItem label="消息模板" field="template" required extra="仅显示全部目标语言人工审核通过的模板版本"><Select placeholder="选择翻译审核已通过的模板" showSearch onChange={setTemplateId}>{approvedTemplates.map((template)=><Select.Option key={template.id} value={template.id}>{template.name} · {template.version}</Select.Option>)}</Select></FormItem></Grid.Col>
+          <Grid.Col xs={24} md={12}><FormItem label="目标语言" field="locales"><Select mode="multiple" disabled>{selectedTemplate?.locales.map((locale)=><Select.Option key={locale} value={locale}>{locale}</Select.Option>)}</Select></FormItem></Grid.Col>
+          <Grid.Col span={24}><div className="task-template-readiness"><div><Tag color="green">翻译审核通过</Tag><strong>{selectedTemplate?.name} · {selectedTemplate?.version}</strong><span className="mono">{selectedTemplate?.translationBatchId}</span></div><p>默认语言 {selectedTemplate?.sourceLocale}；已审核语言 {selectedTemplate?.locales.join('、')}。源文案或译文发生变化后，翻译审核立即失效，模板将从此列表移除。</p></div></Grid.Col>
           <Grid.Col span={24}><FormItem label="发送渠道" field="channels"><Checkbox.Group options={channels}/></FormItem><Alert type="info" content="营销邮件与短信会根据目标地区自动插入退订入口和法定文案。"/></Grid.Col>
         </Grid.Row></div>}
         {current===1 && <div className="form-section"><h3>目标用户</h3><p>发送前会再次校验最新授权、退订和抑制名单。</p><Grid.Row gutter={20}>

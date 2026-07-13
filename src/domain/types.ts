@@ -30,10 +30,56 @@ export interface MessageTemplate {
   risk: RiskLevel;
   channels: Channel[];
   locales: string[];
+  sourceLocale: string;
+  translationBatchId: string;
+  translationReadiness: TranslationBatchStatus;
   version: string;
   status: string;
   eventCode?: string;
   updatedAt: string;
+}
+
+export type TranslationItemStatus = '未提交' | '排队中' | '翻译中' | '待人工审核' | '审核通过' | '翻译失败' | '审核驳回' | '已取消';
+export type TranslationBatchStatus = '未提交' | '机翻处理中' | '待人工审核' | '全部审核通过' | '部分失败' | '审核被驳回' | '已取消';
+
+export interface TranslationItem {
+  id: string;
+  batchId: string;
+  templateId: string;
+  templateName: string;
+  sourceLocale: string;
+  targetLocale: string;
+  externalTaskId: string;
+  attemptNo: number;
+  status: TranslationItemStatus;
+  sourceContentHash: string;
+  machineTitle?: string;
+  machineSummary?: string;
+  machineBody?: string;
+  reviewedTitle?: string;
+  reviewedSummary?: string;
+  reviewedBody?: string;
+  errorCode?: string;
+  errorMessage?: string;
+  submittedAt: string;
+  translatedAt?: string;
+  reviewedAt?: string;
+  reviewer?: string;
+  submitter: string;
+  variablesValid: boolean;
+}
+
+export interface TranslationBatch {
+  id: string;
+  templateId: string;
+  templateVersion: string;
+  sourceLocale: string;
+  targetLocales: string[];
+  status: TranslationBatchStatus;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+  items: TranslationItem[];
 }
 
 export interface AudienceSegment {

@@ -7,6 +7,7 @@ import type {
   MessageTask,
   MessageTemplate,
   MessageCategory,
+  TranslationBatch,
   UserMessage,
 } from '../domain/types';
 
@@ -42,12 +43,79 @@ export const tasks: MessageTask[] = [
 ];
 
 export const templates: MessageTemplate[] = [
-  { id:'TPL-1001', code:'withdraw_success', name:'提现成功通知', category:'资金通知', nature:'强事务', risk:'关键', channels:['站内信','Push','邮件','短信'], locales:['en-US','zh-CN','zh-TW','ja-JP','ko-KR'], version:'v12', status:'已发布', eventCode:'withdrawal.status.changed', updatedAt:'07-12 18:42' },
-  { id:'TPL-1002', code:'login_risk', name:'异常登录提醒', category:'账户安全', nature:'强事务', risk:'关键', channels:['Push','邮件','短信'], locales:['en-US','zh-CN','es-ES'], version:'v16', status:'已发布', eventCode:'security.login.risk', updatedAt:'07-12 17:20' },
-  { id:'TPL-1003', code:'summer_trade', name:'夏季交易赛', category:'产品运营', nature:'营销', risk:'中', channels:['站内信','Push','邮件'], locales:['en-US','zh-CN','tr-TR'], version:'v4', status:'审核中', updatedAt:'07-12 16:03' },
-  { id:'TPL-1004', code:'network_maintenance', name:'网络维护公告', category:'系统公告', nature:'服务', risk:'高', channels:['站内信','Push','邮件'], locales:['en-US','zh-CN','ja-JP'], version:'v8', status:'已发布', updatedAt:'07-12 14:48' },
-  { id:'TPL-1005', code:'liquidation_warning', name:'强平风险预警', category:'交易通知', nature:'强事务', risk:'关键', channels:['Push','短信'], locales:['en-US','zh-CN','ru-RU'], version:'v21', status:'已发布', eventCode:'futures.liquidation.warning', updatedAt:'07-12 11:26' },
-  { id:'TPL-1006', code:'first_deposit', name:'首次入金引导', category:'产品运营', nature:'营销', risk:'低', channels:['站内信','Push'], locales:['en-US','zh-CN'], version:'v3', status:'已停用', updatedAt:'07-11 20:10' },
+  { id:'TPL-1001', code:'withdraw_success', name:'提现成功通知', category:'资金通知', nature:'强事务', risk:'关键', channels:['站内信','Push','邮件','短信'], locales:['zh-CN','en-US','zh-TW','ja-JP','ko-KR'], sourceLocale:'zh-CN', translationBatchId:'MT-260712-001', translationReadiness:'全部审核通过', version:'v12', status:'已发布', eventCode:'withdrawal.status.changed', updatedAt:'07-12 18:42' },
+  { id:'TPL-1002', code:'login_risk', name:'异常登录提醒', category:'账户安全', nature:'强事务', risk:'关键', channels:['Push','邮件','短信'], locales:['zh-CN','en-US','es-ES'], sourceLocale:'zh-CN', translationBatchId:'MT-260712-002', translationReadiness:'全部审核通过', version:'v16', status:'已发布', eventCode:'security.login.risk', updatedAt:'07-12 17:20' },
+  { id:'TPL-1003', code:'summer_trade', name:'夏季交易赛', category:'产品运营', nature:'营销', risk:'中', channels:['站内信','Push','邮件'], locales:['zh-CN','en-US','tr-TR'], sourceLocale:'zh-CN', translationBatchId:'MT-260713-003', translationReadiness:'待人工审核', version:'v4', status:'审核中', updatedAt:'07-13 11:48' },
+  { id:'TPL-1004', code:'network_maintenance', name:'网络维护公告', category:'系统公告', nature:'服务', risk:'高', channels:['站内信','Push','邮件'], locales:['zh-CN','en-US','ja-JP'], sourceLocale:'zh-CN', translationBatchId:'MT-260713-004', translationReadiness:'机翻处理中', version:'v8', status:'草稿', updatedAt:'07-13 11:42' },
+  { id:'TPL-1005', code:'liquidation_warning', name:'强平风险预警', category:'交易通知', nature:'强事务', risk:'关键', channels:['Push','短信'], locales:['zh-CN','en-US','ru-RU'], sourceLocale:'zh-CN', translationBatchId:'MT-260713-005', translationReadiness:'部分失败', version:'v21', status:'草稿', eventCode:'futures.liquidation.warning', updatedAt:'07-13 11:26' },
+  { id:'TPL-1006', code:'first_deposit', name:'首次入金引导', category:'产品运营', nature:'营销', risk:'低', channels:['站内信','Push'], locales:['zh-CN','en-US'], sourceLocale:'zh-CN', translationBatchId:'MT-260711-006', translationReadiness:'审核被驳回', version:'v3', status:'已停用', updatedAt:'07-11 20:10' },
+];
+
+const translationItem = (
+  batchId: string,
+  templateId: string,
+  templateName: string,
+  targetLocale: string,
+  status: TranslationBatch['items'][number]['status'],
+  suffix: string,
+  overrides: Partial<TranslationBatch['items'][number]> = {},
+): TranslationBatch['items'][number] => ({
+  id:`MTI-${suffix}`,
+  batchId,
+  templateId,
+  templateName,
+  sourceLocale:'zh-CN',
+  targetLocale,
+  externalTaskId:`EXT-MT-${suffix}`,
+  attemptNo:1,
+  status,
+  sourceContentHash:`sha256:${suffix.toLowerCase()}8e4c`,
+  machineTitle:`${templateName} · ${targetLocale}`,
+  machineSummary:'Translated summary with {{ amount }} {{ currency }} preserved.',
+  machineBody:'Machine-translated content. Variables {{ user_nickname }} and {{ symbol }} remain unchanged.',
+  submittedAt:'07-13 11:20',
+  translatedAt:status==='排队中'||status==='翻译中'||status==='翻译失败'?undefined:'07-13 11:32',
+  reviewer:status==='审核通过'?'王岚':undefined,
+  reviewedAt:status==='审核通过'?'07-13 11:40':undefined,
+  submitter:'林夏',
+  variablesValid:status!=='翻译失败',
+  ...overrides,
+});
+
+export const translationBatches: TranslationBatch[] = [
+  {
+    id:'MT-260712-001', templateId:'TPL-1001', templateVersion:'v12', sourceLocale:'zh-CN', targetLocales:['en-US','zh-TW','ja-JP','ko-KR'], status:'全部审核通过', createdBy:'唐宁', createdAt:'07-12 16:10', updatedAt:'07-12 18:40',
+    items:['en-US','zh-TW','ja-JP','ko-KR'].map((locale,index)=>translationItem('MT-260712-001','TPL-1001','提现成功通知',locale,'审核通过',`12001${index}`)),
+  },
+  {
+    id:'MT-260712-002', templateId:'TPL-1002', templateVersion:'v16', sourceLocale:'zh-CN', targetLocales:['en-US','es-ES'], status:'全部审核通过', createdBy:'赵辰', createdAt:'07-12 15:20', updatedAt:'07-12 17:18',
+    items:['en-US','es-ES'].map((locale,index)=>translationItem('MT-260712-002','TPL-1002','异常登录提醒',locale,'审核通过',`12002${index}`)),
+  },
+  {
+    id:'MT-260713-003', templateId:'TPL-1003', templateVersion:'v4', sourceLocale:'zh-CN', targetLocales:['en-US','tr-TR'], status:'待人工审核', createdBy:'林夏', createdAt:'07-13 11:18', updatedAt:'07-13 11:48',
+    items:[
+      translationItem('MT-260713-003','TPL-1003','夏季交易赛','en-US','审核通过','130030'),
+      translationItem('MT-260713-003','TPL-1003','夏季交易赛','tr-TR','待人工审核','130031'),
+    ],
+  },
+  {
+    id:'MT-260713-004', templateId:'TPL-1004', templateVersion:'v8', sourceLocale:'zh-CN', targetLocales:['en-US','ja-JP'], status:'机翻处理中', createdBy:'周屿', createdAt:'07-13 11:36', updatedAt:'07-13 11:42',
+    items:[
+      translationItem('MT-260713-004','TPL-1004','网络维护公告','en-US','翻译中','130040'),
+      translationItem('MT-260713-004','TPL-1004','网络维护公告','ja-JP','排队中','130041'),
+    ],
+  },
+  {
+    id:'MT-260713-005', templateId:'TPL-1005', templateVersion:'v21', sourceLocale:'zh-CN', targetLocales:['en-US','ru-RU'], status:'部分失败', createdBy:'唐宁', createdAt:'07-13 10:58', updatedAt:'07-13 11:26',
+    items:[
+      translationItem('MT-260713-005','TPL-1005','强平风险预警','en-US','待人工审核','130050'),
+      translationItem('MT-260713-005','TPL-1005','强平风险预警','ru-RU','翻译失败','130051',{ attemptNo:2, errorCode:'PROVIDER_TIMEOUT', errorMessage:'外部任务超过 180 秒未完成' }),
+    ],
+  },
+  {
+    id:'MT-260711-006', templateId:'TPL-1006', templateVersion:'v3', sourceLocale:'zh-CN', targetLocales:['en-US'], status:'审核被驳回', createdBy:'陈一', createdAt:'07-11 18:40', updatedAt:'07-11 20:10',
+    items:[translationItem('MT-260711-006','TPL-1006','首次入金引导','en-US','审核驳回','110060',{ errorMessage:'奖励有效期措辞不准确，需重新翻译' })],
+  },
 ];
 
 export const segments: AudienceSegment[] = [

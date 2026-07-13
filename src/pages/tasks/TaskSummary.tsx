@@ -9,7 +9,7 @@ export default function TaskSummary() {
     </div>
     <div className="summary-side">
       <Card title="任务摘要" bordered={false} className="inner-card"><Descriptions column={1} data={[{label:'消息性质',value:'营销 · 中风险'},{label:'发送时间',value:'2026-07-13 20:00 UTC+8'},{label:'渠道策略',value:'Push → 邮件降级'},{label:'预计成本',value:'¥ 8,420'},{label:'有效期',value:'发送后 24 小时'}]} /></Card>
-      <Card title="审批链" bordered={false} className="inner-card"><Timeline><Timeline.Item>内容审核 · 增长负责人</Timeline.Item><Timeline.Item>合规审核 · EU Marketing</Timeline.Item><Timeline.Item>发送调度 · 自动执行</Timeline.Item></Timeline><Progress percent={33} status="warning" /></Card>
+      <Card title="审批链" bordered={false} className="inner-card"><Timeline><Timeline.Item dotColor="green">多语言人工审核 · 已通过</Timeline.Item><Timeline.Item>业务内容审核 · 增长负责人</Timeline.Item><Timeline.Item>风险与合规审核 · Risk Control</Timeline.Item><Timeline.Item>发送调度 · 自动执行</Timeline.Item></Timeline><Progress percent={50} status="warning" /></Card>
     </div>
   </div>;
 }
