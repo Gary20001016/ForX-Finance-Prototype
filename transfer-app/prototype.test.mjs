@@ -127,6 +127,59 @@ test('switches between USDC and USDT with independent balances', async () => {
   });
 });
 
+test('closes the token menu with Escape and restores focus', async () => {
+  await withPage(async (page) => {
+    await page.locator('#token-trigger').click();
+    assert.equal(await page.locator('#token-menu').isVisible(), true);
+    await page.keyboard.press('Escape');
+    assert.equal(await page.locator('#token-menu').isHidden(), true);
+    assert.equal(await page.evaluate(() => document.activeElement?.id), 'token-trigger');
+    await page.keyboard.press('ArrowDown');
+    assert.equal(await page.locator('#token-menu').isVisible(), true);
+    await page.waitForFunction(() => document.activeElement?.dataset.token === 'USDC');
+  });
+});
+
+test('completes a USDT transfer without mutating USDC balances', async () => {
+  await withPage(async (page) => {
+    await page.locator('#token-trigger').click();
+    await page.locator('#token-menu [data-token="USDT"]').click();
+    await page.locator('#amount-input').fill('10');
+    await page.locator('#review-transfer').click();
+    assert.equal(await page.locator('[data-review-amount]').textContent(), '10.00 USDT');
+    assert.equal(await page.locator('[data-review-source-after]').textContent(), '40.00 USDT');
+    assert.equal(await page.locator('[data-fee-amount]').last().textContent(), '0 USDT');
+    await page.locator('#confirm-transfer').click();
+    await page.locator('[data-screen="success"]:visible').waitFor();
+    assert.equal(await page.locator('[data-receipt-amount]').textContent(), '10.00 USDT');
+    assert.equal(await page.locator('[data-success-fund-balance]').textContent(), '40.00 USDT');
+    assert.equal(await page.locator('[data-success-contract-balance]').textContent(), '10.00 USDT');
+    await page.locator('#transfer-again').click();
+    await page.locator('#token-trigger').click();
+    await page.locator('#token-menu [data-token="USDC"]').click();
+    assert.equal(await page.locator('[data-account-balance="fund"]').first().textContent(), '20.00 USDC');
+    assert.equal(await page.locator('[data-account-balance="contract"]').first().textContent(), '0.00 USDC');
+  });
+});
+
+test('reset restores the default token and both token balances', async () => {
+  await withPage(async (page) => {
+    await page.locator('#token-trigger').click();
+    await page.locator('#token-menu [data-token="USDT"]').click();
+    await page.locator('#amount-input').fill('10');
+    await page.locator('#review-transfer').click();
+    await page.locator('#confirm-transfer').click();
+    await page.locator('[data-screen="success"]:visible').waitFor();
+    await page.locator('#prototype-reset').click();
+    assert.equal(await page.locator('[data-current-token]').first().textContent(), 'USDC');
+    assert.equal(await page.locator('[data-account-balance="fund"]').first().textContent(), '20.00 USDC');
+    await page.locator('#token-trigger').click();
+    await page.locator('#token-menu [data-token="USDT"]').click();
+    assert.equal(await page.locator('[data-account-balance="fund"]').first().textContent(), '50.00 USDT');
+    assert.equal(await page.locator('[data-account-balance="contract"]').first().textContent(), '0.00 USDT');
+  });
+});
+
 test('opens a transfer review for a valid amount', async () => {
   await withPage(async (page) => {
     await page.locator('#amount-input').fill('10');
