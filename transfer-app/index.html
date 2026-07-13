@@ -1607,7 +1607,12 @@
     function processTransfer({ retry = false } = {}) {
       if (state.busy) return;
       const result = validateAmount(state.amount);
-      if (!result.valid) return;
+      if (!result.valid || !state.available) {
+        if (!reviewLayer.hidden) closeReview();
+        renderComposer();
+        if (!state.available) announce('划转服务暂时不可用');
+        return;
+      }
 
       if (!retry || !state.pendingOperation) {
         state.pendingOperation = {
@@ -1718,10 +1723,11 @@
       if (!focusable.length) return;
       const first = focusable[0];
       const last = focusable[focusable.length - 1];
-      if (event.shiftKey && (document.activeElement === first || !activeLayer.contains(document.activeElement))) {
+      const activeIsFocusable = focusable.includes(document.activeElement);
+      if (event.shiftKey && (document.activeElement === first || !activeIsFocusable)) {
         event.preventDefault();
         last.focus();
-      } else if (!event.shiftKey && (document.activeElement === last || !activeLayer.contains(document.activeElement))) {
+      } else if (!event.shiftKey && (document.activeElement === last || !activeIsFocusable)) {
         event.preventDefault();
         first.focus();
       }
@@ -1731,6 +1737,8 @@
       armFailure() { state.failureArmed = true; },
       setUnavailable(unavailable) {
         state.available = !unavailable;
+        if (unavailable && !reviewLayer.hidden) closeReview();
+        if (unavailable && !failureLayer.hidden) closeFailureForEdit();
         renderComposer();
         announce(unavailable ? '划转服务暂时不可用' : '划转服务已恢复');
       }

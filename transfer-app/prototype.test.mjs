@@ -113,6 +113,10 @@ test('traps focus inside review and restores it on Escape', async () => {
   await withPage(async (page) => {
     await page.locator('#amount-input').fill('10');
     await page.locator('#review-transfer').click();
+    await page.locator('#review-title').waitFor();
+    assert.equal(await page.evaluate(() => document.activeElement?.id), 'review-title');
+    await page.keyboard.press('Shift+Tab');
+    assert.equal(await page.evaluate(() => document.activeElement?.id), 'edit-transfer');
     await page.locator('#edit-transfer').focus();
     await page.keyboard.press('Tab');
     assert.equal(await page.evaluate(() => document.activeElement?.id), 'close-review');
@@ -177,12 +181,16 @@ test('traps focus inside failure and returns to editing on Escape', async () => 
     await page.locator('#review-transfer').click();
     await page.locator('#confirm-transfer').click();
     await page.locator('[data-layer="failure"]:visible').waitFor();
+    assert.equal(await page.evaluate(() => document.activeElement?.id), 'failure-title');
+    await page.keyboard.press('Shift+Tab');
+    assert.equal(await page.evaluate(() => document.activeElement?.id), 'failure-edit');
     await page.locator('#failure-edit').focus();
     await page.keyboard.press('Tab');
     assert.equal(await page.evaluate(() => document.activeElement?.id), 'retry-transfer');
     await page.keyboard.press('Escape');
     assert.equal(await page.locator('[data-screen="composer"]').isVisible(), true);
     assert.equal(await page.locator('#amount-input').inputValue(), '10');
+    await page.waitForFunction(() => document.activeElement?.id === 'amount-input');
     assert.equal(await page.evaluate(() => document.activeElement?.id), 'amount-input');
   });
 });
@@ -221,6 +229,22 @@ test('preserves input while temporary unavailability disables submission', async
     await page.evaluate(() => window.transferPrototype.setUnavailable(false));
     assert.equal(await page.locator('#availability-warning').isHidden(), true);
     assert.equal(await page.locator('#review-transfer').isEnabled(), true);
+  });
+});
+
+test('stops a reviewed transfer when the service becomes unavailable', async () => {
+  await withPage(async (page) => {
+    await page.locator('#amount-input').fill('10');
+    await page.locator('#review-transfer').click();
+    await page.locator('[data-layer="review"]:visible').waitFor();
+    await page.evaluate(() => window.transferPrototype.setUnavailable(true));
+    assert.equal(await page.locator('[data-layer="review"]').isHidden(), true);
+    assert.equal(await page.locator('[data-screen="composer"]').isVisible(), true);
+    assert.equal(await page.locator('#review-transfer').isDisabled(), true);
+    assert.equal(await page.locator('#amount-input').inputValue(), '10');
+    await page.waitForTimeout(1000);
+    assert.equal(await page.locator('[data-account-balance="fund"]').first().textContent(), '20.00 USDC');
+    assert.equal(await page.locator('[data-account-balance="contract"]').first().textContent(), '0.00 USDC');
   });
 });
 
