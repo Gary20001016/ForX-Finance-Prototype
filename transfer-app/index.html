@@ -1600,8 +1600,12 @@
       const balances = currentBalances();
       document.querySelectorAll('[data-source-name]').forEach((node) => { node.textContent = accountNames[state.source]; });
       document.querySelectorAll('[data-destination-name]').forEach((node) => { node.textContent = accountNames[state.destination]; });
-      document.querySelectorAll('[data-account-balance="fund"]').forEach((node) => { node.textContent = formatAmount(balances.fund); });
-      document.querySelectorAll('[data-account-balance="contract"]').forEach((node) => { node.textContent = formatAmount(balances.contract); });
+      const sourceBalanceNode = document.querySelector('[data-route-node="source"] [data-account-balance]');
+      const destinationBalanceNode = document.querySelector('[data-route-node="destination"] [data-account-balance]');
+      sourceBalanceNode.dataset.accountBalance = state.source;
+      sourceBalanceNode.textContent = formatAmount(balances[state.source]);
+      destinationBalanceNode.dataset.accountBalance = state.destination;
+      destinationBalanceNode.textContent = formatAmount(balances[state.destination]);
       document.querySelectorAll('[data-available-balance]').forEach((node) => { node.textContent = formatAmount(balances[state.source]); });
       document.querySelectorAll('[data-current-token]').forEach((node) => { node.textContent = state.token; });
       document.querySelectorAll('[data-minimum-copy]').forEach((node) => { node.textContent = `最低划转 ${state.minimum} ${state.token}`; });
@@ -1929,7 +1933,17 @@
       const phone = document.querySelector('.phone').cloneNode(true);
       phone.classList.add('gallery-phone');
       phone.querySelector('#token-menu')?.remove();
-      const balances = currentBalances();
+      const balances = initialState().balances[state.token];
+      phone.querySelector('[data-source-name]').textContent = '资金账户';
+      phone.querySelector('[data-destination-name]').textContent = '合约账户';
+      phone.querySelector('[data-account-balance="fund"]').textContent = formatAmount(balances.fund);
+      phone.querySelector('[data-account-balance="contract"]').textContent = formatAmount(balances.contract);
+      phone.querySelector('[data-available-balance]').textContent = formatAmount(balances.fund);
+      phone.querySelector('[data-estimated-balance]').textContent = formatAmount(balances.contract);
+      phone.querySelector('[data-review-source]').textContent = '资金账户';
+      phone.querySelector('[data-review-destination]').textContent = '合约账户';
+      phone.querySelector('[data-failure-source]').textContent = '资金账户';
+      phone.querySelector('[data-failure-destination]').textContent = '合约账户';
       const targetScreen = view === 'review' || view === 'failure' || view.startsWith('composer')
         ? 'composer'
         : view;
@@ -1952,6 +1966,7 @@
         routeNodes[0].querySelector('.route-balance strong').textContent = formatAmount(balances.contract);
         routeNodes[1].querySelector('.route-balance strong').textContent = formatAmount(balances.fund);
         phone.querySelector('[data-available-balance]').textContent = formatAmount(balances.contract);
+        phone.querySelector('[data-estimated-balance]').textContent = formatAmount(balances.fund);
       }
 
       if (view === 'review') {
@@ -2023,7 +2038,7 @@
         },
         {
           view: 'composer-fund', title: 'E03 · 可用余额不足', detail: '明确当前来源账户余额不足',
-          decorate: (phone) => setComposerError(phone, '25', '可用余额不足')
+          decorate: (phone) => setComposerError(phone, String(initialState().balances[state.token].fund + 5), '可用余额不足')
         },
         {
           view: 'composer-fund', title: 'E04 · 服务暂不可用', detail: '不清空金额，提示稍后重试',

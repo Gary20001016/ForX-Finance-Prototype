@@ -95,6 +95,8 @@ test('swaps the fixed source and destination accounts', async () => {
     await page.locator('#swap-route').click();
     assert.equal(await page.locator('[data-source-name]').textContent(), '合约账户');
     assert.equal(await page.locator('[data-destination-name]').textContent(), '资金账户');
+    assert.equal(await page.locator('[data-route-node="source"] .route-balance strong').textContent(), '0.00 USDC');
+    assert.equal(await page.locator('[data-route-node="destination"] .route-balance strong').textContent(), '20.00 USDC');
     assert.equal(await page.locator('[data-available-balance]').textContent(), '0.00 USDC');
   });
 });
@@ -145,6 +147,40 @@ test('synchronizes static galleries with the selected token', async () => {
     const errorCopy = await page.locator('#error-gallery-grid .gallery-phone').allTextContents();
     assert.equal(galleryCopy.every((copy) => copy.includes('USDT') && !copy.includes('USDC')), true);
     assert.equal(errorCopy.every((copy) => copy.includes('USDT') && !copy.includes('USDC')), true);
+  });
+});
+
+test('keeps gallery scenarios valid and independent from the live route', async () => {
+  await withPage(async (page) => {
+    await page.locator('#swap-route').click();
+    await page.locator('#token-trigger').click();
+    await page.locator('#token-menu [data-token="USDT"]').click();
+    const firstRoute = await page.locator('#gallery-grid .gallery-phone').first().locator('.route-copy strong').allTextContents();
+    const secondRoute = await page.locator('#gallery-grid .gallery-phone').nth(1).locator('.route-copy strong').allTextContents();
+    assert.deepEqual(firstRoute, ['资金账户', '合约账户']);
+    assert.deepEqual(secondRoute, ['合约账户', '资金账户']);
+    assert.match(await page.locator('#gallery-grid .gallery-phone').nth(1).locator('.amount-meta').textContent(), /预计到账 50\.00 USDT/);
+    assert.equal(await page.locator('#error-gallery-grid .error-gallery-card').nth(2).locator('input').inputValue(), '55');
+  });
+});
+
+test('keeps gallery review balances valid after the live balance is depleted', async () => {
+  await withPage(async (page) => {
+    await page.locator('#token-trigger').click();
+    await page.locator('#token-menu [data-token="USDT"]').click();
+    await page.locator('#amount-input').fill('50');
+    await page.locator('#review-transfer').click();
+    await page.locator('#confirm-transfer').click();
+    await page.locator('[data-screen="success"]:visible').waitFor();
+    await page.locator('#transfer-again').click();
+    await page.locator('#token-trigger').click();
+    await page.locator('#token-menu [data-token="USDC"]').click();
+    await page.locator('#token-trigger').click();
+    await page.locator('#token-menu [data-token="USDT"]').click();
+    const reviewCopy = await page.locator('#gallery-grid .gallery-phone').nth(2).textContent();
+    assert.match(reviewCopy, /40\.00 USDT/);
+    assert.match(reviewCopy, /10\.00 USDT/);
+    assert.doesNotMatch(reviewCopy, /-10\.00/);
   });
 });
 
