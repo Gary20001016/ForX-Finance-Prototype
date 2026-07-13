@@ -661,6 +661,174 @@
       transform: none;
     }
 
+    .layer {
+      position: absolute;
+      inset: 0;
+      z-index: 22;
+      display: grid;
+      align-items: end;
+      background: rgba(0, 0, 0, 0.66);
+      backdrop-filter: blur(8px);
+      animation: layer-in 180ms ease both;
+    }
+
+    .layer[hidden] { display: none; }
+
+    .sheet {
+      position: relative;
+      padding: 10px 17px max(20px, env(safe-area-inset-bottom));
+      border: 1px solid var(--line-strong);
+      border-bottom: 0;
+      border-radius: 26px 26px 0 0;
+      background: #0d120f;
+      box-shadow: 0 -28px 80px rgba(0, 0, 0, 0.5);
+      animation: sheet-in 240ms cubic-bezier(.18, .82, .2, 1) both;
+    }
+
+    .sheet-grabber {
+      width: 34px;
+      height: 3px;
+      margin: 0 auto 18px;
+      border-radius: 999px;
+      background: #333d36;
+    }
+
+    .sheet-heading {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 14px;
+    }
+
+    .sheet-heading h2 {
+      margin: 0;
+      font-size: 20px;
+      font-weight: 580;
+      letter-spacing: -0.04em;
+    }
+
+    .sheet-heading p {
+      margin: 6px 0 0;
+      color: var(--muted);
+      font-size: 10px;
+      line-height: 1.45;
+    }
+
+    .sheet-close {
+      display: grid;
+      place-items: center;
+      width: 32px;
+      height: 32px;
+      padding: 0;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      color: var(--muted-strong);
+      background: rgba(255, 255, 255, 0.02);
+      font-size: 18px;
+      cursor: pointer;
+    }
+
+    .review-route {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      gap: 10px;
+      align-items: center;
+      margin-top: 20px;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 17px;
+      background: var(--surface);
+    }
+
+    .review-account small {
+      display: block;
+      margin-bottom: 5px;
+      color: var(--muted);
+      font-size: 8px;
+    }
+
+    .review-account strong {
+      display: block;
+      font-size: 11px;
+      font-weight: 650;
+    }
+
+    .review-account:last-child { text-align: right; }
+
+    .review-arrow {
+      display: grid;
+      place-items: center;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      color: var(--green);
+      background: var(--green-soft);
+      font-size: 14px;
+    }
+
+    .review-amount {
+      margin: 18px 0 0;
+      padding-bottom: 17px;
+      border-bottom: 1px solid var(--line);
+      text-align: center;
+    }
+
+    .review-amount span {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--muted);
+      font-size: 9px;
+    }
+
+    .review-amount strong {
+      font-size: 30px;
+      font-weight: 560;
+      letter-spacing: -0.05em;
+    }
+
+    .review-details {
+      display: grid;
+      gap: 11px;
+      margin: 15px 0 18px;
+    }
+
+    .review-details div {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .review-details dt,
+    .review-details dd {
+      margin: 0;
+      font-size: 10px;
+    }
+
+    .review-details dt { color: var(--muted); }
+    .review-details dd { color: var(--muted-strong); }
+    .review-details .fee { color: var(--green); }
+
+    .sheet-actions { display: grid; gap: 8px; }
+
+    .secondary-action {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      min-height: 45px;
+      padding: 0 14px;
+      border: 1px solid var(--line-strong);
+      border-radius: var(--radius-control);
+      color: var(--text);
+      background: rgba(255, 255, 255, 0.02);
+      font-size: 11px;
+      font-weight: 650;
+      cursor: pointer;
+    }
+
+    .sheet .primary-action { margin-top: 0; }
+
     .sr-only {
       position: absolute;
       width: 1px;
@@ -714,6 +882,9 @@
       0%, 100% { transform: translateY(-8px); opacity: 0.35; }
       50% { transform: translateY(8px); opacity: 1; }
     }
+
+    @keyframes layer-in { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes sheet-in { from { transform: translateY(28px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 
     @media (max-width: 900px) {
       .prototype-shell {
@@ -819,6 +990,31 @@
           </main>
         </section>
 
+        <section class="layer" data-layer="review" role="dialog" aria-modal="true" aria-labelledby="review-title" hidden>
+          <div class="sheet">
+            <div class="sheet-grabber" aria-hidden="true"></div>
+            <div class="sheet-heading">
+              <div><h2 id="review-title" tabindex="-1">核对划转</h2><p>确认后将更新 ForX 内部账户余额</p></div>
+              <button id="close-review" class="sheet-close" type="button" aria-label="关闭核对弹层">×</button>
+            </div>
+            <div class="review-route" data-review-route>
+              <div class="review-account"><small>转出</small><strong data-review-source>资金账户</strong></div>
+              <span class="review-arrow" aria-hidden="true">→</span>
+              <div class="review-account"><small>转入</small><strong data-review-destination>合约账户</strong></div>
+            </div>
+            <div class="review-amount"><span>划转金额</span><strong data-review-amount>0.00 USDC</strong></div>
+            <dl class="review-details">
+              <div><dt>转出后余额</dt><dd data-review-source-after>0.00 USDC</dd></div>
+              <div><dt>转入后余额</dt><dd data-review-destination-after>0.00 USDC</dd></div>
+              <div><dt>划转手续费</dt><dd class="fee">0 USDC</dd></div>
+            </dl>
+            <div class="sheet-actions">
+              <button id="confirm-transfer" class="primary-action" type="button">确认划转</button>
+              <button id="edit-transfer" class="secondary-action" type="button">返回修改</button>
+            </div>
+          </div>
+        </section>
+
         <div id="live-status" class="sr-only" aria-live="polite"></div>
       </section>
     </div>
@@ -841,5 +1037,129 @@
     </div>
     <div id="error-gallery-grid" class="error-gallery-grid"></div>
   </section>
+
+  <script>
+    const accountNames = { fund: '资金账户', contract: '合约账户' };
+    const initialState = () => ({
+      screen: 'composer',
+      source: 'fund',
+      destination: 'contract',
+      balances: { fund: 20, contract: 0 },
+      amount: '',
+      minimum: 10,
+      fee: 0,
+      busy: false,
+      failureArmed: false
+    });
+
+    const state = initialState();
+    const amountInput = document.getElementById('amount-input');
+    const amountError = document.getElementById('amount-error');
+    const reviewButton = document.getElementById('review-transfer');
+    const reviewLayer = document.querySelector('[data-layer="review"]');
+    const reviewTitle = document.getElementById('review-title');
+    const liveStatus = document.getElementById('live-status');
+    let layerReturnFocus = null;
+
+    function formatAmount(value) {
+      return `${Number(value).toFixed(2)} USDC`;
+    }
+
+    function announce(message) {
+      liveStatus.textContent = '';
+      window.requestAnimationFrame(() => { liveStatus.textContent = message; });
+    }
+
+    function validateAmount(raw) {
+      const normalized = String(raw).trim();
+      if (!normalized) return { valid: false, code: 'empty', message: '', value: 0 };
+      if (!/^\d+(?:\.\d{0,6})?$/.test(normalized)) {
+        return { valid: false, code: 'invalid', message: '请输入有效的划转金额', value: 0 };
+      }
+
+      const value = Number(normalized);
+      if (!Number.isFinite(value) || value <= 0) {
+        return { valid: false, code: 'invalid', message: '请输入有效的划转金额', value: 0 };
+      }
+      if (value < state.minimum) {
+        return { valid: false, code: 'below-minimum', message: '最低划转 10 USDC', value };
+      }
+      if (value > state.balances[state.source]) {
+        return { valid: false, code: 'insufficient', message: '可用余额不足', value };
+      }
+      return { valid: true, code: 'valid', message: '', value };
+    }
+
+    function renderComposer() {
+      document.querySelectorAll('[data-source-name]').forEach((node) => { node.textContent = accountNames[state.source]; });
+      document.querySelectorAll('[data-destination-name]').forEach((node) => { node.textContent = accountNames[state.destination]; });
+      document.querySelectorAll('[data-account-balance="fund"]').forEach((node) => { node.textContent = formatAmount(state.balances.fund); });
+      document.querySelectorAll('[data-account-balance="contract"]').forEach((node) => { node.textContent = formatAmount(state.balances.contract); });
+      document.querySelectorAll('[data-available-balance]').forEach((node) => { node.textContent = formatAmount(state.balances[state.source]); });
+
+      const result = validateAmount(state.amount);
+      amountError.textContent = result.message;
+      amountInput.setAttribute('aria-invalid', String(result.code !== 'empty' && !result.valid));
+      reviewButton.disabled = !result.valid;
+      const estimate = state.balances[state.destination] + (result.valid ? result.value : 0);
+      document.querySelectorAll('[data-estimated-balance]').forEach((node) => { node.textContent = formatAmount(estimate); });
+    }
+
+    function swapRoute() {
+      [state.source, state.destination] = [state.destination, state.source];
+      state.amount = '';
+      amountInput.value = '';
+      renderComposer();
+      announce(`已切换：从${accountNames[state.source]}划转至${accountNames[state.destination]}`);
+    }
+
+    function openReview() {
+      const result = validateAmount(state.amount);
+      if (!result.valid) return;
+      layerReturnFocus = document.activeElement;
+      document.querySelector('[data-review-source]').textContent = accountNames[state.source];
+      document.querySelector('[data-review-destination]').textContent = accountNames[state.destination];
+      document.querySelector('[data-review-amount]').textContent = formatAmount(result.value);
+      document.querySelector('[data-review-source-after]').textContent = formatAmount(state.balances[state.source] - result.value);
+      document.querySelector('[data-review-destination-after]').textContent = formatAmount(state.balances[state.destination] + result.value);
+      reviewLayer.hidden = false;
+      window.setTimeout(() => reviewTitle.focus({ preventScroll: true }), 0);
+      announce('已打开划转核对');
+    }
+
+    function closeReview() {
+      reviewLayer.hidden = true;
+      layerReturnFocus?.focus({ preventScroll: true });
+      announce('已返回划转编辑');
+    }
+
+    amountInput.addEventListener('input', () => {
+      const sanitized = amountInput.value.replace(/[^\d.]/g, '');
+      const [whole = '', ...decimals] = sanitized.split('.');
+      state.amount = decimals.length ? `${whole}.${decimals.join('').slice(0, 6)}` : whole;
+      if (amountInput.value !== state.amount) amountInput.value = state.amount;
+      renderComposer();
+    });
+
+    document.querySelectorAll('[data-percentage]').forEach((button) => {
+      button.addEventListener('click', () => {
+        const value = state.balances[state.source] * Number(button.dataset.percentage);
+        state.amount = String(Number(value.toFixed(6)));
+        amountInput.value = state.amount;
+        renderComposer();
+        announce(`已填入${button.textContent}可用余额`);
+      });
+    });
+
+    document.getElementById('swap-route').addEventListener('click', swapRoute);
+    reviewButton.addEventListener('click', openReview);
+    document.getElementById('close-review').addEventListener('click', closeReview);
+    document.getElementById('edit-transfer').addEventListener('click', closeReview);
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && !reviewLayer.hidden) closeReview();
+    });
+
+    renderComposer();
+  </script>
 </body>
 </html>
