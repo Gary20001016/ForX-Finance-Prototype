@@ -895,6 +895,256 @@
       gap: 9px;
     }
 
+    .guide-screen {
+      background:
+        radial-gradient(circle at 50% 26%, rgba(141, 250, 169, 0.1), transparent 34%),
+        var(--bg);
+    }
+
+    .guide-appbar {
+      position: relative;
+      z-index: 3;
+      display: grid;
+      grid-template-columns: 32px 1fr auto;
+      align-items: center;
+      gap: 8px;
+      height: 58px;
+      padding: 0 16px;
+    }
+
+    .guide-wallet-name {
+      color: var(--muted-strong);
+      font-size: 9px;
+      font-weight: 620;
+    }
+
+    .guide-visual {
+      position: absolute;
+      top: 72px;
+      left: 50%;
+      width: 230px;
+      height: 220px;
+      transform: translateX(-50%);
+    }
+
+    .guide-orbit {
+      position: absolute;
+      inset: 34px 28px 12px;
+      border: 1px solid rgba(141, 250, 169, 0.2);
+      transform: rotate(30deg) skewY(-12deg);
+    }
+
+    .guide-orbit::before,
+    .guide-orbit::after {
+      position: absolute;
+      inset: 24px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      content: "";
+    }
+
+    .guide-orbit::after {
+      inset: 52px 24px 0;
+      border-color: rgba(141, 250, 169, 0.14);
+      transform: rotate(60deg);
+    }
+
+    .guide-key {
+      position: absolute;
+      top: 72px;
+      left: 88px;
+      display: grid;
+      place-items: center;
+      width: 62px;
+      height: 62px;
+      border: 1px solid rgba(141, 250, 169, 0.32);
+      color: var(--green);
+      background: rgba(10, 22, 14, 0.88);
+      box-shadow: 0 0 42px rgba(141, 250, 169, 0.15);
+      transform: rotate(45deg);
+    }
+
+    .guide-key::before {
+      font-size: 24px;
+      font-weight: 720;
+      content: "×";
+      transform: rotate(-45deg);
+    }
+
+    .guide-particle {
+      position: absolute;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 14px rgba(141, 250, 169, 0.5);
+    }
+
+    .guide-particle:nth-child(4) { top: 30px; left: 56px; }
+    .guide-particle:nth-child(5) { top: 56px; right: 34px; opacity: 0.45; }
+    .guide-particle:nth-child(6) { right: 62px; bottom: 28px; opacity: 0.65; }
+
+    .guide-sheet {
+      position: absolute;
+      inset: 260px 0 0;
+      z-index: 4;
+      display: flex;
+      flex-direction: column;
+      padding: 22px 18px max(22px, env(safe-area-inset-bottom));
+      overflow: auto;
+      border-top: 1px solid var(--line-strong);
+      border-radius: 26px 26px 0 0;
+      background: rgba(13, 16, 15, 0.98);
+      box-shadow: 0 -24px 70px rgba(0, 0, 0, 0.36);
+    }
+
+    .guide-sheet-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .guide-sheet h2 {
+      margin: 0;
+      font-size: 21px;
+      font-weight: 600;
+      letter-spacing: -0.035em;
+    }
+
+    .guide-sheet-subtitle {
+      margin: 6px 0 0;
+      color: var(--muted);
+      font-size: 10px;
+      line-height: 1.5;
+    }
+
+    .guide-wallet {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 9px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.025);
+      white-space: nowrap;
+    }
+
+    .guide-wallet .wallet-logo {
+      width: 23px;
+      height: 23px;
+      border-radius: 7px;
+      font-size: 8px;
+    }
+
+    .guide-wallet strong,
+    .guide-wallet span {
+      display: block;
+      font-size: 8px;
+    }
+
+    .guide-wallet span { margin-top: 2px; color: var(--muted); }
+
+    .guide-step-list {
+      display: grid;
+      gap: 0;
+      margin: 20px 0 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .guide-step {
+      position: relative;
+      display: grid;
+      grid-template-columns: 34px 1fr;
+      gap: 12px;
+      min-height: 70px;
+      color: var(--muted);
+    }
+
+    .guide-step:not(:last-child)::before {
+      position: absolute;
+      top: 33px;
+      bottom: -1px;
+      left: 16px;
+      width: 1px;
+      background: var(--line-strong);
+      content: "";
+    }
+
+    .guide-step.is-complete:not(:last-child)::before { background: rgba(141, 250, 169, 0.5); }
+
+    .guide-step-marker {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      place-items: center;
+      width: 34px;
+      height: 34px;
+      border: 1px solid var(--line-strong);
+      border-radius: 50%;
+      color: var(--muted-strong);
+      background: var(--panel);
+      font-size: 11px;
+      font-weight: 680;
+    }
+
+    .guide-step.is-current .guide-step-marker {
+      border-color: rgba(141, 250, 169, 0.58);
+      color: var(--green);
+      box-shadow: 0 0 18px rgba(141, 250, 169, 0.1);
+    }
+
+    .guide-step.is-complete .guide-step-marker {
+      border-color: var(--green);
+      color: var(--green-ink);
+      background: var(--green);
+    }
+
+    .guide-step-copy { padding: 2px 0 16px; }
+
+    .guide-step-copy strong {
+      display: block;
+      color: var(--muted-strong);
+      font-size: 12px;
+      font-weight: 620;
+    }
+
+    .guide-step.is-current .guide-step-copy strong,
+    .guide-step.is-complete .guide-step-copy strong { color: var(--text); }
+
+    .guide-step-copy span {
+      display: block;
+      margin-top: 4px;
+      font-size: 9px;
+      line-height: 1.45;
+    }
+
+    .guide-current-copy {
+      min-height: 17px;
+      margin: 2px 0 0;
+      color: var(--muted-strong);
+      font-size: 9px;
+      line-height: 1.5;
+    }
+
+    .guide-error {
+      min-height: 17px;
+      margin: 4px 0 0;
+      color: var(--error);
+      font-size: 9px;
+      line-height: 1.5;
+    }
+
+    .guide-actions {
+      position: sticky;
+      bottom: -1px;
+      margin-top: auto;
+      padding-top: 12px;
+      background: linear-gradient(transparent, var(--panel) 18%);
+    }
+
+    .guide-actions .primary:disabled { opacity: 0.72; }
+
     .success-mark {
       position: relative;
       display: grid;
@@ -1188,7 +1438,8 @@
     }
 
     .error-board .field-error:not([hidden]),
-    .error-board .inline-notice.is-error {
+    .error-board .inline-notice.is-error,
+    .error-board .guide-error:not([hidden]) {
       display: flex;
       align-items: flex-start;
       gap: 5px;
@@ -1196,7 +1447,8 @@
     }
 
     .error-board .field-error:not([hidden])::before,
-    .error-board .inline-notice.is-error::before {
+    .error-board .inline-notice.is-error::before,
+    .error-board .guide-error:not([hidden])::before {
       display: inline-grid;
       flex: 0 0 auto;
       place-items: center;
@@ -1372,6 +1624,41 @@
           <p class="wallet-footnote">连接钱包不会触发交易或产生费用</p>
         </section>
 
+        <section class="screen guide-screen" data-screen="wallet-guide" hidden>
+          <header class="guide-appbar">
+            <button id="wallet-guide-back" class="back-button" type="button" data-back-to="wallets" aria-label="返回钱包列表">‹</button>
+            <div class="brand"><span class="brand-mark" aria-hidden="true"></span>ForX Finance</div>
+            <span class="guide-wallet-name" data-selected-wallet>MetaMask</span>
+          </header>
+
+          <div class="guide-visual" aria-hidden="true">
+            <span class="guide-orbit"></span>
+            <span class="guide-key"></span>
+            <span class="guide-particle"></span>
+            <span class="guide-particle"></span>
+            <span class="guide-particle"></span>
+          </div>
+
+          <div class="guide-sheet">
+            <div class="guide-sheet-header">
+              <div>
+                <h2 tabindex="-1">完成钱包签名</h2>
+                <p class="guide-sheet-subtitle">三项签名完成前，此引导会持续展示</p>
+              </div>
+              <div class="guide-wallet">
+                <span class="wallet-logo" data-selected-wallet-initial>M</span>
+                <div><strong data-selected-wallet>MetaMask</strong><span>0x7A2F…9C18</span></div>
+              </div>
+            </div>
+            <ol id="wallet-guide-steps" class="guide-step-list" aria-label="钱包签名进度"></ol>
+            <p id="wallet-guide-status" class="guide-current-copy" aria-live="polite"></p>
+            <p id="wallet-guide-error" class="guide-error" aria-live="polite" hidden></p>
+            <div class="guide-actions">
+              <button id="wallet-guide-action" class="primary" type="button">开始连接</button>
+            </div>
+          </div>
+        </section>
+
         <section class="screen" data-screen="signature" hidden>
           <header class="screen-header">
             <div class="screen-topline">
@@ -1437,12 +1724,20 @@
     <div id="error-gallery-grid" class="error-gallery-grid"></div>
   </section>
 
+  <script type="application/json" id="wallet-guide-data">
+    [
+      {"title":"连接 ForX","description":"签署免费的登录请求，不会触发交易。"},
+      {"title":"验证钱包","description":"确认你是当前钱包的所有者，并验证 Arbitrum One 网络。"},
+      {"title":"启用交易","description":"授权 ForX 安全下单，不允许转移资产或发起提现。"}
+    ]
+  </script>
+
   <script type="application/json" id="error-gallery-data">
     [
       {"screen":"login","title":"E01 · 登录表单错误","detail":"邮箱输入框下方","mainError":"请输入有效的邮箱地址","recovery":"重新输入邮箱","variants":[],"state":"email-invalid"},
       {"screen":"otp","title":"E02 · OTP 错误","detail":"验证码区域下方","mainError":"验证码不正确，请重试","recovery":"清空后重新输入","variants":["请输入完整的 6 位验证码","验证码已过期，请重新发送","验证码发送失败，请重试"],"state":"otp-invalid"},
       {"screen":"wallets","title":"E03 · 钱包列表提示","detail":"钱包列表上方","mainError":"未检测到 WalletConnect，请先安装钱包","recovery":"安装钱包","variants":["当前网络不匹配，请切换至 Arbitrum One","签名已取消，你可以重新选择钱包"],"state":"wallet-missing"},
-      {"screen":"signature","title":"E04 · 钱包签名错误","detail":"安全说明与按钮之间","mainError":"钱包连接失败，请重试","recovery":"重试连接","variants":["用户拒绝了签名请求"],"state":"signature-failed"}
+      {"screen":"wallet-guide","title":"E04 · 钱包签名错误","detail":"当前签名步骤下方","mainError":"钱包签名失败，请重试当前步骤","recovery":"重试当前步骤","variants":["用户拒绝了签名请求"],"state":"signature-failed"}
     ]
   </script>
 
@@ -1455,7 +1750,10 @@
       accountType: '',
       resendRemaining: 48,
       resendTimer: null,
-      busy: false
+      busy: false,
+      signatureStep: 0,
+      signatureBusy: false,
+      signatureError: ''
     };
 
     const screens = [...document.querySelectorAll('[data-screen]')];
@@ -1471,12 +1769,31 @@
     const successAccount = document.getElementById('success-account');
     const walletLoginButton = document.getElementById('wallet-login');
     const walletNotice = document.getElementById('wallet-notice');
+    const walletGuideData = document.getElementById('wallet-guide-data');
+    const walletGuideDefinitions = walletGuideData ? JSON.parse(walletGuideData.textContent) : [];
+    const walletGuideStepList = document.getElementById('wallet-guide-steps');
+    const walletGuideStatus = document.getElementById('wallet-guide-status');
+    const walletGuideError = document.getElementById('wallet-guide-error');
+    const walletGuideAction = document.getElementById('wallet-guide-action');
+    const walletGuideBack = document.getElementById('wallet-guide-back');
     const signatureError = document.getElementById('signature-error');
     const confirmSignatureButton = document.getElementById('confirm-signature');
     const cancelSignatureButton = document.getElementById('cancel-signature');
     const startTradingButton = document.getElementById('start-trading');
     const prototypeComplete = document.getElementById('prototype-complete');
+    const guideActionLabels = ['开始连接', '继续验证', '启用交易', '进入 ForX'];
     let walletConnectFailedOnce = false;
+
+    if (walletGuideStepList) {
+      walletGuideStepList.innerHTML = walletGuideDefinitions.map((step, index) => `
+        <li class="guide-step" data-guide-step="${index}">
+          <span class="guide-step-marker" aria-hidden="true">${index + 1}</span>
+          <span class="guide-step-copy"><strong>${step.title}</strong><span>${step.description}</span></span>
+        </li>`).join('');
+    }
+    const walletGuideSteps = walletGuideStepList
+      ? [...walletGuideStepList.querySelectorAll('.guide-step')]
+      : [];
 
     function showScreen(name) {
       state.screen = name;
@@ -1491,7 +1808,9 @@
         ? emailInput
         : name === 'otp'
           ? otpInputs[0]
-          : target?.querySelector('h2, button, input');
+          : name === 'wallet-guide'
+            ? target?.querySelector('h2')
+            : target?.querySelector('h2, button, input');
       window.setTimeout(() => focusTarget?.focus({preventScroll: true}), 0);
     }
 
@@ -1529,6 +1848,76 @@
       }
     }
 
+    function renderWalletGuide() {
+      walletGuideSteps.forEach((step, index) => {
+        const complete = index < state.signatureStep;
+        const current = index === state.signatureStep && state.signatureStep < walletGuideDefinitions.length;
+        step.classList.toggle('is-complete', complete);
+        step.classList.toggle('is-current', current);
+        if (current) step.setAttribute('aria-current', 'step');
+        else step.removeAttribute('aria-current');
+        const marker = step.querySelector('.guide-step-marker');
+        if (marker) marker.textContent = complete ? '✓' : String(index + 1);
+      });
+
+      if (state.signatureBusy) {
+        walletGuideStatus.textContent = `请在 ${state.selectedWallet} 中完成签名`;
+      } else if (state.signatureStep === walletGuideDefinitions.length) {
+        walletGuideStatus.textContent = '三项签名已完成，可以进入 ForX。';
+      } else if (state.signatureError) {
+        walletGuideStatus.textContent = `第 ${state.signatureStep + 1} 项未完成，已完成进度已保留。`;
+      } else {
+        const current = walletGuideDefinitions[state.signatureStep];
+        walletGuideStatus.textContent = `当前：${current?.title ?? ''} · 第 ${state.signatureStep + 1}/3 项`;
+      }
+
+      walletGuideError.textContent = state.signatureError;
+      walletGuideError.hidden = !state.signatureError;
+      walletGuideAction.textContent = state.signatureBusy
+        ? `请在 ${state.selectedWallet} 中完成签名`
+        : state.signatureError
+          ? '重试当前步骤'
+          : guideActionLabels[state.signatureStep];
+      walletGuideAction.disabled = state.signatureBusy;
+      walletGuideBack.disabled = state.signatureBusy;
+    }
+
+    function resetWalletGuideState() {
+      state.signatureStep = 0;
+      state.signatureBusy = false;
+      state.signatureError = '';
+      if (walletGuideAction) renderWalletGuide();
+    }
+
+    function advanceWalletSignature() {
+      if (state.signatureBusy) return;
+      if (state.signatureStep === walletGuideDefinitions.length) {
+        completeWalletLogin();
+        return;
+      }
+
+      const completingStep = state.signatureStep;
+      state.signatureError = '';
+      state.signatureBusy = true;
+      renderWalletGuide();
+
+      window.setTimeout(() => {
+        state.signatureBusy = false;
+        if (state.selectedWallet === 'WalletConnect' && !walletConnectFailedOnce) {
+          walletConnectFailedOnce = true;
+          state.signatureError = '钱包签名失败，请重试当前步骤';
+          renderWalletGuide();
+          announce('钱包签名失败，已保留当前进度');
+          return;
+        }
+
+        state.signatureStep += 1;
+        state.signatureError = '';
+        renderWalletGuide();
+        announce(`${walletGuideDefinitions[completingStep].title}已完成`);
+      }, 900);
+    }
+
     function startResendCountdown(seconds) {
       window.clearInterval(state.resendTimer);
       state.resendRemaining = seconds;
@@ -1559,7 +1948,10 @@
         accountType: '',
         resendRemaining: 48,
         resendTimer: null,
-        busy: false
+        busy: false,
+        signatureStep: 0,
+        signatureBusy: false,
+        signatureError: ''
       });
       emailForm.reset();
       otpForm.reset();
@@ -1569,6 +1961,7 @@
       hideError(signatureError);
       walletNotice.textContent = '';
       confirmSignatureButton.textContent = '打开钱包';
+      renderWalletGuide();
       prototypeComplete.hidden = true;
       showScreen('login');
       announce('原型已重置');
@@ -1675,12 +2068,18 @@
         document.querySelectorAll('[data-selected-wallet]').forEach((node) => {
           node.textContent = state.selectedWallet;
         });
-        document.querySelector('[data-selected-wallet-initial]').textContent = state.selectedWallet.charAt(0);
+        document.querySelectorAll('[data-selected-wallet-initial]').forEach((node) => {
+          node.textContent = state.selectedWallet.charAt(0);
+        });
         confirmSignatureButton.textContent = `打开 ${state.selectedWallet}`;
         hideError(signatureError);
-        showScreen('signature');
+        resetWalletGuideState();
+        renderWalletGuide();
+        showScreen('wallet-guide');
       });
     });
+
+    walletGuideAction.addEventListener('click', advanceWalletSignature);
 
     cancelSignatureButton.addEventListener('click', () => {
       showScreen('wallets');
@@ -1711,7 +2110,12 @@
     });
 
     document.querySelectorAll('[data-back-to]').forEach((button) => {
-      button.addEventListener('click', () => showScreen(button.dataset.backTo));
+      button.addEventListener('click', () => {
+        if (state.screen === 'wallet-guide' && button.dataset.backTo === 'wallets') {
+          resetWalletGuideState();
+        }
+        showScreen(button.dataset.backTo);
+      });
     });
 
     document.getElementById('prototype-reset').addEventListener('click', resetPrototype);
@@ -1743,6 +2147,38 @@
       });
     }
 
+    function applyGuideGalleryState(phone, stateName) {
+      const completedByState = {
+        'guide-start': 0,
+        'guide-connected': 1,
+        'guide-verified': 2,
+        'guide-complete': 3
+      };
+      const completed = completedByState[stateName] ?? 0;
+      const labels = ['开始连接', '继续验证', '启用交易', '进入 ForX'];
+      const status = phone.querySelector('.guide-current-copy');
+      const action = phone.querySelector('.guide-actions .primary');
+
+      [...phone.querySelectorAll('.guide-step')].forEach((step, index) => {
+        const isComplete = index < completed;
+        const isCurrent = index === completed && completed < 3;
+        step.classList.toggle('is-complete', isComplete);
+        step.classList.toggle('is-current', isCurrent);
+        if (isCurrent) step.setAttribute('aria-current', 'step');
+        else step.removeAttribute('aria-current');
+        const marker = step.querySelector('.guide-step-marker');
+        marker.textContent = isComplete ? '✓' : String(index + 1);
+      });
+
+      status.textContent = completed === 3
+        ? '三项签名已完成，可以进入 ForX。'
+        : `第 ${completed + 1}/3 项 · ${walletGuideDefinitions[completed].title}`;
+      action.textContent = labels[completed];
+      const error = phone.querySelector('.guide-error');
+      error.hidden = true;
+      error.textContent = '';
+    }
+
     function buildStaticGallery() {
       const definitions = [
         {screen: 'login', title: '01 · 登录首页', detail: '邮箱与外部钱包同时可见'},
@@ -1750,7 +2186,10 @@
         {screen: 'otp', title: '02B · OTP 可重新发送', detail: '倒计时结束后的可点击状态', otp: 'ready'},
         {screen: 'preparing', title: '03 · 账户准备', detail: 'Privy 账户与嵌入式钱包准备状态'},
         {screen: 'wallets', title: '04 · 钱包选择', detail: '已安装钱包优先展示'},
-        {screen: 'signature', title: '05 · 签名确认', detail: '请求、网络、费用与安全说明'},
+        {screen: 'wallet-guide', title: '05A · 签名引导开始', detail: '三项签名持续展示', guide: 'guide-start'},
+        {screen: 'wallet-guide', title: '05B · 已完成连接', detail: '第一项完成，等待验证钱包', guide: 'guide-connected'},
+        {screen: 'wallet-guide', title: '05C · 等待启用交易', detail: '前两项完成，等待交易授权', guide: 'guide-verified'},
+        {screen: 'wallet-guide', title: '05D · 签名全部完成', detail: '三项完成后由用户进入 ForX', guide: 'guide-complete'},
         {screen: 'success', title: '06 · 登录成功', detail: '邮箱与钱包路径的统一出口'}
       ];
       const sourcePhone = document.querySelector('.phone');
@@ -1768,6 +2207,7 @@
           const resend = phone.querySelector('.resend-row button');
           resend.textContent = '重新发送验证码';
         }
+        if (definition.guide) applyGuideGalleryState(phone, definition.guide);
 
         freezeGalleryScreen(phone);
         slot.append(phone);
@@ -1812,10 +2252,12 @@
       }
 
       if (definition.state === 'signature-failed') {
-        const error = phone.querySelector('.field-error');
+        applyGuideGalleryState(phone, 'guide-start');
+        const error = phone.querySelector('.guide-error');
         error.hidden = false;
         error.textContent = definition.mainError;
-        phone.querySelector('.signature-actions .primary').textContent = definition.recovery;
+        phone.querySelector('.guide-current-copy').textContent = '第 1 项未完成，已完成进度已保留。';
+        phone.querySelector('.guide-actions .primary').textContent = definition.recovery;
       }
     }
 
@@ -1860,6 +2302,7 @@
       });
     }
 
+    renderWalletGuide();
     buildStaticGallery();
     buildErrorGallery();
   </script>
