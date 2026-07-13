@@ -10,4 +10,6 @@ it('展示 V2 阅读点击与风险消息指标', () => {
   expect(screen.getByText('5 分钟阅读率')).toBeVisible();
   expect(screen.getByText('30 分钟阅读率')).toBeVisible();
   expect(screen.getByText('分类表现')).toBeVisible();
+  expect(screen.getByText('App Push')).toBeVisible();
+  expect(screen.queryByText('App · 未接入')).not.toBeInTheDocument();
 });

@@ -8,7 +8,7 @@ import { openPrototypeDialog } from '../../utils/prototypeActions';
 import { templates } from '../../mocks/data';
 
 const FormItem = Form.Item;
-const channels = ['Web 站内信','App Push（预留）'];
+const channels = ['Web 站内信','App Push'];
 const categoryOptions = ['系统公告','交易通知','资产通知','安全通知','奖励通知','活动通知','风控通知'];
 const approvedTemplates = templates.filter((template)=>template.translationReadiness==='全部审核通过');
 
@@ -42,7 +42,7 @@ export default function CreateTaskPage() {
           <Grid.Col xs={24} md={12}><FormItem label="消息模板" field="template" required extra="仅显示全部目标语言人工审核通过的模板版本"><Select placeholder="选择翻译审核已通过的模板" showSearch onChange={setTemplateId}>{approvedTemplates.map((template)=><Select.Option key={template.id} value={template.id}>{template.name} · {template.version}</Select.Option>)}</Select></FormItem></Grid.Col>
           <Grid.Col xs={24} md={12}><FormItem label="目标语言" field="locales"><Select mode="multiple" disabled>{selectedTemplate?.locales.map((locale)=><Select.Option key={locale} value={locale}>{locale}</Select.Option>)}</Select></FormItem></Grid.Col>
           <Grid.Col span={24}><div className="task-template-readiness"><div><Tag color="green">翻译审核通过</Tag><strong>{selectedTemplate?.name} · {selectedTemplate?.version}</strong><span className="mono">{selectedTemplate?.translationBatchId}</span></div><p>默认语言 {selectedTemplate?.sourceLocale}；已审核语言 {selectedTemplate?.locales.join('、')}。源文案或译文发生变化后，翻译审核立即失效，模板将从此列表移除。</p></div></Grid.Col>
-          <Grid.Col span={24}><FormItem label="发送渠道" field="channels"><Checkbox.Group options={channels}/></FormItem><Alert type="info" content="营销邮件与短信会根据目标地区自动插入退订入口和法定文案。"/></Grid.Col>
+          <Grid.Col span={24}><FormItem label="发送渠道" field="channels"><Checkbox.Group options={channels}/></FormItem><Alert type="info" content="App Push 通过 APNs / FCM 正式发送，发送前校验通知权限和有效设备 Token；点击后按已备案 Deep Link 跳转。"/></Grid.Col>
         </Grid.Row></div>}
         {current===1 && <div className="form-section"><h3>目标用户</h3><p>发送前会再次校验最新授权、退订和抑制名单。</p><Grid.Row gutter={20}>
           <Grid.Col span={24}><FormItem label="受众方式" field="audienceType"><Radio.Group type="button" onChange={setAudienceType}><Radio value="all">全部用户</Radio><Radio value="uid">指定用户</Radio><Radio value="vip">指定 VIP</Radio><Radio value="agent">指定代理</Radio><Radio value="campaign">活动参与用户</Radio></Radio.Group></FormItem></Grid.Col>
@@ -61,7 +61,7 @@ export default function CreateTaskPage() {
           <Grid.Col xs={24} md={8}><FormItem label="消息有效期" field="expireAt"><DatePicker showTime style={{width:'100%'}} placeholder="到期后停止跳转"/></FormItem></Grid.Col>
           <Grid.Col xs={24} md={8}><FormItem label="发送速率（每秒）" field="rate"><InputNumber min={1} max={5000} style={{width:'100%'}}/></FormItem></Grid.Col>
           <Grid.Col xs={24} md={8}><FormItem label="本地发送时间" field="localTime"><TimePicker style={{width:'100%'}}/></FormItem></Grid.Col>
-        </Grid.Row><Space style={{marginBottom:16}}><Tag color="arcoblue">Web 站内信</Tag><Tag color="gray">App Push（预留）</Tag></Space><Alert type="warning" title="风险与有效期检查" content="全站或紧急消息将升级为业务 + 风控双审；超过有效期后不再生成新消息。"/></div>}
+        </Grid.Row><Space style={{marginBottom:16}}><Tag color="arcoblue">Web 站内信</Tag><Tag color="purple">App Push</Tag><Tag color="green">APNs / FCM 正常</Tag></Space><Alert type="warning" title="风险与有效期检查" content="全站或紧急消息将升级为业务 + 风控双审；超过有效期后不再生成新消息，Push 失败按错误类型执行重试或 Token 失效处理。"/></div>}
         {current===3 && <TaskSummary />}
       </Form>
       <div className="wizard-footer"><Button disabled={current===0} onClick={() => setCurrent(v=>v-1)}>上一步</Button><Space><Button onClick={() => Message.info('测试消息已加入模拟发送队列')}>测试发送</Button>{current<3?<Button type="primary" onClick={next}>下一步</Button>:<Button type="primary" icon={<IconCheck/>} onClick={() => Message.success('任务已提交一级审核')}>提交审核</Button>}</Space></div>

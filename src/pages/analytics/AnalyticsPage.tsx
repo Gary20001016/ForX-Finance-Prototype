@@ -19,7 +19,8 @@ export default function AnalyticsPage(){
       <Select placeholder="风险等级" style={{width:140}} />
       <Select placeholder="受众类型" style={{width:140}} />
       <Select placeholder="语言" style={{width:120}} />
-      <Select defaultValue="Web" style={{width:120}}><Select.Option value="Web">Web</Select.Option><Select.Option value="App" disabled>App · 未接入</Select.Option></Select>
+      <Select defaultValue="all" style={{width:140}}><Select.Option value="all">全部客户端</Select.Option><Select.Option value="Web">Web 站内信</Select.Option><Select.Option value="App">App Push</Select.Option></Select>
+      <Tag color="purple">App Push</Tag>
     </FilterBar>
     <div className="analytics-kpis v2-kpis">{[
       ['生成消息数','26.40M','+6.8%'],['触达用户数','24.82M','去重 UID'],['阅读率','34.26%','+2.1pp'],['点击率','8.87%','+0.6pp'],['过期未读','18,420','-12.4%'],
