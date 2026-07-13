@@ -127,6 +127,27 @@ test('switches between USDC and USDT with independent balances', async () => {
   });
 });
 
+test('reselecting the current token preserves the entered amount', async () => {
+  await withPage(async (page) => {
+    await page.locator('#amount-input').fill('10');
+    await page.locator('#token-trigger').click();
+    await page.locator('#token-menu [data-token="USDC"]').click();
+    assert.equal(await page.locator('#amount-input').inputValue(), '10');
+    assert.equal(await page.locator('#review-transfer').isEnabled(), true);
+  });
+});
+
+test('synchronizes static galleries with the selected token', async () => {
+  await withPage(async (page) => {
+    await page.locator('#token-trigger').click();
+    await page.locator('#token-menu [data-token="USDT"]').click();
+    const galleryCopy = await page.locator('#gallery-grid .gallery-phone').allTextContents();
+    const errorCopy = await page.locator('#error-gallery-grid .gallery-phone').allTextContents();
+    assert.equal(galleryCopy.every((copy) => copy.includes('USDT') && !copy.includes('USDC')), true);
+    assert.equal(errorCopy.every((copy) => copy.includes('USDT') && !copy.includes('USDC')), true);
+  });
+});
+
 test('closes the token menu with Escape and restores focus', async () => {
   await withPage(async (page) => {
     await page.locator('#token-trigger').click();
@@ -135,6 +156,15 @@ test('closes the token menu with Escape and restores focus', async () => {
     assert.equal(await page.locator('#token-menu').isHidden(), true);
     assert.equal(await page.evaluate(() => document.activeElement?.id), 'token-trigger');
     await page.keyboard.press('ArrowDown');
+    assert.equal(await page.locator('#token-menu').isVisible(), true);
+    await page.waitForFunction(() => document.activeElement?.dataset.token === 'USDC');
+    await page.keyboard.press('Tab');
+    assert.equal(await page.locator('#token-menu').isVisible(), true);
+    assert.equal(await page.evaluate(() => document.activeElement?.dataset.token), 'USDT');
+    await page.keyboard.press('Tab');
+    assert.equal(await page.locator('#token-menu').isHidden(), true);
+    await page.locator('#token-trigger').focus();
+    await page.keyboard.press('ArrowUp');
     assert.equal(await page.locator('#token-menu').isVisible(), true);
     await page.waitForFunction(() => document.activeElement?.dataset.token === 'USDC');
   });
@@ -150,6 +180,8 @@ test('completes a USDT transfer without mutating USDC balances', async () => {
     assert.equal(await page.locator('[data-review-source-after]').textContent(), '40.00 USDT');
     assert.equal(await page.locator('[data-fee-amount]').last().textContent(), '0 USDT');
     await page.locator('#confirm-transfer').click();
+    await page.locator('[data-screen="processing"]:visible').waitFor();
+    assert.equal(await page.locator('[data-processing-symbol]').first().textContent(), '₮');
     await page.locator('[data-screen="success"]:visible').waitFor();
     assert.equal(await page.locator('[data-receipt-amount]').textContent(), '10.00 USDT');
     assert.equal(await page.locator('[data-success-fund-balance]').textContent(), '40.00 USDT');

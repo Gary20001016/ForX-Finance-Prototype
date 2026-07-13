@@ -1420,9 +1420,9 @@
         <section class="screen" data-screen="processing" hidden aria-busy="true">
           <div class="center-state">
             <div class="processing-route" aria-hidden="true">
-              <div class="processing-node"><span class="processing-coin">$</span></div>
+              <div class="processing-node"><span class="processing-coin" data-processing-symbol>$</span></div>
               <div class="processing-line"></div>
-              <div class="processing-node"><span class="processing-coin">$</span></div>
+              <div class="processing-node"><span class="processing-coin" data-processing-symbol>$</span></div>
             </div>
             <h2 tabindex="-1">正在更新账户余额</h2>
             <p><strong data-processing-token>USDC</strong> 正在沿 ForX 内部路线划转<br>请保持当前页面开启</p>
@@ -1607,6 +1607,7 @@
       document.querySelectorAll('[data-minimum-copy]').forEach((node) => { node.textContent = `最低划转 ${state.minimum} ${state.token}`; });
       document.querySelectorAll('[data-fee-amount]').forEach((node) => { node.textContent = `${state.fee} ${state.token}`; });
       document.querySelectorAll('[data-processing-token]').forEach((node) => { node.textContent = state.token; });
+      document.querySelectorAll('[data-processing-symbol]').forEach((node) => { node.textContent = state.token === 'USDT' ? '₮' : '$'; });
       tokenTrigger.setAttribute('aria-label', `选择划转代币，当前 ${state.token}`);
       tokenTrigger.querySelector('[data-current-token-mark]').dataset.currentTokenMark = state.token;
       document.querySelectorAll('#token-menu [data-token]').forEach((option) => {
@@ -1638,12 +1639,18 @@
 
     function selectToken(token) {
       if (!Object.hasOwn(state.balances, token)) return;
+      if (state.token === token) {
+        closeTokenMenu({ restoreFocus: true });
+        announce(`当前已是 ${token}`);
+        return;
+      }
       state.token = token;
       state.amount = '';
       state.pendingOperation = null;
       amountInput.value = '';
       closeTokenMenu({ restoreFocus: true });
       renderComposer();
+      rebuildGalleries();
       announce(`已选择 ${token}`);
     }
 
@@ -1785,6 +1792,7 @@
       document.querySelectorAll('[data-screen]').forEach((screen) => { screen.inert = false; });
       showScreen('composer');
       renderComposer();
+      rebuildGalleries();
       announce('原型已重置');
     }
 
@@ -1816,7 +1824,7 @@
       else closeTokenMenu();
     });
     tokenTrigger.addEventListener('keydown', (event) => {
-      if (event.key !== 'ArrowDown') return;
+      if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
       event.preventDefault();
       openTokenMenu({ focusSelected: true });
     });
@@ -1834,6 +1842,9 @@
         event.preventDefault();
         options[event.key === 'Home' ? 0 : options.length - 1].focus();
       }
+    });
+    tokenMenu.addEventListener('focusout', (event) => {
+      if (!event.relatedTarget || !document.querySelector('.token-picker').contains(event.relatedTarget)) closeTokenMenu();
     });
     reviewButton.addEventListener('click', openReview);
     document.getElementById('close-review').addEventListener('click', closeReview);
@@ -1917,6 +1928,8 @@
     function isolateGalleryView(view) {
       const phone = document.querySelector('.phone').cloneNode(true);
       phone.classList.add('gallery-phone');
+      phone.querySelector('#token-menu')?.remove();
+      const balances = currentBalances();
       const targetScreen = view === 'review' || view === 'failure' || view.startsWith('composer')
         ? 'composer'
         : view;
@@ -1936,23 +1949,23 @@
         phone.querySelector('[data-source-name]').textContent = '合约账户';
         phone.querySelector('[data-destination-name]').textContent = '资金账户';
         const routeNodes = phone.querySelectorAll('.route-node');
-        routeNodes[0].querySelector('.route-balance strong').textContent = '0.00 USDC';
-        routeNodes[1].querySelector('.route-balance strong').textContent = '20.00 USDC';
-        phone.querySelector('[data-available-balance]').textContent = '0.00 USDC';
+        routeNodes[0].querySelector('.route-balance strong').textContent = formatAmount(balances.contract);
+        routeNodes[1].querySelector('.route-balance strong').textContent = formatAmount(balances.fund);
+        phone.querySelector('[data-available-balance]').textContent = formatAmount(balances.contract);
       }
 
       if (view === 'review') {
         phone.querySelector('#amount-input').value = '10';
-        phone.querySelector('[data-estimated-balance]').textContent = '10.00 USDC';
-        phone.querySelector('[data-review-amount]').textContent = '10.00 USDC';
-        phone.querySelector('[data-review-source-after]').textContent = '10.00 USDC';
-        phone.querySelector('[data-review-destination-after]').textContent = '10.00 USDC';
+        phone.querySelector('[data-estimated-balance]').textContent = formatAmount(balances.contract + 10);
+        phone.querySelector('[data-review-amount]').textContent = formatAmount(10);
+        phone.querySelector('[data-review-source-after]').textContent = formatAmount(balances.fund - 10);
+        phone.querySelector('[data-review-destination-after]').textContent = formatAmount(balances.contract + 10);
       }
 
       if (view === 'success') {
-        phone.querySelector('[data-receipt-amount]').textContent = '10.00 USDC';
-        phone.querySelector('[data-success-fund-balance]').textContent = '10.00 USDC';
-        phone.querySelector('[data-success-contract-balance]').textContent = '10.00 USDC';
+        phone.querySelector('[data-receipt-amount]').textContent = formatAmount(10);
+        phone.querySelector('[data-success-fund-balance]').textContent = formatAmount(balances.fund - 10);
+        phone.querySelector('[data-success-contract-balance]').textContent = formatAmount(balances.contract + 10);
       }
 
       freezeGalleryPhone(phone);
@@ -2001,12 +2014,12 @@
     function buildErrorGallery() {
       const definitions = [
         {
-          view: 'composer-fund', title: 'E01 · 金额格式错误', detail: '仅支持大于 0、最多六位小数的 USDC 金额',
+          view: 'composer-fund', title: 'E01 · 金额格式错误', detail: `仅支持大于 0、最多六位小数的 ${state.token} 金额`,
           decorate: (phone) => setComposerError(phone, '--', '请输入有效的划转金额')
         },
         {
           view: 'composer-fund', title: 'E02 · 低于最低金额', detail: '保留输入并说明最低划转门槛',
-          decorate: (phone) => setComposerError(phone, '5', '最低划转 10 USDC')
+          decorate: (phone) => setComposerError(phone, '5', `最低划转 10 ${state.token}`)
         },
         {
           view: 'composer-fund', title: 'E03 · 可用余额不足', detail: '明确当前来源账户余额不足',
@@ -2030,8 +2043,14 @@
       definitions.forEach((definition) => grid.append(createGalleryCard(definition, true)));
     }
 
-    buildScreenGallery();
-    buildErrorGallery();
+    function rebuildGalleries() {
+      document.getElementById('gallery-grid').replaceChildren();
+      document.getElementById('error-gallery-grid').replaceChildren();
+      buildScreenGallery();
+      buildErrorGallery();
+    }
+
+    rebuildGalleries();
   </script>
 </body>
 </html>
