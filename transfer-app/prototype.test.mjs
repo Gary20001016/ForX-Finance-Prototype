@@ -2,16 +2,16 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
+import { existsSync } from 'node:fs';
 
 const require = createRequire(import.meta.url);
 const { chromium } = require('playwright');
 let browser;
 
 test.before(async () => {
-  browser = await chromium.launch({
-    headless: true,
-    executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
-  });
+  const chromePath = process.env.CHROME_PATH || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
+  const launchOptions = existsSync(chromePath) ? { executablePath: chromePath } : {};
+  browser = await chromium.launch({ headless: true, ...launchOptions });
 });
 
 test.after(async () => {
@@ -42,12 +42,13 @@ test('standalone prototype uses the approved account model and format', async ()
 });
 
 async function withPage(run, viewport = { width: 1280, height: 1000 }) {
-  const page = await browser.newPage({ viewport });
+  const context = await browser.newContext({ viewport });
+  const page = await context.newPage();
   try {
     await page.goto(htmlPath.href);
     await run(page);
   } finally {
-    await page.close();
+    await context.close();
   }
 }
 
@@ -85,6 +86,18 @@ test('swaps the fixed source and destination accounts', async () => {
   });
 });
 
+test('calculates percentage shortcuts and Max from the source balance', async () => {
+  await withPage(async (page) => {
+    await page.locator('[data-percentage="0.25"]').click();
+    assert.equal(await page.locator('#amount-input').inputValue(), '5');
+    assert.match(await page.locator('#amount-error').textContent(), /最低划转 10 USDC/);
+    await page.locator('[data-percentage="1"]').click();
+    assert.equal(await page.locator('#amount-input').inputValue(), '20');
+    assert.equal(await page.locator('[data-estimated-balance]').textContent(), '20.00 USDC');
+    assert.equal(await page.locator('#review-transfer').isEnabled(), true);
+  });
+});
+
 test('opens a transfer review for a valid amount', async () => {
   await withPage(async (page) => {
     await page.locator('#amount-input').fill('10');
@@ -93,6 +106,22 @@ test('opens a transfer review for a valid amount', async () => {
     await page.locator('[data-layer="review"]:visible').waitFor();
     assert.match(await page.locator('[data-review-route]').textContent(), /资金账户[\s\S]*合约账户/);
     assert.match(await page.locator('[data-review-amount]').textContent(), /10\.00 USDC/);
+  });
+});
+
+test('traps focus inside review and restores it on Escape', async () => {
+  await withPage(async (page) => {
+    await page.locator('#amount-input').fill('10');
+    await page.locator('#review-transfer').click();
+    await page.locator('#edit-transfer').focus();
+    await page.keyboard.press('Tab');
+    assert.equal(await page.evaluate(() => document.activeElement?.id), 'close-review');
+    await page.locator('#close-review').focus();
+    await page.keyboard.press('Shift+Tab');
+    assert.equal(await page.evaluate(() => document.activeElement?.id), 'edit-transfer');
+    await page.keyboard.press('Escape');
+    assert.equal(await page.locator('[data-layer="review"]').isHidden(), true);
+    assert.equal(await page.evaluate(() => document.activeElement?.id), 'review-transfer');
   });
 });
 
@@ -108,6 +137,20 @@ test('moves balances exactly once after a successful transfer', async () => {
     assert.equal(await page.locator('[data-account-balance="contract"]').first().textContent(), '10.00 USDC');
     await page.waitForTimeout(1100);
     assert.equal(await page.locator('[data-account-balance="fund"]').first().textContent(), '10.00 USDC');
+  });
+});
+
+test('uses one consistent precision from review through receipt and balances', async () => {
+  await withPage(async (page) => {
+    await page.locator('#amount-input').fill('10.123456');
+    await page.locator('#review-transfer').click();
+    assert.equal(await page.locator('[data-review-amount]').textContent(), '10.123456 USDC');
+    assert.equal(await page.locator('[data-review-source-after]').textContent(), '9.876544 USDC');
+    await page.locator('#confirm-transfer').click();
+    await page.locator('[data-screen="success"]:visible').waitFor();
+    assert.equal(await page.locator('[data-receipt-amount]').textContent(), '10.123456 USDC');
+    assert.equal(await page.locator('[data-success-fund-balance]').textContent(), '9.876544 USDC');
+    assert.equal(await page.locator('[data-success-contract-balance]').textContent(), '10.123456 USDC');
   });
 });
 
@@ -127,6 +170,23 @@ test('preserves balances on failure and succeeds on retry', async () => {
   });
 });
 
+test('traps focus inside failure and returns to editing on Escape', async () => {
+  await withPage(async (page) => {
+    await page.evaluate(() => window.transferPrototype.armFailure());
+    await page.locator('#amount-input').fill('10');
+    await page.locator('#review-transfer').click();
+    await page.locator('#confirm-transfer').click();
+    await page.locator('[data-layer="failure"]:visible').waitFor();
+    await page.locator('#failure-edit').focus();
+    await page.keyboard.press('Tab');
+    assert.equal(await page.evaluate(() => document.activeElement?.id), 'retry-transfer');
+    await page.keyboard.press('Escape');
+    assert.equal(await page.locator('[data-screen="composer"]').isVisible(), true);
+    assert.equal(await page.locator('#amount-input').inputValue(), '10');
+    assert.equal(await page.evaluate(() => document.activeElement?.id), 'amount-input');
+  });
+});
+
 test('reset restores the starting route and balances', async () => {
   await withPage(async (page) => {
     await page.locator('#swap-route').click();
@@ -134,6 +194,52 @@ test('reset restores the starting route and balances', async () => {
     assert.equal(await page.locator('[data-source-name]').textContent(), '资金账户');
     assert.equal(await page.locator('[data-account-balance="fund"]').first().textContent(), '20.00 USDC');
     assert.equal(await page.locator('[data-account-balance="contract"]').first().textContent(), '0.00 USDC');
+  });
+});
+
+test('reset during processing cancels the pending transfer', async () => {
+  await withPage(async (page) => {
+    await page.locator('#amount-input').fill('10');
+    await page.locator('#review-transfer').click();
+    await page.locator('#confirm-transfer').click();
+    await page.locator('[data-screen="processing"]:visible').waitFor();
+    await page.locator('#prototype-reset').click();
+    await page.waitForTimeout(1000);
+    assert.equal(await page.locator('[data-screen="composer"]').isVisible(), true);
+    assert.equal(await page.locator('[data-account-balance="fund"]').first().textContent(), '20.00 USDC');
+    assert.equal(await page.locator('[data-account-balance="contract"]').first().textContent(), '0.00 USDC');
+  });
+});
+
+test('preserves input while temporary unavailability disables submission', async () => {
+  await withPage(async (page) => {
+    await page.locator('#amount-input').fill('10');
+    await page.evaluate(() => window.transferPrototype.setUnavailable(true));
+    assert.equal(await page.locator('#amount-input').inputValue(), '10');
+    assert.equal(await page.locator('#review-transfer').isDisabled(), true);
+    assert.match(await page.locator('#availability-warning').textContent(), /划转服务暂时不可用/);
+    await page.evaluate(() => window.transferPrototype.setUnavailable(false));
+    assert.equal(await page.locator('#availability-warning').isHidden(), true);
+    assert.equal(await page.locator('#review-transfer').isEnabled(), true);
+  });
+});
+
+test('completes a reverse transfer after transfer again using Max', async () => {
+  await withPage(async (page) => {
+    await page.locator('#amount-input').fill('10');
+    await page.locator('#review-transfer').click();
+    await page.locator('#confirm-transfer').click();
+    await page.locator('[data-screen="success"]:visible').waitFor();
+    await page.locator('#transfer-again').click();
+    await page.locator('#swap-route').click();
+    await page.locator('[data-percentage="1"]').click();
+    assert.equal(await page.locator('#amount-input').inputValue(), '10');
+    await page.locator('#review-transfer').click();
+    assert.match(await page.locator('[data-review-route]').textContent(), /合约账户[\s\S]*资金账户/);
+    await page.locator('#confirm-transfer').click();
+    await page.locator('[data-screen="success"]:visible').waitFor();
+    assert.equal(await page.locator('[data-success-fund-balance]').textContent(), '20.00 USDC');
+    assert.equal(await page.locator('[data-success-contract-balance]').textContent(), '0.00 USDC');
   });
 });
 
@@ -162,4 +268,23 @@ test('keeps the phone usable at a 390 by 844 viewport', async () => {
     assert.equal(await page.locator('#amount-input').isVisible(), true);
     assert.equal(await page.locator('#review-transfer').isVisible(), true);
   }, { width: 390, height: 844 });
+});
+
+test('marks out-of-scope navigation controls as unavailable', async () => {
+  await withPage(async (page) => {
+    assert.equal(await page.locator('[aria-label^="返回"]').first().isDisabled(), true);
+    assert.equal(await page.locator('[aria-label^="划转记录"]').first().isDisabled(), true);
+  });
+});
+
+test('does not create horizontal overflow at 320 pixels', async () => {
+  await withPage(async (page) => {
+    const dimensions = await page.evaluate(() => ({
+      viewport: window.innerWidth,
+      document: document.documentElement.scrollWidth,
+      gallerySlot: document.querySelector('.gallery-device-slot')?.getBoundingClientRect().width
+    }));
+    assert.equal(dimensions.document, dimensions.viewport);
+    assert.ok(dimensions.gallerySlot <= 288);
+  }, { width: 320, height: 760 });
 });

@@ -244,6 +244,11 @@
       background: rgba(255, 255, 255, 0.025);
     }
 
+    .icon-button:disabled {
+      opacity: 0.55;
+      cursor: default;
+    }
+
     .back-chevron {
       width: 9px;
       height: 9px;
@@ -608,6 +613,35 @@
     }
 
     .amount-error:empty { display: none; }
+
+    .availability-warning {
+      display: flex;
+      align-items: flex-start;
+      gap: 7px;
+      margin: 12px 2px 0;
+      padding: 10px;
+      border: 1px solid rgba(241, 200, 107, 0.2);
+      border-radius: 12px;
+      color: var(--amber);
+      background: rgba(241, 200, 107, 0.055);
+      font-size: 9px;
+      line-height: 1.45;
+    }
+
+    .availability-warning[hidden] { display: none; }
+
+    .availability-warning::before {
+      display: grid;
+      flex: 0 0 auto;
+      place-items: center;
+      width: 14px;
+      height: 14px;
+      border: 1px solid currentColor;
+      border-radius: 50%;
+      font-size: 8px;
+      font-weight: 800;
+      content: "!";
+    }
 
     .transfer-note {
       display: flex;
@@ -1211,12 +1245,26 @@
     @media (max-width: 430px) {
       .prototype-shell { display: block; min-height: 100svh; padding: 0; }
       .prototype-meta { display: none; }
+      .phone-wrap::before { display: none; }
       .phone { width: 100vw; height: 100svh; min-height: 620px; border: 0; border-radius: 0; }
       .phone::after { display: none; }
       .screen-gallery,
       .error-gallery { padding: 64px 16px 78px; }
       .gallery-device-slot { width: 320px; height: 692px; }
-      .gallery-phone { transform: scale(0.82); }
+      .gallery-phone {
+        width: 390px;
+        height: 844px;
+        min-height: 844px;
+        border: 1px solid var(--line-strong);
+        border-radius: var(--radius-phone);
+        transform: scale(0.82);
+      }
+      .gallery-phone::after { display: block; }
+    }
+
+    @media (max-width: 360px) {
+      .gallery-device-slot { width: 281px; height: 608px; }
+      .gallery-phone { transform: scale(0.72); }
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -1249,9 +1297,9 @@
 
         <section class="screen is-active" data-screen="composer">
           <header class="transfer-bar">
-            <button class="icon-button" type="button" aria-label="返回"><span class="back-chevron" aria-hidden="true"></span></button>
+            <button class="icon-button" type="button" aria-label="返回，原型中不可用" disabled><span class="back-chevron" aria-hidden="true"></span></button>
             <h2 tabindex="-1">账户划转</h2>
-            <button class="icon-button" type="button" aria-label="划转记录"><span class="history-icon" aria-hidden="true"></span></button>
+            <button class="icon-button" type="button" aria-label="划转记录，原型中不可用" disabled><span class="history-icon" aria-hidden="true"></span></button>
           </header>
 
           <main class="transfer-body">
@@ -1296,6 +1344,7 @@
               <p id="amount-error" class="amount-error" aria-live="polite"></p>
             </section>
 
+            <p id="availability-warning" class="availability-warning" aria-live="polite" hidden>划转服务暂时不可用，请稍后再试</p>
             <p class="transfer-note">ForX 内部账户划转不收取手续费，到账后余额会立即更新。</p>
             <button id="review-transfer" class="primary-action" type="button" disabled>检查划转</button>
           </main>
@@ -1417,6 +1466,7 @@
       amount: '',
       minimum: 10,
       fee: 0,
+      available: true,
       busy: false,
       failureArmed: false,
       pendingOperation: null
@@ -1425,16 +1475,23 @@
     const state = initialState();
     const amountInput = document.getElementById('amount-input');
     const amountError = document.getElementById('amount-error');
+    const availabilityWarning = document.getElementById('availability-warning');
     const reviewButton = document.getElementById('review-transfer');
     const reviewLayer = document.querySelector('[data-layer="review"]');
     const failureLayer = document.querySelector('[data-layer="failure"]');
     const reviewTitle = document.getElementById('review-title');
     const liveStatus = document.getElementById('live-status');
     let layerReturnFocus = null;
+    let processingTimer = null;
     const committedOperations = new Set();
 
     function formatAmount(value) {
-      return `${Number(value).toFixed(2)} USDC`;
+      const formatted = Number(value).toLocaleString('en-US', {
+        useGrouping: false,
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 6
+      });
+      return `${formatted} USDC`;
     }
 
     function announce(message) {
@@ -1471,8 +1528,9 @@
 
       const result = validateAmount(state.amount);
       amountError.textContent = result.message;
+      availabilityWarning.hidden = state.available;
       amountInput.setAttribute('aria-invalid', String(result.code !== 'empty' && !result.valid));
-      reviewButton.disabled = !result.valid;
+      reviewButton.disabled = !result.valid || !state.available;
       const estimate = state.balances[state.destination] + (result.valid ? result.value : 0);
       document.querySelectorAll('[data-estimated-balance]').forEach((node) => { node.textContent = formatAmount(estimate); });
     }
@@ -1496,7 +1554,7 @@
 
     function openReview() {
       const result = validateAmount(state.amount);
-      if (!result.valid) return;
+      if (!result.valid || !state.available) return;
       layerReturnFocus = document.activeElement;
       document.querySelector('[data-review-source]').textContent = accountNames[state.source];
       document.querySelector('[data-review-destination]').textContent = accountNames[state.destination];
@@ -1504,12 +1562,14 @@
       document.querySelector('[data-review-source-after]').textContent = formatAmount(state.balances[state.source] - result.value);
       document.querySelector('[data-review-destination-after]').textContent = formatAmount(state.balances[state.destination] + result.value);
       reviewLayer.hidden = false;
+      document.querySelector('[data-screen="composer"]').inert = true;
       window.setTimeout(() => reviewTitle.focus({ preventScroll: true }), 0);
       announce('已打开划转核对');
     }
 
     function closeReview() {
       reviewLayer.hidden = true;
+      document.querySelector('[data-screen="composer"]').inert = false;
       layerReturnFocus?.focus({ preventScroll: true });
       announce('已返回划转编辑');
     }
@@ -1535,9 +1595,11 @@
 
     function showFailure(operation) {
       state.busy = false;
+      layerReturnFocus = amountInput;
       document.querySelector('[data-failure-source]').textContent = accountNames[operation.source];
       document.querySelector('[data-failure-destination]').textContent = accountNames[operation.destination];
       failureLayer.hidden = false;
+      document.querySelector('[data-screen="processing"]').inert = true;
       window.setTimeout(() => document.getElementById('failure-title').focus({ preventScroll: true }), 0);
       announce('划转暂未完成，余额未发生变化');
     }
@@ -1559,11 +1621,14 @@
       const operation = state.pendingOperation;
       state.busy = true;
       reviewLayer.hidden = true;
+      document.querySelector('[data-screen="composer"]').inert = false;
       failureLayer.hidden = true;
       showScreen('processing');
       announce('正在更新账户余额');
 
-      window.setTimeout(() => {
+      window.clearTimeout(processingTimer);
+      processingTimer = window.setTimeout(() => {
+        processingTimer = null;
         if (state.failureArmed) {
           state.failureArmed = false;
           showFailure(operation);
@@ -1581,16 +1646,20 @@
       state.pendingOperation = null;
       failureLayer.hidden = true;
       reviewLayer.hidden = true;
+      document.querySelectorAll('[data-screen]').forEach((screen) => { screen.inert = false; });
       showScreen('composer');
       renderComposer();
     }
 
     function resetPrototype() {
+      window.clearTimeout(processingTimer);
+      processingTimer = null;
       Object.assign(state, initialState());
       committedOperations.clear();
       amountInput.value = '';
       failureLayer.hidden = true;
       reviewLayer.hidden = true;
+      document.querySelectorAll('[data-screen]').forEach((screen) => { screen.inert = false; });
       showScreen('composer');
       renderComposer();
       announce('原型已重置');
@@ -1624,16 +1693,47 @@
     document.getElementById('edit-transfer').addEventListener('click', closeReview);
     document.getElementById('confirm-transfer').addEventListener('click', () => processTransfer());
     document.getElementById('retry-transfer').addEventListener('click', () => processTransfer({ retry: true }));
-    document.getElementById('failure-edit').addEventListener('click', () => returnToComposer({ clearAmount: false }));
+    function closeFailureForEdit() {
+      returnToComposer({ clearAmount: false });
+      window.setTimeout(() => amountInput.focus({ preventScroll: true }), 0);
+    }
+
+    document.getElementById('failure-edit').addEventListener('click', closeFailureForEdit);
     document.getElementById('done-transfer').addEventListener('click', () => returnToComposer());
     document.getElementById('transfer-again').addEventListener('click', () => returnToComposer());
     document.getElementById('prototype-reset').addEventListener('click', resetPrototype);
     document.addEventListener('keydown', (event) => {
-      if (event.key === 'Escape' && !reviewLayer.hidden) closeReview();
+      const activeLayer = !failureLayer.hidden ? failureLayer : !reviewLayer.hidden ? reviewLayer : null;
+      if (!activeLayer) return;
+
+      if (event.key === 'Escape') {
+        if (activeLayer === reviewLayer) closeReview();
+        else closeFailureForEdit();
+        return;
+      }
+
+      if (event.key !== 'Tab') return;
+      const focusable = [...activeLayer.querySelectorAll('button:not(:disabled), input:not(:disabled), [tabindex]:not([tabindex="-1"])')]
+        .filter((node) => !node.hidden);
+      if (!focusable.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && (document.activeElement === first || !activeLayer.contains(document.activeElement))) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && (document.activeElement === last || !activeLayer.contains(document.activeElement))) {
+        event.preventDefault();
+        first.focus();
+      }
     });
 
     window.transferPrototype = {
-      armFailure() { state.failureArmed = true; }
+      armFailure() { state.failureArmed = true; },
+      setUnavailable(unavailable) {
+        state.available = !unavailable;
+        renderComposer();
+        announce(unavailable ? '划转服务暂时不可用' : '划转服务已恢复');
+      }
     };
 
     renderComposer();
