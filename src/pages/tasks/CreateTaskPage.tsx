@@ -7,11 +7,13 @@ import TaskSummary from './TaskSummary';
 import { openPrototypeDialog } from '../../utils/prototypeActions';
 
 const FormItem = Form.Item;
-const channels = ['站内信','Push','邮件','短信'];
+const channels = ['Web 站内信','App Push（预留）'];
+const categoryOptions = ['系统公告','交易通知','资产通知','安全通知','奖励通知','活动通知','风控通知'];
 
 export default function CreateTaskPage() {
   const navigate = useNavigate();
   const [current, setCurrent] = useState(0);
+  const [audienceType, setAudienceType] = useState('all');
   const [form] = Form.useForm();
 
   const next = async () => {
@@ -25,11 +27,11 @@ export default function CreateTaskPage() {
     <PageHeader eyebrow="CREATE CAMPAIGN" title="新建消息任务" description="所有内容与发送配置在提交审核后锁定，修改将使审批失效。" actions={<><Button icon={<IconSave />} onClick={() => Message.success('草稿已保存在本地原型')}>保存草稿</Button><Button icon={<IconArrowLeft />} onClick={() => navigate('/tasks')}>返回列表</Button></>} />
     <Card bordered={false} className="surface wizard-shell">
       <Steps current={current} lineless labelPlacement="vertical" className="task-steps"><Steps.Step title="基础信息与模板" description="定义任务与内容"/><Steps.Step title="目标用户" description="配置受众与排除"/><Steps.Step title="发送策略" description="时间、频控与降级"/><Steps.Step title="检查并提交" description="风险和审批链"/></Steps>
-      <Form form={form} layout="vertical" initialValues={{ nature:'营销', risk:'中', locales:['zh-CN','en-US'], channels:['Push','邮件'], audienceType:'segment', timezone:'Asia/Shanghai', priority:'普通', quiet:'遵守并延迟', relation:'顺序降级', dedupe:true, rate:1200 }}>
+      <Form form={form} layout="vertical" initialValues={{ nature:'事务', risk:'中', locales:['zh-CN','en-US'], channels:['Web 站内信'], audienceType:'all', timezone:'Asia/Shanghai', priority:'普通', quiet:'遵守并延迟', dedupe:true, rate:1200 }}>
         {current===0 && <div className="form-section"><h3>任务基础信息</h3><p>内部识别信息不会展示给终端用户。</p><Grid.Row gutter={20}>
           <Grid.Col xs={24} md={12}><FormItem label="任务名称" field="name" required rules={[{required:true,message:'请输入任务名称'}]}><Input placeholder="例如：夏季交易赛召回" maxLength={100} showWordLimit /></FormItem></Grid.Col>
           <Grid.Col xs={24} md={12}><FormItem label="业务线" field="business" required><Select placeholder="选择业务线"><Select.Option value="growth">增长运营</Select.Option><Select.Option value="wallet">资金平台</Select.Option><Select.Option value="risk">风险控制</Select.Option></Select></FormItem></Grid.Col>
-          <Grid.Col xs={24} md={8}><FormItem label="消息分类" field="category" required><Select placeholder="选择分类"><Select.Option value="operation">产品运营</Select.Option><Select.Option value="security">账户安全</Select.Option><Select.Option value="fund">资金通知</Select.Option></Select></FormItem></Grid.Col>
+          <Grid.Col xs={24} md={8}><FormItem label="消息分类" field="category" required><Select placeholder="选择分类">{categoryOptions.map((item)=><Select.Option key={item} value={item}>{item}</Select.Option>)}</Select></FormItem></Grid.Col>
           <Grid.Col xs={24} md={8}><FormItem label="消息性质" field="nature"><Radio.Group type="button"><Radio value="事务">事务</Radio><Radio value="营销">营销</Radio></Radio.Group></FormItem></Grid.Col>
           <Grid.Col xs={24} md={8}><FormItem label="风险等级" field="risk"><Select disabled><Select.Option value="中">中 · 系统自动判定</Select.Option></Select></FormItem></Grid.Col>
         </Grid.Row><div className="section-divider"/><h3>模板与渠道</h3><Grid.Row gutter={20}>
@@ -38,8 +40,8 @@ export default function CreateTaskPage() {
           <Grid.Col span={24}><FormItem label="发送渠道" field="channels"><Checkbox.Group options={channels}/></FormItem><Alert type="info" content="营销邮件与短信会根据目标地区自动插入退订入口和法定文案。"/></Grid.Col>
         </Grid.Row></div>}
         {current===1 && <div className="form-section"><h3>目标用户</h3><p>发送前会再次校验最新授权、退订和抑制名单。</p><Grid.Row gutter={20}>
-          <Grid.Col span={24}><FormItem label="受众方式" field="audienceType"><Radio.Group type="button"><Radio value="all">全部用户</Radio><Radio value="segment">已有分群</Radio><Radio value="conditions">临时条件</Radio><Radio value="upload">上传名单</Radio></Radio.Group></FormItem></Grid.Col>
-          <Grid.Col xs={24} md={12}><FormItem label="目标分群" field="segment" required><Select placeholder="选择分群"><Select.Option value="silent">近30天沉默交易用户 · 328,400</Select.Option><Select.Option value="new">注册后24小时未入金 · 47,280</Select.Option></Select></FormItem></Grid.Col>
+          <Grid.Col span={24}><FormItem label="受众方式" field="audienceType"><Radio.Group type="button" onChange={setAudienceType}><Radio value="all">全部用户</Radio><Radio value="uid">指定用户</Radio><Radio value="vip">指定 VIP</Radio><Radio value="agent">指定代理</Radio><Radio value="campaign">活动参与用户</Radio></Radio.Group></FormItem></Grid.Col>
+          <Grid.Col xs={24} md={12}>{audienceType==='uid'?<FormItem label="用户 UID" required><Input.TextArea placeholder="每行一个 UID，或上传名单"/></FormItem>:audienceType==='vip'?<FormItem label="VIP 等级" required><Select mode="multiple" placeholder="选择 VIP 等级">{['VIP 1-3','VIP 4-6','VIP 7-9'].map(x=><Select.Option key={x} value={x}>{x}</Select.Option>)}</Select></FormItem>:audienceType==='agent'?<FormItem label="代理范围" required><Input placeholder="输入代理 UID 或选择代理层级"/></FormItem>:audienceType==='campaign'?<FormItem label="活动参与用户" required><Select placeholder="选择活动及参与状态"><Select.Option value="summer-joined">夏季交易赛 · 已报名</Select.Option><Select.Option value="summer-finished">夏季交易赛 · 已完成任务</Select.Option></Select></FormItem>:<FormItem label="全站范围"><Select defaultValue="active"><Select.Option value="active">全部有效用户</Select.Option><Select.Option value="trading">近30天活跃用户</Select.Option></Select></FormItem>}</Grid.Col>
           <Grid.Col xs={24} md={12}><FormItem label="排除分群" field="exclude"><Select mode="multiple" placeholder="可选择多个排除分群"><Select.Option value="eu-optout">EU 营销退订 · 120,480</Select.Option><Select.Option value="risk">高风险账户 · 8,241</Select.Option></Select></FormItem></Grid.Col>
           <Grid.Col xs={24} md={12}><FormItem label="目标国家/地区" field="regions"><Select mode="multiple" placeholder="选择地区"><Select.Option value="SG">Singapore</Select.Option><Select.Option value="EU">EU/EEA</Select.Option><Select.Option value="TR">Türkiye</Select.Option></Select></FormItem></Grid.Col>
           <Grid.Col xs={24} md={12}><FormItem label="用户去重" field="dedupe" triggerPropName="checked"><Switch checkedText="按 UID 去重" uncheckedText="关闭"/></FormItem></Grid.Col>
@@ -51,10 +53,10 @@ export default function CreateTaskPage() {
           <Grid.Col xs={24} md={8}><FormItem label="优先级" field="priority"><Select><Select.Option value="普通">普通</Select.Option><Select.Option value="高">高</Select.Option><Select.Option value="紧急">紧急（需授权）</Select.Option></Select></FormItem></Grid.Col>
           <Grid.Col xs={24} md={8}><FormItem label="安静时段策略" field="quiet"><Select><Select.Option value="遵守并延迟">遵守并延迟</Select.Option><Select.Option value="命中后跳过">命中后跳过</Select.Option></Select></FormItem></Grid.Col>
           <Grid.Col xs={24} md={8}><FormItem label="频控策略" field="frequency"><Select placeholder="选择策略"><Select.Option value="global">全球营销 · 3次/24h</Select.Option><Select.Option value="campaign">活动级 · 1次/7d</Select.Option></Select></FormItem></Grid.Col>
-          <Grid.Col xs={24} md={8}><FormItem label="渠道关系" field="relation"><Select><Select.Option value="顺序降级">顺序降级</Select.Option><Select.Option value="并行发送">并行发送</Select.Option><Select.Option value="用户偏好">按用户偏好</Select.Option></Select></FormItem></Grid.Col>
+          <Grid.Col xs={24} md={8}><FormItem label="消息有效期" field="expireAt"><DatePicker showTime style={{width:'100%'}} placeholder="到期后停止跳转"/></FormItem></Grid.Col>
           <Grid.Col xs={24} md={8}><FormItem label="发送速率（每秒）" field="rate"><InputNumber min={1} max={5000} style={{width:'100%'}}/></FormItem></Grid.Col>
           <Grid.Col xs={24} md={8}><FormItem label="本地发送时间" field="localTime"><TimePicker style={{width:'100%'}}/></FormItem></Grid.Col>
-        </Grid.Row><Alert type="warning" title="自动熔断已启用" content="5 分钟窗口内永久失败率 > 5% 或投诉率 > 0.1% 时，系统自动暂停任务。"/></div>}
+        </Grid.Row><Space style={{marginBottom:16}}><Tag color="arcoblue">Web 站内信</Tag><Tag color="gray">App Push（预留）</Tag></Space><Alert type="warning" title="风险与有效期检查" content="全站或紧急消息将升级为业务 + 风控双审；超过有效期后不再生成新消息。"/></div>}
         {current===3 && <TaskSummary />}
       </Form>
       <div className="wizard-footer"><Button disabled={current===0} onClick={() => setCurrent(v=>v-1)}>上一步</Button><Space><Button onClick={() => Message.info('测试消息已加入模拟发送队列')}>测试发送</Button>{current<3?<Button type="primary" onClick={next}>下一步</Button>:<Button type="primary" icon={<IconCheck/>} onClick={() => Message.success('任务已提交一级审核')}>提交审核</Button>}</Space></div>

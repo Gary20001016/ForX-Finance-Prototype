@@ -6,7 +6,29 @@ import type {
   DeliveryRecord,
   MessageTask,
   MessageTemplate,
+  MessageCategory,
+  UserMessage,
 } from '../domain/types';
+
+export const messageCategories: MessageCategory[] = [
+  { code:'system_notice', name:'系统公告', color:'gray', defaultRisk:'普通' },
+  { code:'trade_notice', name:'交易通知', color:'blue', defaultRisk:'普通' },
+  { code:'asset_notice', name:'资产通知', color:'green', defaultRisk:'重要' },
+  { code:'security_notice', name:'安全通知', color:'orange', defaultRisk:'重要' },
+  { code:'reward_notice', name:'奖励通知', color:'gold', defaultRisk:'普通' },
+  { code:'campaign_notice', name:'活动通知', color:'purple', defaultRisk:'普通' },
+  { code:'risk_notice', name:'风控通知', color:'red', defaultRisk:'紧急' },
+];
+
+export const userMessages: UserMessage[] = [
+  { id:'UM-1001', title:'BTC/USDT 强平风险预警', summary:'您的合约账户保证金率已降至 18.6%，请及时处理仓位。', body:'BTC/USDT 永续仓位当前保证金率为 18.6%，标记价格为 58,420.5 USDT。市场波动可能导致仓位被强制平仓，请及时追加保证金或降低仓位。', category:'risk_notice', createdAt:'今天 18:06', read:false, risk:'紧急', source:'系统事件', actionText:'查看仓位', targetUrl:'/futures/positions', expiresAt:'2026-07-13 20:06' },
+  { id:'UM-1002', title:'充值到账 1,250 USDT', summary:'您充值的 1,250 USDT 已到账，可以开始交易。', body:'充值网络 TRON，到账金额 1,250 USDT，到账时间 2026-07-13 17:52 UTC+8。', category:'asset_notice', createdAt:'今天 17:52', read:false, risk:'重要', source:'系统事件', actionText:'查看资产', targetUrl:'/wallet/assets' },
+  { id:'UM-1003', title:'ETH/USDT 订单已成交', summary:'买入 2.5 ETH，成交均价 3,248.20 USDT。', body:'您的 ETH/USDT 限价买单已全部成交。成交数量 2.5 ETH，成交均价 3,248.20 USDT。', category:'trade_notice', createdAt:'今天 16:28', read:true, risk:'普通', source:'系统事件', actionText:'查看订单', targetUrl:'/orders' },
+  { id:'UM-1004', title:'检测到新的登录设备', summary:'您的账户在 macOS · Singapore 登录。', body:'如果本次登录不是您本人操作，请立即冻结账户并修改密码。', category:'security_notice', createdAt:'今天 14:10', read:false, risk:'重要', source:'系统事件', actionText:'管理设备', targetUrl:'/security/devices' },
+  { id:'UM-1005', title:'500 USDT 体验金已到账', summary:'合约体验金有效期至 2026-07-20。', body:'您获得的 500 USDT 合约体验金已经到账，请在有效期内使用。', category:'reward_notice', createdAt:'昨天 20:30', read:true, risk:'普通', source:'系统事件', actionText:'查看奖励', targetUrl:'/rewards' },
+  { id:'UM-1006', title:'夏季交易赛正式开启', summary:'完成交易任务，瓜分 500,000 USDT 奖池。', body:'夏季交易赛已正式开启。活动期间完成指定交易量即可解锁奖励。', category:'campaign_notice', createdAt:'昨天 10:00', read:false, risk:'普通', source:'人工发送', actionText:'查看活动', targetUrl:'/campaigns/summer-trade' },
+  { id:'UM-1007', title:'ETH 网络维护完成', summary:'ETH 充值与提现服务已恢复。', body:'ETH 网络维护已经完成，充值与提现服务均已恢复正常。', category:'system_notice', createdAt:'07-12 08:40', read:true, risk:'普通', source:'人工发送' },
+];
 
 export const tasks: MessageTask[] = [
   { id: 'MSG-260712-001', name: '提现安全通知', type: '事件触发', category: '资金通知', nature: '强事务', risk: '关键', template: 'withdraw_success v12', channels: ['站内信','Push','邮件','短信'], audience: '事件用户', audienceCount: 18420, schedule: '实时', status: '发送中', approval: '双审通过', progress: 82, successRate: 99.8, creator: '系统事件', team: '资金平台' },

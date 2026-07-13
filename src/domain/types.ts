@@ -108,3 +108,28 @@ export interface CompliancePolicy {
   status: string;
   effectiveAt: string;
 }
+
+export type MessageCategoryCode = 'system_notice' | 'trade_notice' | 'asset_notice' | 'security_notice' | 'reward_notice' | 'campaign_notice' | 'risk_notice';
+export type MessageRisk = '普通' | '重要' | '紧急';
+
+export interface MessageCategory {
+  code: MessageCategoryCode;
+  name: string;
+  color: string;
+  defaultRisk: MessageRisk;
+}
+
+export interface UserMessage {
+  id: string;
+  title: string;
+  summary: string;
+  body: string;
+  category: MessageCategoryCode;
+  createdAt: string;
+  read: boolean;
+  risk: MessageRisk;
+  source: '系统事件' | '人工发送';
+  actionText?: string;
+  targetUrl?: string;
+  expiresAt?: string;
+}

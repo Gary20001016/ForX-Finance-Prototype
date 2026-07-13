@@ -44,7 +44,7 @@ function TemplateForm() {
     <Grid.Row gutter={16}><Col span={8}><Item label="风险等级" field="risk"><Select>{select(['低','中','高','关键'])}</Select></Item></Col><Col span={8}><Item label="默认语言" field="defaultLocale"><Select>{select(['en-US','zh-CN','zh-TW','ja-JP'])}</Select></Item></Col><Col span={8}><Item label="所有者团队" field="owner"><Select>{select(['增长运营','安全中心','资金平台','资产运营'])}</Select></Item></Col></Grid.Row>
     <Item label="支持渠道" field="channels"><Checkbox.Group options={['站内信','Push','邮件','短信']} /></Item>
     <Item label="使用方式" field="usage"><Checkbox.Group options={['运营群发','事件触发','自动化流程']} /></Item>
-    <div className="condition-builder"><div className="condition-head"><strong>模板变量</strong><Tag>2 个变量</Tag></div><Grid.Row gutter={10}><Col span={8}><Input defaultValue="amount" prefix="{{" suffix="}}" /></Col><Col span={6}><Select defaultValue="decimal">{select(['string','decimal','datetime','currency','url'])}</Select></Col><Col span={6}><Input defaultValue="1000.00" placeholder="示例值" /></Col><Col span={4}><Switch defaultChecked checkedText="必填" /></Col></Grid.Row></div>
+    <div className="condition-builder"><div className="condition-head"><strong>标准模板变量</strong><Tag>5 个变量</Tag></div><Space wrap>{['user_nickname · string','amount · decimal','currency · string','symbol · string','occurred_at · datetime'].map(item=><Tag key={item} color="arcoblue">{`{{ ${item} }}`}</Tag>)}</Space></div>
   </Form>;
 }
 

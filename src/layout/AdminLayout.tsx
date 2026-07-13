@@ -64,7 +64,7 @@ export default function AdminLayout() {
         {!collapsed && (
           <div className="sider-health">
             <span className="health-dot" />
-            <div><strong>渠道运行正常</strong><span>4/4 可用</span></div>
+            <div><strong>Web 站内信正常</strong><span>Push 已预留</span></div>
           </div>
         )}
       </Sider>
@@ -83,12 +83,13 @@ export default function AdminLayout() {
             </Breadcrumb>
           </Space>
           <div className="header-actions">
-            <Tag color="gray" bordered><span className="env-dot" />PROD · 只读原型</Tag>
+            <Button size="small" type="outline" onClick={() => navigate('/inbox')}>用户消息中心</Button>
+            <Tag color="gray" bordered><span className="env-dot" />V2 · 前端原型</Tag>
             <Input
               className="global-search"
               prefix={<IconSearch />}
               suffix={<span className="search-kbd"><IconCommand /> K</span>}
-              placeholder="搜索任务、模板、用户"
+              placeholder="搜索任务、模板、事件"
             />
             <Typography.Text type="secondary" className="timezone-label">UTC+8</Typography.Text>
             <Badge count={12} dot><Button type="text" icon={<IconNotification />} aria-label="通知" onClick={() => openPrototypeDialog('通知中心', '12 项待处理：5 项审批、3 项渠道告警、4 项系统通知。')} /></Badge>

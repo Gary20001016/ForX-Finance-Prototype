@@ -13,8 +13,12 @@ import AnalyticsPage from '../pages/analytics/AnalyticsPage';
 import ChannelManagementPage from '../pages/channels/ChannelManagementPage';
 import CompliancePage from '../pages/compliance/CompliancePage';
 import SettingsPage from '../pages/settings/SettingsPage';
+import InboxPage from '../pages/inbox/InboxPage';
+import MessageDetailPage from '../pages/inbox/MessageDetailPage';
 
 export const appRouter = createBrowserRouter([
+  { path:'/inbox', element:<InboxPage /> },
+  { path:'/inbox/:messageId', element:<MessageDetailPage /> },
   {
     path: '/',
     element: <AdminLayout />,
