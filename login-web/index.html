@@ -1499,7 +1499,7 @@
       .gallery-phone { transform: scale(0.72); }
     }
 
-    /* Web prototype layout */
+    /* Legacy Web prototype layout */
     .web-mode {
       background:
         radial-gradient(circle at 12% 18%, rgba(83, 215, 130, 0.12), transparent 28%),
@@ -1877,6 +1877,381 @@
         min-height: 680px !important;
       }
     }
+
+    /* Web prototype layout */
+    .web-mode {
+      --modal-standard: 420px;
+      --modal-account: 520px;
+      --modal-guide: 560px;
+      --modal-max-height: min(620px, calc(100svh - 48px));
+      background:
+        radial-gradient(circle at 16% 12%, rgba(83, 215, 130, 0.1), transparent 30%),
+        radial-gradient(circle at 84% 18%, rgba(70, 117, 255, 0.055), transparent 27%),
+        #020403;
+    }
+
+    .web-mode .prototype-shell {
+      display: block;
+      min-height: 100svh;
+      padding: clamp(18px, 3vw, 36px) 20px;
+    }
+
+    .web-mode .prototype-meta { display: none; }
+    .web-mode .phone-wrap { width: min(1080px, 100%); margin: 0 auto; }
+    .web-mode .phone-wrap::before { inset: 10% 6% -4%; opacity: 0.55; }
+
+    .web-mode .phone {
+      width: 100%;
+      height: min(680px, calc(100svh - 48px));
+      min-height: 620px;
+      border-radius: 22px;
+      background: #050806;
+      box-shadow: 0 30px 96px rgba(0, 0, 0, 0.5), inset 0 0 0 1px rgba(255, 255, 255, 0.018);
+    }
+
+    .web-mode .phone-status { display: none; }
+
+    .web-mode .auth-backdrop {
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      overflow: hidden;
+      background:
+        linear-gradient(to right, transparent 24.8%, rgba(255,255,255,.028) 25%, transparent 25.2%, transparent 49.8%, rgba(255,255,255,.028) 50%, transparent 50.2%, transparent 74.8%, rgba(255,255,255,.028) 75%, transparent 75.2%),
+        linear-gradient(to bottom, transparent 24.8%, rgba(255,255,255,.024) 25%, transparent 25.2%, transparent 49.8%, rgba(255,255,255,.024) 50%, transparent 50.2%, transparent 74.8%, rgba(255,255,255,.024) 75%, transparent 75.2%),
+        radial-gradient(circle at 28% 24%, rgba(141, 250, 169, 0.12), transparent 25%),
+        radial-gradient(circle at 76% 74%, rgba(38, 107, 67, 0.12), transparent 30%),
+        linear-gradient(145deg, #0b110d, #040705 62%, #020302);
+      pointer-events: none;
+    }
+
+    .web-mode .auth-backdrop::before,
+    .web-mode .auth-backdrop::after {
+      position: absolute;
+      width: 300px;
+      height: 300px;
+      border-radius: 50%;
+      background: rgba(83, 215, 130, 0.12);
+      filter: blur(90px);
+      content: "";
+    }
+
+    .web-mode .auth-backdrop::before { top: -150px; left: 8%; }
+    .web-mode .auth-backdrop::after { right: 6%; bottom: -170px; opacity: 0.55; }
+
+    .web-mode .screen {
+      inset: 0;
+      overflow: hidden;
+      border-radius: inherit;
+      background: transparent;
+    }
+
+    .web-mode .screen::before {
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      background: rgba(1, 4, 3, 0.76);
+      backdrop-filter: blur(12px);
+      pointer-events: none;
+      content: "";
+    }
+
+    .web-mode .screen > * { z-index: 2; }
+    .web-mode .market-scene,
+    .web-mode .market-headline,
+    .web-mode .guide-visual { display: none; }
+
+    .web-mode .appbar {
+      top: 50%;
+      left: 50%;
+      right: auto;
+      width: min(var(--modal-standard), calc(100% - 32px));
+      min-height: 48px;
+      padding: 0 26px;
+      transform: translate(-50%, -190px);
+    }
+
+    .web-mode .brand { font-size: 12px; }
+    .web-mode .brand-mark { width: 24px; height: 24px; }
+    .web-mode .network-pill { min-height: 22px; font-size: 7px; }
+
+    .web-mode [data-screen="login"] .auth-sheet {
+      left: 50%;
+      right: auto;
+      top: 50%;
+      bottom: auto;
+      width: min(var(--modal-standard), calc(100% - 32px));
+      max-height: var(--modal-max-height);
+      padding: 68px 26px 22px;
+      overflow: auto;
+      border: 1px solid var(--line-strong);
+      border-radius: 20px;
+      background: rgba(14, 18, 16, 0.97);
+      box-shadow: 0 24px 70px rgba(0, 0, 0, 0.48);
+      transform: translate(-50%, -50%);
+    }
+
+    .web-mode .sheet-grabber { display: none; }
+    .web-mode [data-screen="login"] .auth-sheet h2 { font-size: 22px; }
+    .web-mode [data-screen="login"] .auth-sheet > p { margin-bottom: 18px; font-size: 11px; }
+    .web-mode [data-screen="login"] .text-input,
+    .web-mode [data-screen="login"] .primary,
+    .web-mode [data-screen="login"] .secondary { min-height: 46px; }
+
+    .web-mode [data-screen="otp"]::after,
+    .web-mode [data-screen="wallets"]::after,
+    .web-mode [data-screen="signature"]::after,
+    .web-mode [data-screen="success"]::after {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      z-index: 1;
+      width: min(var(--modal-standard), calc(100% - 32px));
+      max-height: var(--modal-max-height);
+      border: 1px solid var(--line-strong);
+      border-radius: 20px;
+      background: rgba(14, 18, 16, 0.97);
+      box-shadow: 0 24px 70px rgba(0, 0, 0, 0.48);
+      transform: translate(-50%, -50%);
+      content: "";
+    }
+
+    .web-mode [data-screen="otp"]::after { height: min(550px, calc(100svh - 48px)); }
+    .web-mode [data-screen="wallets"]::after { height: min(580px, calc(100svh - 48px)); }
+    .web-mode [data-screen="signature"]::after { height: min(570px, calc(100svh - 48px)); }
+    .web-mode [data-screen="success"]::after { height: min(430px, calc(100svh - 48px)); }
+
+    .web-mode .screen-header,
+    .web-mode .screen-body {
+      position: absolute;
+      left: 50%;
+      width: min(calc(var(--modal-standard) - 48px), calc(100% - 64px));
+      margin: 0;
+      padding-inline: 0;
+      transform: translateX(-50%);
+    }
+
+    .web-mode .screen-header { top: calc(50% - 262px); padding-top: 0; }
+    .web-mode .screen-body { top: calc(50% - 106px); }
+    .web-mode .screen-topline { min-height: 44px; margin-bottom: 13px; }
+    .web-mode .screen-title { font-size: 22px; }
+    .web-mode .screen-subtitle { margin-bottom: 12px; font-size: 10px; }
+    .web-mode .otp-form { margin-top: 18px; }
+    .web-mode .otp-fieldset { gap: 7px; }
+    .web-mode .otp-input { height: 46px; font-size: 17px; }
+
+    .web-mode .otp-actions,
+    .web-mode .signature-actions,
+    .web-mode .success-actions {
+      left: 50%;
+      right: auto;
+      bottom: calc(50% - 252px);
+      width: min(calc(var(--modal-standard) - 48px), calc(100% - 64px));
+      transform: translateX(-50%);
+    }
+
+    .web-mode .wallet-list { gap: 8px; margin-top: 14px; }
+    .web-mode .wallet-option { min-height: 52px; padding-inline: 13px; }
+    .web-mode .wallet-footnote {
+      left: 50%;
+      right: auto;
+      bottom: calc(50% - 266px);
+      width: min(calc(var(--modal-standard) - 48px), calc(100% - 64px));
+      transform: translateX(-50%);
+    }
+
+    .web-mode [data-screen="preparing"] .center-state,
+    .web-mode [data-screen="account-creating"] .center-state {
+      inset: auto;
+      top: 50%;
+      left: 50%;
+      align-content: center;
+      width: min(var(--modal-standard), calc(100% - 32px));
+      max-height: var(--modal-max-height);
+      min-height: 390px;
+      padding: 28px 24px;
+      overflow: auto;
+      border: 1px solid var(--line-strong);
+      border-radius: 20px;
+      background: rgba(14, 18, 16, 0.97);
+      box-shadow: 0 24px 70px rgba(0, 0, 0, 0.48);
+      transform: translate(-50%, -50%);
+    }
+
+    .web-mode .center-state h2 { font-size: 22px; }
+    .web-mode .center-state p { font-size: 10px; }
+    .web-mode .orbit { width: 74px; height: 74px; margin-bottom: 18px; }
+    .web-mode .orbit::before { inset: 17px; }
+    .web-mode .orbit::after { inset: 27px; border-radius: 6px; font-size: 14px; }
+    .web-mode .progress { margin-top: 16px; }
+
+    .web-mode .privy-progress-list {
+      width: 100%;
+      gap: 7px;
+      margin-top: 18px;
+    }
+
+    .web-mode .privy-progress-item { padding: 10px 12px; }
+
+    .web-mode .account-dialog {
+      top: 50%;
+      left: 50%;
+      width: min(var(--modal-account), calc(100% - 32px));
+      max-height: var(--modal-max-height);
+      padding: 24px 26px;
+      overflow: auto;
+      border: 1px solid var(--line-strong);
+      border-radius: 20px;
+      background: rgba(14, 18, 16, 0.97);
+      box-shadow: 0 24px 70px rgba(0, 0, 0, 0.48);
+      transform: translate(-50%, -50%);
+    }
+
+    .web-mode .account-dialog-header { gap: 14px; margin-bottom: 17px; }
+    .web-mode .account-dialog-header h2 { margin-bottom: 5px; font-size: 23px; }
+    .web-mode .account-dialog-header p { margin: 0; font-size: 10px; }
+    .web-mode .privy-badge { min-height: 26px; padding-inline: 9px; font-size: 8px; }
+
+    .web-mode .account-step-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 7px;
+      margin-bottom: 12px;
+    }
+
+    .web-mode .account-step-card {
+      min-height: 0;
+      padding: 11px 13px;
+      border-radius: 12px;
+    }
+
+    .web-mode .account-step-card strong { margin-bottom: 4px; font-size: 11px; }
+    .web-mode .account-step-card p { margin: 0; font-size: 9px; line-height: 1.5; }
+    .web-mode .account-identity { margin-bottom: 12px; padding: 11px 13px; }
+    .web-mode .account-agreement-row { padding-bottom: 12px; }
+    .web-mode .account-dialog .primary { min-height: 46px; }
+
+    .web-mode .account-creating-card {
+      width: 100%;
+      margin-top: 18px;
+      padding: 13px 15px;
+      border-radius: 13px;
+    }
+
+    .web-mode .account-creating-row { padding: 10px 0; font-size: 10px; }
+    .web-mode .guide-screen { background: transparent; }
+    .web-mode .guide-appbar { display: none; }
+
+    .web-mode .guide-sheet {
+      inset: auto;
+      top: 50%;
+      left: 50%;
+      width: min(var(--modal-guide), calc(100% - 32px));
+      max-height: var(--modal-max-height);
+      padding: 24px 26px 22px;
+      overflow: auto;
+      border: 1px solid var(--line-strong);
+      border-radius: 20px;
+      background: rgba(14, 18, 16, 0.97);
+      box-shadow: 0 24px 70px rgba(0, 0, 0, 0.48);
+      transform: translate(-50%, -50%);
+    }
+
+    .web-mode .guide-sheet h2 { font-size: 22px; }
+    .web-mode .guide-sheet-subtitle { font-size: 9px; }
+    .web-mode .guide-step-list { margin-top: 16px; }
+    .web-mode .guide-step { min-height: 66px; }
+    .web-mode .guide-step-copy strong { font-size: 11px; }
+    .web-mode .guide-step-copy span { font-size: 9px; }
+    .web-mode .guide-actions { padding-top: 10px; }
+
+    .web-mode [data-screen="success"] .center-state {
+      inset: auto;
+      top: 50%;
+      left: 50%;
+      width: min(calc(var(--modal-standard) - 48px), calc(100% - 64px));
+      height: 300px;
+      padding: 24px 12px;
+      transform: translate(-50%, -55%);
+    }
+
+    .web-mode .success-mark { width: 74px; height: 74px; margin-bottom: 17px; font-size: 17px; }
+    .web-mode .account-pill { margin-top: 13px; font-size: 9px; }
+    .web-mode [data-screen="success"] .success-actions { bottom: calc(50% - 190px); }
+    .web-mode .completion-toast { bottom: calc(50% - 143px); }
+
+    .web-mode .screen-gallery,
+    .web-mode .error-gallery { width: min(1040px, calc(100% - 32px)); }
+
+    .web-mode .gallery-grid,
+    .web-mode .error-gallery-grid {
+      grid-template-columns: minmax(0, 960px);
+      gap: 52px;
+    }
+
+    .web-mode .gallery-device-slot { width: 100%; height: 640px; }
+
+    .web-mode .gallery-phone {
+      width: 100% !important;
+      height: 640px !important;
+      min-height: 640px !important;
+      border-radius: 22px !important;
+      transform: none !important;
+    }
+
+    .web-mode .error-board { grid-template-columns: minmax(0, 1fr) 250px; gap: 20px; }
+
+    @media (max-width: 800px) {
+      .web-mode .prototype-shell { padding-inline: 14px; }
+      .web-mode .phone { height: 640px; min-height: 640px; }
+      .web-mode .gallery-device-slot,
+      .web-mode .gallery-phone { height: 640px !important; min-height: 640px !important; }
+      .web-mode .error-board { grid-template-columns: minmax(0, 1fr); }
+    }
+
+    @media (max-width: 520px) {
+      .web-mode .prototype-shell { padding: 0; }
+      .web-mode .phone-wrap { width: 100%; }
+      .web-mode .phone {
+        width: 100%;
+        height: 100svh;
+        min-height: 620px;
+        border: 0;
+        border-radius: 0;
+      }
+      .web-mode [data-screen="login"] .auth-sheet,
+      .web-mode [data-screen="preparing"] .center-state,
+      .web-mode [data-screen="account-creating"] .center-state,
+      .web-mode .account-dialog,
+      .web-mode .guide-sheet,
+      .web-mode [data-screen="otp"]::after,
+      .web-mode [data-screen="wallets"]::after,
+      .web-mode [data-screen="signature"]::after,
+      .web-mode [data-screen="success"]::after {
+        width: calc(100% - 24px);
+        max-height: calc(100svh - 24px);
+      }
+      .web-mode .appbar { width: calc(100% - 24px); padding-inline: 22px; }
+      .web-mode .screen-header,
+      .web-mode .screen-body,
+      .web-mode .otp-actions,
+      .web-mode .signature-actions,
+      .web-mode .success-actions,
+      .web-mode .wallet-footnote { width: calc(100% - 64px); }
+      .web-mode .account-dialog { padding: 21px 18px; }
+      .web-mode .account-dialog-header { align-items: flex-start; }
+      .web-mode .account-identity { grid-template-columns: 1fr; gap: 8px; }
+      .web-mode .guide-sheet { padding: 21px 18px 18px; }
+      .web-mode .guide-sheet-header { gap: 8px; }
+      .web-mode .gallery-device-slot,
+      .web-mode .gallery-phone {
+        width: 100% !important;
+        height: 620px !important;
+        min-height: 620px !important;
+      }
+      .web-mode .screen-gallery,
+      .web-mode .error-gallery { width: calc(100% - 24px); }
+    }
   </style>
 </head>
 <body class="web-mode">
@@ -1896,6 +2271,7 @@
     <div class="phone-wrap">
       <section class="phone" aria-label="ForX Finance Web 登录原型">
         <div class="phone-status" aria-hidden="true"><span>9:41</span><span>▮▮▮ ◉</span></div>
+        <div class="auth-backdrop" aria-hidden="true"></div>
 
         <section class="screen is-active" data-screen="login">
           <header class="appbar">
