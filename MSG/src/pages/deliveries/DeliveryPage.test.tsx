@@ -1,0 +1,8 @@
+import { render, screen } from '@testing-library/react';
+import DeliveryPage from './DeliveryPage';
+
+it('shows masked destinations and failure inspection controls', () => {
+  render(<DeliveryPage />);
+  expect(screen.getAllByText(/\*\*\*/).length).toBeGreaterThan(0);
+  expect(screen.getByText('查看失败原因')).toBeVisible();
+});
