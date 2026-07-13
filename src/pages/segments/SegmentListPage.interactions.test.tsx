@@ -6,4 +6,8 @@ it('opens the create segment dialog', async () => {
   render(<SegmentListPage />);
   await userEvent.click(screen.getByRole('button', { name: '新建分群' }));
   expect(await screen.findByText('创建用户分群')).toBeVisible();
+  expect(screen.getByText('分群名称')).toBeVisible();
+  expect(screen.getAllByText('分群类型').length).toBeGreaterThan(0);
+  expect(screen.getAllByText('数据刷新').length).toBeGreaterThan(0);
+  expect(screen.getByRole('button', { name: '保存草稿' })).toBeVisible();
 });

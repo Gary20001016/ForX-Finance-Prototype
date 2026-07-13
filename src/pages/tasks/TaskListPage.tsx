@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Button, Dropdown, Input, Menu, Progress, Select, Space, Tag, Typography } from '@arco-design/web-react';
+import { Button, Dropdown, Input, Menu, Message, Progress, Select, Space, Tag, Typography } from '@arco-design/web-react';
 import { IconMore, IconPlus } from '@arco-design/web-react/icon';
 import { useNavigate } from 'react-router-dom';
 import type { TableColumnProps } from '@arco-design/web-react';
@@ -24,7 +24,10 @@ export default function TaskListPage() {
 
   const handleTaskAction = (key: string, row: MessageTask) => {
     if (key === 'view') openPrototypeDialog(`任务详情 · ${row.name}`, `${row.id} · ${row.template} · ${row.audienceCount.toLocaleString()} 人 · ${row.status}`);
-    if (key === 'copy') openPrototypeDialog(`复制任务 · ${row.name}`, '将创建一份新的草稿，并清空原任务的审批记录和计划发送时间。');
+    if (key === 'copy') {
+      Message.info(`已复制「${row.name}」的基础配置，请补充草稿内容`);
+      navigate('/tasks/create');
+    }
     if (key === 'pause') confirmPrototypeAction(`暂停任务 · ${row.name}`, '已生成但未发送的用户消息将保留，恢复后继续调度。', '任务已暂停');
     if (key === 'cancel') confirmPrototypeAction(`取消任务 · ${row.name}`, '取消后不会继续生成或发送新实例，已经送达的消息无法撤回。', '任务已取消');
   };

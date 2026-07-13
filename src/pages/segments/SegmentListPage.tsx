@@ -8,7 +8,7 @@ import ResourceTable from '../../components/ResourceTable';
 import StatusTag from '../../components/StatusTag';
 import { segments } from '../../mocks/data';
 import type { AudienceSegment } from '../../domain/types';
-import { openPrototypeDialog } from '../../utils/prototypeActions';
+import { openDetailedForm } from '../../utils/prototypeActions';
 
 export default function SegmentListPage() {
   const [selected, setSelected] = useState<AudienceSegment>();
@@ -24,10 +24,10 @@ export default function SegmentListPage() {
     { title:'操作', fixed:'right', width:84, render:(_,r)=> <Button type="text" onClick={() => setSelected(r)}>查看</Button> },
   ];
   return <section className="page-stack">
-    <PageHeader title="用户分群" description="按地区、资产、交易行为和消息偏好构建可审计受众。" actions={<Button type="primary" icon={<IconPlus />} onClick={() => openPrototypeDialog('创建用户分群', '进入分群创建器后，可配置动态条件、静态名单、刷新周期和数据权限。')}>新建分群</Button>} />
+    <PageHeader title="用户分群" description="按地区、资产、交易行为和消息偏好构建可审计受众。" actions={<Button type="primary" icon={<IconPlus />} onClick={() => openDetailedForm('segment', '创建用户分群')}>新建分群</Button>} />
     <FilterBar><Input.Search placeholder="搜索分群名称或 ID" style={{width:260}}/><Select placeholder="分群类型" style={{width:140}}><Select.Option value="dynamic">动态条件</Select.Option><Select.Option value="static">静态名单</Select.Option></Select><Select placeholder="业务用途" style={{width:140}}><Select.Option value="marketing">营销</Select.Option><Select.Option value="service">服务</Select.Option></Select></FilterBar>
     <ResourceTable data={segments} columns={columns} rowKey="id" />
-    <Drawer width={560} visible={Boolean(selected)} title={selected ? `分群详情 · ${selected.name}` : '分群详情'} onCancel={() => setSelected(undefined)} footer={<Button type="primary" onClick={() => openPrototypeDialog('编辑分群规则', '规则编辑器会生成新版本，已审核任务继续使用被冻结的受众快照。')}>编辑规则</Button>}>
+    <Drawer width={560} visible={Boolean(selected)} title={selected ? `分群详情 · ${selected.name}` : '分群详情'} onCancel={() => setSelected(undefined)} footer={<Button type="primary" onClick={() => openDetailedForm('segment', `编辑分群 · ${selected?.name ?? ''}`)}>编辑规则</Button>}>
       {selected && <Descriptions column={1} border data={[{label:'分群 ID',value:selected.id},{label:'类型',value:selected.type},{label:'业务用途',value:selected.purpose},{label:'当前人数',value:selected.count.toLocaleString()},{label:'规则摘要',value:selected.rule},{label:'刷新方式',value:selected.refresh},{label:'所有者',value:selected.owner},{label:'状态',value:<StatusTag status={selected.status}/>}]} />}
     </Drawer>
   </section>;
