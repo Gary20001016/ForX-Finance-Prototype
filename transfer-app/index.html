@@ -219,8 +219,8 @@
     .screen[hidden] { display: none; }
 
     .transfer-bar {
-      display: grid;
-      grid-template-columns: 42px 1fr 42px;
+      position: relative;
+      display: flex;
       align-items: center;
       min-height: 58px;
       padding: 4px 15px 2px;
@@ -257,33 +257,15 @@
       transform: rotate(45deg);
     }
 
-    .history-icon {
-      position: relative;
-      width: 18px;
-      height: 18px;
-      border: 1.5px solid currentColor;
-      border-radius: 6px;
-    }
-
-    .history-icon::before,
-    .history-icon::after {
-      position: absolute;
-      left: 4px;
-      right: 4px;
-      height: 1px;
-      background: currentColor;
-      content: "";
-    }
-
-    .history-icon::before { top: 5px; }
-    .history-icon::after { top: 10px; }
-
     .transfer-bar h2 {
+      position: absolute;
+      left: 50%;
       margin: 0;
       font-size: 16px;
       font-weight: 650;
       letter-spacing: -0.03em;
       text-align: center;
+      transform: translateX(-50%);
     }
 
     .transfer-body {
@@ -293,30 +275,23 @@
       padding: 9px 17px max(18px, env(safe-area-inset-bottom));
     }
 
-    .eyebrow {
-      margin: 0;
-      color: var(--muted);
-      font-size: 9px;
-      font-weight: 760;
-      letter-spacing: 0.14em;
-      text-transform: uppercase;
-    }
-
     .section-intro {
       display: flex;
-      align-items: flex-end;
+      align-items: center;
       justify-content: space-between;
       margin: 2px 3px 12px;
     }
 
     .section-intro h3 {
-      margin: 5px 0 0;
+      margin: 0;
       font-size: 22px;
       font-weight: 560;
       letter-spacing: -0.045em;
     }
 
-    .asset-chip {
+    .token-picker { position: relative; }
+
+    .token-trigger {
       display: inline-flex;
       align-items: center;
       gap: 7px;
@@ -328,9 +303,18 @@
       background: rgba(255, 255, 255, 0.025);
       font-size: 10px;
       font-weight: 700;
+      cursor: pointer;
+      transition: 160ms ease;
     }
 
-    .usdc-mark {
+    .token-trigger[aria-expanded="true"],
+    .token-trigger:hover {
+      border-color: rgba(115, 246, 154, 0.36);
+      color: var(--text);
+      background: var(--green-soft);
+    }
+
+    .token-mark {
       display: grid;
       place-items: center;
       width: 19px;
@@ -341,6 +325,76 @@
       font-size: 10px;
       font-weight: 850;
     }
+
+    .token-mark[data-token-symbol="USDT"],
+    .token-mark[data-current-token-mark="USDT"] {
+      color: #052318;
+      background: #63e6bb;
+    }
+
+    .token-chevron {
+      width: 6px;
+      height: 6px;
+      margin: -3px 0 0 1px;
+      border-right: 1px solid currentColor;
+      border-bottom: 1px solid currentColor;
+      transform: rotate(45deg);
+      transition: transform 160ms ease;
+    }
+
+    .token-trigger[aria-expanded="true"] .token-chevron {
+      margin-top: 3px;
+      transform: rotate(225deg);
+    }
+
+    .token-menu {
+      position: absolute;
+      top: calc(100% + 7px);
+      right: 0;
+      z-index: 24;
+      display: grid;
+      width: 132px;
+      gap: 3px;
+      padding: 5px;
+      border: 1px solid var(--line-strong);
+      border-radius: 14px;
+      background: rgba(15, 22, 17, 0.98);
+      box-shadow: 0 18px 42px rgba(0, 0, 0, 0.46);
+      backdrop-filter: blur(18px);
+    }
+
+    .token-menu[hidden] { display: none; }
+
+    .token-option {
+      display: grid;
+      grid-template-columns: 22px 1fr 14px;
+      gap: 8px;
+      align-items: center;
+      min-height: 38px;
+      padding: 0 8px;
+      border: 0;
+      border-radius: 10px;
+      color: var(--muted-strong);
+      background: transparent;
+      font-size: 11px;
+      font-weight: 700;
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .token-option:hover,
+    .token-option:focus-visible,
+    .token-option[aria-selected="true"] {
+      color: var(--text);
+      background: var(--green-soft);
+    }
+
+    .token-check {
+      color: var(--green);
+      opacity: 0;
+    }
+
+    .token-option[aria-selected="true"] .token-check { opacity: 1; }
 
     .route-card {
       position: relative;
@@ -1280,12 +1334,12 @@
 <body>
   <main class="prototype-shell">
     <header class="prototype-meta">
-      <span class="meta-kicker">INTERACTIVE PROTOTYPE</span>
-      <h1>Move capital.<br><em>Keep momentum.</em></h1>
+      <span class="meta-kicker">交互原型</span>
+      <h1>账户之间，<br><em>资金清晰流转。</em></h1>
       <p>ForX Finance App 账户划转体验。固定双账户资金路线，让余额变化在确认之前就清晰可见。</p>
       <ol class="flow-key" aria-label="原型流程">
         <li>确认资金路线</li>
-        <li>输入 USDC 金额</li>
+        <li>选择代币并输入金额</li>
         <li>核对并完成划转</li>
       </ol>
       <button id="prototype-reset" class="prototype-reset" type="button">重置原型</button>
@@ -1299,13 +1353,26 @@
           <header class="transfer-bar">
             <button class="icon-button" type="button" aria-label="返回，原型中不可用" disabled><span class="back-chevron" aria-hidden="true"></span></button>
             <h2 tabindex="-1">账户划转</h2>
-            <button class="icon-button" type="button" aria-label="划转记录，原型中不可用" disabled><span class="history-icon" aria-hidden="true"></span></button>
           </header>
 
           <main class="transfer-body">
             <div class="section-intro">
-              <div><p class="eyebrow">Capital route</p><h3 id="route-title">资金路线</h3></div>
-              <span class="asset-chip"><span class="usdc-mark">$</span>USDC</span>
+              <h3 id="route-title">资金路线</h3>
+              <div class="token-picker">
+                <button id="token-trigger" class="token-trigger" type="button" aria-label="选择划转代币，当前 USDC" aria-haspopup="listbox" aria-controls="token-menu" aria-expanded="false">
+                  <span class="token-mark" data-current-token-mark="USDC" aria-hidden="true">$</span>
+                  <span data-current-token>USDC</span>
+                  <span class="token-chevron" aria-hidden="true"></span>
+                </button>
+                <div id="token-menu" class="token-menu" role="listbox" aria-label="选择划转代币" hidden>
+                  <button class="token-option" type="button" role="option" data-token="USDC" aria-selected="true">
+                    <span class="token-mark" data-token-symbol="USDC" aria-hidden="true">$</span><span>USDC</span><span class="token-check" aria-hidden="true">✓</span>
+                  </button>
+                  <button class="token-option" type="button" role="option" data-token="USDT" aria-selected="false">
+                    <span class="token-mark" data-token-symbol="USDT" aria-hidden="true">₮</span><span>USDT</span><span class="token-check" aria-hidden="true">✓</span>
+                  </button>
+                </div>
+              </div>
             </div>
 
             <section class="route-card" aria-labelledby="route-title">
@@ -1332,7 +1399,7 @@
               </div>
               <div class="amount-entry">
                 <input id="amount-input" type="text" inputmode="decimal" autocomplete="off" placeholder="0.00" aria-describedby="amount-hint amount-error">
-                <span>USDC</span>
+                <span data-current-token>USDC</span>
               </div>
               <div class="amount-shortcuts" aria-label="快捷金额">
                 <button type="button" data-percentage="0.25">25%</button>
@@ -1340,7 +1407,7 @@
                 <button type="button" data-percentage="0.75">75%</button>
                 <button type="button" data-percentage="1">最大</button>
               </div>
-              <div id="amount-hint" class="amount-meta"><span>最低划转 10 USDC</span><span>预计到账 <strong data-estimated-balance>0.00 USDC</strong></span></div>
+              <div id="amount-hint" class="amount-meta"><span data-minimum-copy>最低划转 10 USDC</span><span>预计到账 <strong data-estimated-balance>0.00 USDC</strong></span></div>
               <p id="amount-error" class="amount-error" aria-live="polite"></p>
             </section>
 
@@ -1358,7 +1425,7 @@
               <div class="processing-node"><span class="processing-coin">$</span></div>
             </div>
             <h2 tabindex="-1">正在更新账户余额</h2>
-            <p>资金正在沿 ForX 内部路线划转<br>请保持当前页面开启</p>
+            <p><strong data-processing-token>USDC</strong> 正在沿 ForX 内部路线划转<br>请保持当前页面开启</p>
           </div>
         </section>
 
@@ -1374,7 +1441,7 @@
               <p class="receipt-route" data-receipt-route>资金账户 → 合约账户</p>
               <dl class="receipt-list">
                 <div><dt>状态</dt><dd class="complete">已完成</dd></div>
-                <div><dt>手续费</dt><dd>0 USDC</dd></div>
+                <div><dt>手续费</dt><dd data-fee-amount>0 USDC</dd></div>
                 <div><dt>完成时间</dt><dd>刚刚</dd></div>
               </dl>
             </section>
@@ -1405,7 +1472,7 @@
             <dl class="review-details">
               <div><dt>转出后余额</dt><dd data-review-source-after>0.00 USDC</dd></div>
               <div><dt>转入后余额</dt><dd data-review-destination-after>0.00 USDC</dd></div>
-              <div><dt>划转手续费</dt><dd class="fee">0 USDC</dd></div>
+              <div><dt>划转手续费</dt><dd class="fee" data-fee-amount>0 USDC</dd></div>
             </dl>
             <div class="sheet-actions">
               <button id="confirm-transfer" class="primary-action" type="button">确认划转</button>
@@ -1440,7 +1507,7 @@
 
   <section class="screen-gallery" aria-labelledby="gallery-title">
     <div class="gallery-heading">
-      <span class="meta-kicker">SCREEN BREAKDOWN</span>
+      <span class="meta-kicker">页面拆解</span>
       <h2 id="gallery-title">关键页面拆分</h2>
       <p>完整流程的静态画板，用于逐页评审与开发交接。</p>
     </div>
@@ -1449,7 +1516,7 @@
 
   <section class="error-gallery" aria-labelledby="error-gallery-title">
     <div class="gallery-heading">
-      <span class="meta-kicker">ERROR STATES</span>
+      <span class="meta-kicker">异常状态</span>
       <h2 id="error-gallery-title">错误场景拆分</h2>
       <p>金额、余额与划转服务异常均保留输入和恢复路径。</p>
     </div>
@@ -1462,7 +1529,11 @@
       screen: 'composer',
       source: 'fund',
       destination: 'contract',
-      balances: { fund: 20, contract: 0 },
+      token: 'USDC',
+      balances: {
+        USDC: { fund: 20, contract: 0 },
+        USDT: { fund: 50, contract: 0 }
+      },
       amount: '',
       minimum: 10,
       fee: 0,
@@ -1477,6 +1548,8 @@
     const amountError = document.getElementById('amount-error');
     const availabilityWarning = document.getElementById('availability-warning');
     const reviewButton = document.getElementById('review-transfer');
+    const tokenTrigger = document.getElementById('token-trigger');
+    const tokenMenu = document.getElementById('token-menu');
     const reviewLayer = document.querySelector('[data-layer="review"]');
     const failureLayer = document.querySelector('[data-layer="failure"]');
     const reviewTitle = document.getElementById('review-title');
@@ -1485,13 +1558,17 @@
     let processingTimer = null;
     const committedOperations = new Set();
 
-    function formatAmount(value) {
+    function currentBalances(token = state.token) {
+      return state.balances[token];
+    }
+
+    function formatAmount(value, token = state.token) {
       const formatted = Number(value).toLocaleString('en-US', {
         useGrouping: false,
         minimumFractionDigits: 2,
         maximumFractionDigits: 6
       });
-      return `${formatted} USDC`;
+      return `${formatted} ${token}`;
     }
 
     function announce(message) {
@@ -1511,28 +1588,63 @@
         return { valid: false, code: 'invalid', message: '请输入有效的划转金额', value: 0 };
       }
       if (value < state.minimum) {
-        return { valid: false, code: 'below-minimum', message: '最低划转 10 USDC', value };
+        return { valid: false, code: 'below-minimum', message: `最低划转 ${state.minimum} ${state.token}`, value };
       }
-      if (value > state.balances[state.source]) {
+      if (value > currentBalances()[state.source]) {
         return { valid: false, code: 'insufficient', message: '可用余额不足', value };
       }
       return { valid: true, code: 'valid', message: '', value };
     }
 
     function renderComposer() {
+      const balances = currentBalances();
       document.querySelectorAll('[data-source-name]').forEach((node) => { node.textContent = accountNames[state.source]; });
       document.querySelectorAll('[data-destination-name]').forEach((node) => { node.textContent = accountNames[state.destination]; });
-      document.querySelectorAll('[data-account-balance="fund"]').forEach((node) => { node.textContent = formatAmount(state.balances.fund); });
-      document.querySelectorAll('[data-account-balance="contract"]').forEach((node) => { node.textContent = formatAmount(state.balances.contract); });
-      document.querySelectorAll('[data-available-balance]').forEach((node) => { node.textContent = formatAmount(state.balances[state.source]); });
+      document.querySelectorAll('[data-account-balance="fund"]').forEach((node) => { node.textContent = formatAmount(balances.fund); });
+      document.querySelectorAll('[data-account-balance="contract"]').forEach((node) => { node.textContent = formatAmount(balances.contract); });
+      document.querySelectorAll('[data-available-balance]').forEach((node) => { node.textContent = formatAmount(balances[state.source]); });
+      document.querySelectorAll('[data-current-token]').forEach((node) => { node.textContent = state.token; });
+      document.querySelectorAll('[data-minimum-copy]').forEach((node) => { node.textContent = `最低划转 ${state.minimum} ${state.token}`; });
+      document.querySelectorAll('[data-fee-amount]').forEach((node) => { node.textContent = `${state.fee} ${state.token}`; });
+      document.querySelectorAll('[data-processing-token]').forEach((node) => { node.textContent = state.token; });
+      tokenTrigger.setAttribute('aria-label', `选择划转代币，当前 ${state.token}`);
+      tokenTrigger.querySelector('[data-current-token-mark]').dataset.currentTokenMark = state.token;
+      document.querySelectorAll('#token-menu [data-token]').forEach((option) => {
+        option.setAttribute('aria-selected', String(option.dataset.token === state.token));
+      });
 
       const result = validateAmount(state.amount);
       amountError.textContent = result.message;
       availabilityWarning.hidden = state.available;
       amountInput.setAttribute('aria-invalid', String(result.code !== 'empty' && !result.valid));
       reviewButton.disabled = !result.valid || !state.available;
-      const estimate = state.balances[state.destination] + (result.valid ? result.value : 0);
+      const estimate = balances[state.destination] + (result.valid ? result.value : 0);
       document.querySelectorAll('[data-estimated-balance]').forEach((node) => { node.textContent = formatAmount(estimate); });
+    }
+
+    function openTokenMenu({ focusSelected = false } = {}) {
+      tokenMenu.hidden = false;
+      tokenTrigger.setAttribute('aria-expanded', 'true');
+      if (focusSelected) {
+        window.setTimeout(() => tokenMenu.querySelector('[aria-selected="true"]')?.focus({ preventScroll: true }), 0);
+      }
+    }
+
+    function closeTokenMenu({ restoreFocus = false } = {}) {
+      tokenMenu.hidden = true;
+      tokenTrigger.setAttribute('aria-expanded', 'false');
+      if (restoreFocus) tokenTrigger.focus({ preventScroll: true });
+    }
+
+    function selectToken(token) {
+      if (!Object.hasOwn(state.balances, token)) return;
+      state.token = token;
+      state.amount = '';
+      state.pendingOperation = null;
+      amountInput.value = '';
+      closeTokenMenu({ restoreFocus: true });
+      renderComposer();
+      announce(`已选择 ${token}`);
     }
 
     function showScreen(name) {
@@ -1555,12 +1667,13 @@
     function openReview() {
       const result = validateAmount(state.amount);
       if (!result.valid || !state.available) return;
+      const balances = currentBalances();
       layerReturnFocus = document.activeElement;
       document.querySelector('[data-review-source]').textContent = accountNames[state.source];
       document.querySelector('[data-review-destination]').textContent = accountNames[state.destination];
       document.querySelector('[data-review-amount]').textContent = formatAmount(result.value);
-      document.querySelector('[data-review-source-after]').textContent = formatAmount(state.balances[state.source] - result.value);
-      document.querySelector('[data-review-destination-after]').textContent = formatAmount(state.balances[state.destination] + result.value);
+      document.querySelector('[data-review-source-after]').textContent = formatAmount(balances[state.source] - result.value);
+      document.querySelector('[data-review-destination-after]').textContent = formatAmount(balances[state.destination] + result.value);
       reviewLayer.hidden = false;
       document.querySelector('[data-screen="composer"]').inert = true;
       window.setTimeout(() => reviewTitle.focus({ preventScroll: true }), 0);
@@ -1576,17 +1689,19 @@
 
     function applyTransferOnce(operation) {
       if (!operation || committedOperations.has(operation.id)) return;
-      state.balances[operation.source] -= operation.value;
-      state.balances[operation.destination] += operation.value;
+      const balances = currentBalances(operation.token);
+      balances[operation.source] -= operation.value;
+      balances[operation.destination] += operation.value;
       committedOperations.add(operation.id);
     }
 
     function showSuccess(operation) {
       applyTransferOnce(operation);
-      document.querySelector('[data-receipt-amount]').textContent = formatAmount(operation.value);
+      const balances = currentBalances(operation.token);
+      document.querySelector('[data-receipt-amount]').textContent = formatAmount(operation.value, operation.token);
       document.querySelector('[data-receipt-route]').textContent = `${accountNames[operation.source]} → ${accountNames[operation.destination]}`;
-      document.querySelector('[data-success-fund-balance]').textContent = formatAmount(state.balances.fund);
-      document.querySelector('[data-success-contract-balance]').textContent = formatAmount(state.balances.contract);
+      document.querySelector('[data-success-fund-balance]').textContent = formatAmount(balances.fund, operation.token);
+      document.querySelector('[data-success-contract-balance]').textContent = formatAmount(balances.contract, operation.token);
       state.busy = false;
       showScreen('success');
       renderComposer();
@@ -1617,6 +1732,7 @@
       if (!retry || !state.pendingOperation) {
         state.pendingOperation = {
           id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+          token: state.token,
           source: state.source,
           destination: state.destination,
           value: result.value
@@ -1651,6 +1767,7 @@
       state.pendingOperation = null;
       failureLayer.hidden = true;
       reviewLayer.hidden = true;
+      closeTokenMenu();
       document.querySelectorAll('[data-screen]').forEach((screen) => { screen.inert = false; });
       showScreen('composer');
       renderComposer();
@@ -1664,6 +1781,7 @@
       amountInput.value = '';
       failureLayer.hidden = true;
       reviewLayer.hidden = true;
+      closeTokenMenu();
       document.querySelectorAll('[data-screen]').forEach((screen) => { screen.inert = false; });
       showScreen('composer');
       renderComposer();
@@ -1684,7 +1802,7 @@
 
     document.querySelectorAll('[data-percentage]').forEach((button) => {
       button.addEventListener('click', () => {
-        const value = state.balances[state.source] * Number(button.dataset.percentage);
+        const value = currentBalances()[state.source] * Number(button.dataset.percentage);
         state.amount = String(Number(value.toFixed(6)));
         amountInput.value = state.amount;
         renderComposer();
@@ -1693,6 +1811,30 @@
     });
 
     document.getElementById('swap-route').addEventListener('click', swapRoute);
+    tokenTrigger.addEventListener('click', () => {
+      if (tokenMenu.hidden) openTokenMenu();
+      else closeTokenMenu();
+    });
+    tokenTrigger.addEventListener('keydown', (event) => {
+      if (event.key !== 'ArrowDown') return;
+      event.preventDefault();
+      openTokenMenu({ focusSelected: true });
+    });
+    tokenMenu.querySelectorAll('[data-token]').forEach((option) => {
+      option.addEventListener('click', () => selectToken(option.dataset.token));
+    });
+    tokenMenu.addEventListener('keydown', (event) => {
+      const options = [...tokenMenu.querySelectorAll('[data-token]')];
+      const currentIndex = options.indexOf(document.activeElement);
+      if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+        event.preventDefault();
+        const direction = event.key === 'ArrowDown' ? 1 : -1;
+        options[(currentIndex + direction + options.length) % options.length].focus();
+      } else if (event.key === 'Home' || event.key === 'End') {
+        event.preventDefault();
+        options[event.key === 'Home' ? 0 : options.length - 1].focus();
+      }
+    });
     reviewButton.addEventListener('click', openReview);
     document.getElementById('close-review').addEventListener('click', closeReview);
     document.getElementById('edit-transfer').addEventListener('click', closeReview);
@@ -1707,7 +1849,15 @@
     document.getElementById('done-transfer').addEventListener('click', () => returnToComposer());
     document.getElementById('transfer-again').addEventListener('click', () => returnToComposer());
     document.getElementById('prototype-reset').addEventListener('click', resetPrototype);
+    document.addEventListener('click', (event) => {
+      if (!tokenMenu.hidden && !event.target.closest('.token-picker')) closeTokenMenu();
+    });
     document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && !tokenMenu.hidden) {
+        closeTokenMenu({ restoreFocus: true });
+        return;
+      }
+
       const activeLayer = !failureLayer.hidden ? failureLayer : !reviewLayer.hidden ? reviewLayer : null;
       if (!activeLayer) return;
 

@@ -27,14 +27,27 @@ test('standalone prototype uses the approved account model and format', async ()
     '资金账户',
     '合约账户',
     'USDC',
-    'INTERACTIVE PROTOTYPE',
-    'SCREEN BREAKDOWN',
-    'ERROR STATES'
+    'USDT',
+    '交互原型',
+    '页面拆解',
+    '异常状态'
   ]) {
     assert.match(html, new RegExp(required));
   }
 
-  for (const forbidden of ['现货', '合约 V2', '主账户', '资产选择', '账户选择']) {
+  for (const forbidden of [
+    '现货',
+    '合约 V2',
+    '主账户',
+    '资产选择',
+    '账户选择',
+    'Capital route',
+    'INTERACTIVE PROTOTYPE',
+    'SCREEN BREAKDOWN',
+    'ERROR STATES',
+    '划转记录',
+    'history-icon'
+  ]) {
     assert.doesNotMatch(html, new RegExp(forbidden));
   }
 
@@ -95,6 +108,22 @@ test('calculates percentage shortcuts and Max from the source balance', async ()
     assert.equal(await page.locator('#amount-input').inputValue(), '20');
     assert.equal(await page.locator('[data-estimated-balance]').textContent(), '20.00 USDC');
     assert.equal(await page.locator('#review-transfer').isEnabled(), true);
+  });
+});
+
+test('switches between USDC and USDT with independent balances', async () => {
+  await withPage(async (page) => {
+    await page.locator('#amount-input').fill('10');
+    await page.locator('#token-trigger').click();
+    assert.equal(await page.locator('#token-trigger').getAttribute('aria-expanded'), 'true');
+    assert.equal(await page.locator('#token-menu [data-token]').count(), 2);
+    await page.locator('#token-menu [data-token="USDT"]').click();
+    assert.equal(await page.locator('#token-trigger').getAttribute('aria-expanded'), 'false');
+    assert.equal(await page.locator('#amount-input').inputValue(), '');
+    assert.equal(await page.locator('[data-current-token]').first().textContent(), 'USDT');
+    assert.equal(await page.locator('[data-account-balance="fund"]').first().textContent(), '50.00 USDT');
+    assert.equal(await page.locator('[data-account-balance="contract"]').first().textContent(), '0.00 USDT');
+    assert.match(await page.locator('#amount-hint').textContent(), /最低划转 10 USDT/);
   });
 });
 
@@ -294,10 +323,10 @@ test('keeps the phone usable at a 390 by 844 viewport', async () => {
   }, { width: 390, height: 844 });
 });
 
-test('marks out-of-scope navigation controls as unavailable', async () => {
+test('keeps back unavailable and removes transfer history', async () => {
   await withPage(async (page) => {
     assert.equal(await page.locator('[aria-label^="返回"]').first().isDisabled(), true);
-    assert.equal(await page.locator('[aria-label^="划转记录"]').first().isDisabled(), true);
+    assert.equal(await page.locator('[aria-label^="划转记录"]').count(), 0);
   });
 });
 
