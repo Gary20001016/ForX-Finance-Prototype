@@ -2,12 +2,14 @@ import { useMemo, useState } from 'react';
 import { Badge, Button, Modal, Space, Tag } from '@arco-design/web-react';
 import { IconCheck, IconNotification } from '@arco-design/web-react/icon';
 import { useNavigate } from 'react-router-dom';
-import { messageCategories, userMessages } from '../../mocks/data';
+import { messageCategories } from '../../mocks/data';
 import type { MessageCategoryCode, UserMessage } from '../../domain/types';
+import { markAllMessagesRead, markMessageRead, usePrototypeStore } from '../../store/prototypeStore';
 
 export default function InboxPage() {
   const navigate = useNavigate();
-  const [messages, setMessages] = useState(userMessages);
+  const { messages } = usePrototypeStore();
+  const [client, setClient] = useState<'web' | 'app'>('web');
   const [category, setCategory] = useState<'all' | MessageCategoryCode>('all');
   const [unreadOnly, setUnreadOnly] = useState(false);
   const unread = messages.filter((message) => !message.read).length;
@@ -15,7 +17,7 @@ export default function InboxPage() {
     (category === 'all' || message.category === category) && (!unreadOnly || !message.read)), [messages, category, unreadOnly]);
 
   const openMessage = (message: UserMessage) => {
-    setMessages((items) => items.map((item) => item.id === message.id ? { ...item, read:true } : item));
+    markMessageRead(message.id);
     navigate(`/inbox/${message.id}`);
   };
 
@@ -24,13 +26,14 @@ export default function InboxPage() {
     content:`将把当前账户的 ${unread} 条未读消息标记为已读。`,
     okText:'确认全部已读',
     cancelText:'取消',
-    onOk:() => setMessages((items) => items.map((item) => ({ ...item, read:true }))),
+    onOk:markAllMessagesRead,
   });
 
-  return <main className="inbox-shell">
-    <header className="inbox-topbar"><div className="inbox-brand"><span>N</span><strong>NEXUS</strong></div><Space><Button type="text" onClick={() => navigate('/dashboard')}>运营后台</Button><div className="inbox-avatar">GM</div></Space></header>
+  return <main className={`inbox-shell inbox-client-${client}`}>
+    <header className="inbox-topbar"><div className="inbox-brand"><span>F</span><strong>ForX Finance</strong></div><Space><div className="inbox-client-switch" aria-label="客户端预览"><Button type={client === 'web' ? 'primary' : 'text'} size="small" onClick={() => setClient('web')}>Web 端</Button><Button type={client === 'app' ? 'primary' : 'text'} size="small" onClick={() => setClient('app')}>App 端</Button></div><Button type="text" onClick={() => navigate('/dashboard')}>运营后台</Button><div className="inbox-avatar">GM</div></Space></header>
     <div className="inbox-container">
-      <section className="inbox-hero"><div><span className="eyebrow">USER INBOX</span><h1>消息中心</h1><p><Badge count={unread} dot={unread > 0}><IconNotification /></Badge><strong>{unread} 条未读</strong> · 重要资金与风险消息会优先展示</p></div><Button icon={<IconCheck />} disabled={unread === 0} onClick={markAllRead}>全部已读</Button></section>
+      <div className="inbox-client-note"><strong>{client === 'web' ? 'Web 消息中心视图' : 'App 消息中心视图'}</strong><span>Web / App 共享已读状态</span></div>
+      <section className="inbox-hero"><div><h1>消息中心</h1><p><Badge count={unread} dot={unread > 0}><IconNotification /></Badge><strong>{unread} 条未读</strong> · 重要资金与风险消息会优先展示</p></div><Button icon={<IconCheck />} disabled={unread === 0} onClick={markAllRead}>全部已读</Button></section>
       <nav className="inbox-categories" aria-label="消息分类">
         <Button type={category === 'all' ? 'primary':'secondary'} onClick={() => setCategory('all')}>全部</Button>
         {messageCategories.map((item) => <Button key={item.code} type={category === item.code ? 'primary':'secondary'} onClick={() => setCategory(item.code)}>{item.name}</Button>)}

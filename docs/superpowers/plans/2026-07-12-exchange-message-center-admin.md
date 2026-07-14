@@ -178,7 +178,7 @@ Expected: FAIL because the layout does not exist.
 
 Navigation groups must contain routes for `/dashboard`, `/tasks`, `/templates`, `/segments`, `/automations`, `/events`, `/approvals`, `/deliveries`, `/analytics`, `/channels`, `/compliance`, and `/settings`. Use Arco `Layout`, `Menu`, `Breadcrumb`, `Badge`, `Avatar`, `Dropdown`, `Button`, and icons. Persist the collapsed sidebar flag in component state and derive the active menu from `location.pathname`.
 
-The header must show environment label `PROD · 只读原型`, global search, pending approvals badge, timezone `UTC+8`, and administrator avatar. The sidebar brand is `NEXUS / 消息中心`.
+The header must show environment label `PROD · 只读原型`, global search, pending approvals badge, timezone `UTC+8`, and administrator avatar. The sidebar brand is `ForX Finance / 消息中心`.
 
 - [ ] **Step 4: Add design tokens and responsive rules**
 
@@ -503,4 +503,3 @@ Expected: exit 0.
 git add README.md src
 git commit -m "docs: finish and verify message center prototype"
 ```
-

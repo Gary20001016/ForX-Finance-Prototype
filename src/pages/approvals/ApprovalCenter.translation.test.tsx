@@ -1,10 +1,11 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router-dom';
 import ApprovalCenterPage from './ApprovalCenterPage';
 
 it('reviews machine translation beside the source copy', async () => {
   const user = userEvent.setup();
-  render(<ApprovalCenterPage />);
+  render(<MemoryRouter><ApprovalCenterPage /></MemoryRouter>);
 
   await user.click(screen.getByRole('tab', { name:/翻译审核/ }));
   await user.click(screen.getAllByText('审核翻译')[0]);

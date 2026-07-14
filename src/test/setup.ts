@@ -1,4 +1,8 @@
 import '@testing-library/jest-dom/vitest';
+import { beforeEach } from 'vitest';
+import { resetPrototypeStore } from '../store/prototypeStore';
+
+beforeEach(() => resetPrototypeStore());
 
 if (typeof window !== 'undefined') {
   Object.defineProperty(window, 'matchMedia', {

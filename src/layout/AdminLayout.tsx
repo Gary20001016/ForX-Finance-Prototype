@@ -46,8 +46,8 @@ export default function AdminLayout() {
     <Layout className="admin-shell">
       <Sider className="admin-sider" width={232} collapsed={collapsed} collapsedWidth={72}>
         <div className="brand-lockup">
-          <div className="brand-mark">N</div>
-          {!collapsed && <div><strong>NEXUS</strong><span>消息中心</span></div>}
+          <div className="brand-mark">F</div>
+          {!collapsed && <div><strong>ForX Finance</strong><span>消息中心</span></div>}
         </div>
         <Menu
           theme="dark"
@@ -64,7 +64,7 @@ export default function AdminLayout() {
         {!collapsed && (
           <div className="sider-health">
             <span className="health-dot" />
-            <div><strong>Web 站内信正常</strong><span>App Push 正常</span></div>
+            <div><strong>站内信正常</strong><span>App Push 正常</span></div>
           </div>
         )}
       </Sider>
@@ -84,7 +84,7 @@ export default function AdminLayout() {
           </Space>
           <div className="header-actions">
             <Button size="small" type="outline" onClick={() => navigate('/inbox')}>用户消息中心</Button>
-            <Tag color="gray" bordered><span className="env-dot" />V2 · 前端原型</Tag>
+            <Tag color="gray" bordered><span className="env-dot" />演示环境</Tag>
             <Input
               className="global-search"
               prefix={<IconSearch />}

@@ -232,4 +232,3 @@ git status --short PRD-exchange-message-center-admin.md docs/prd/message-center
 ```
 
 Expected: one modified root PRD and eleven new Markdown files under `docs/prd/message-center/`.
-

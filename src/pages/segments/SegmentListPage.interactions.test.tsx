@@ -9,5 +9,5 @@ it('opens the create segment dialog', async () => {
   expect(screen.getByText('分群名称')).toBeVisible();
   expect(screen.getAllByText('分群类型').length).toBeGreaterThan(0);
   expect(screen.getAllByText('数据刷新').length).toBeGreaterThan(0);
-  expect(screen.getByRole('button', { name: '保存草稿' })).toBeVisible();
+  expect(screen.getByRole('button', { name: '保存并计算' })).toBeVisible();
 });

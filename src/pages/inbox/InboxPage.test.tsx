@@ -1,27 +1,41 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitForElementToBeRemoved } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { afterEach, vi } from 'vitest';
 import InboxPage from './InboxPage';
 import MessageDetailPage from './MessageDetailPage';
 
 const renderInbox = () => render(<MemoryRouter initialEntries={['/inbox']}><Routes><Route path="/inbox" element={<InboxPage />} /><Route path="/inbox/:messageId" element={<MessageDetailPage />} /></Routes></MemoryRouter>);
 
-describe('Web 用户消息中心', () => {
-  it('展示七个分类并支持全部已读', async () => {
+describe('Web/App 用户消息中心', () => {
+  afterEach(() => vi.useRealTimers());
+
+  it('展示七个分类并在 Web/App 共享全部已读状态', async () => {
     renderInbox();
 
     expect(await screen.findByRole('heading', { name: '消息中心' })).toBeVisible();
+    expect(screen.getByText('Web / App 共享已读状态')).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Web 端' })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'App 端' })).toBeVisible();
     for (const category of ['系统公告','交易通知','资产通知','安全通知','奖励通知','活动通知','风控通知']) {
       expect(screen.getByRole('button', { name: category })).toBeVisible();
     }
     expect(screen.getByText(/条未读/)).toBeVisible();
 
     await userEvent.click(screen.getByRole('button', { name: '全部已读' }));
+    const confirmDialog = screen.getByRole('dialog', { name: '全部标记为已读？' });
     await userEvent.click(screen.getByRole('button', { name: '确认全部已读' }));
+    await waitForElementToBeRemoved(confirmDialog);
     expect(screen.getByText('0 条未读')).toBeVisible();
+
+    await userEvent.click(screen.getByRole('button', { name: 'App 端' }));
+    expect(screen.getByText('0 条未读')).toBeVisible();
+    expect(screen.getByText('App 消息中心视图')).toBeVisible();
   });
 
   it('打开紧急消息详情并保留风险提示', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-07-14T19:00:00+08:00'));
     renderInbox();
 
     await userEvent.click(await screen.findByText('BTC/USDT 强平风险预警'));
