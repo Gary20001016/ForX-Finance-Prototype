@@ -529,6 +529,43 @@
       text-align: center;
     }
 
+    .legal-consent {
+      display: grid;
+      grid-template-columns: 16px 1fr;
+      gap: 8px;
+      align-items: start;
+      margin-top: 12px;
+      color: var(--muted-strong);
+      font-size: 8px;
+      line-height: 1.5;
+    }
+
+    .legal-consent input {
+      width: 16px;
+      height: 16px;
+      margin: 0;
+      border-radius: 5px;
+      accent-color: var(--green);
+      cursor: pointer;
+    }
+
+    .legal-consent label { cursor: pointer; }
+
+    .legal-consent a {
+      color: var(--green);
+      text-decoration: underline;
+      text-decoration-color: rgba(141, 250, 169, 0.42);
+      text-underline-offset: 2px;
+    }
+
+    .legal-consent-error {
+      grid-column: 2;
+      margin: -4px 0 0;
+      color: var(--error);
+      font-size: 8px;
+      line-height: 1.4;
+    }
+
     .screen-header { padding: 7px 18px 0; }
 
     .screen-topline {
@@ -1831,7 +1868,11 @@
                 连接外部钱包
               </span>
             </button>
-            <small class="legal-copy">继续即表示你同意服务条款与风险披露</small>
+            <div class="legal-consent">
+              <input id="legal-consent" type="checkbox" checked aria-describedby="legal-consent-error">
+              <label for="legal-consent">我已阅读并同意<a href="#service-terms" data-legal-link>《服务条款》</a>和<a href="#risk-disclosure" data-legal-link>《风险披露》</a></label>
+              <p id="legal-consent-error" class="legal-consent-error" role="status" hidden>请先同意服务条款与风险披露</p>
+            </div>
           </div>
         </section>
 
@@ -2128,8 +2169,11 @@
     const screens = [...document.querySelectorAll('[data-screen]')];
     const liveStatus = document.getElementById('live-status');
     const emailForm = document.getElementById('email-form');
+    const emailSubmitButton = emailForm.querySelector('button[type="submit"]');
     const emailInput = document.getElementById('email-input');
     const emailError = document.getElementById('email-error');
+    const legalConsent = document.getElementById('legal-consent');
+    const legalConsentError = document.getElementById('legal-consent-error');
     const otpForm = document.getElementById('otp-form');
     const otpInputs = [...document.querySelectorAll('[data-otp-index]')];
     const otpError = document.getElementById('otp-error');
@@ -2197,6 +2241,14 @@
       node.textContent = message;
       node.hidden = false;
       announce(message);
+    }
+
+    function syncLegalConsent() {
+      const hasConsent = legalConsent ? legalConsent.checked : true;
+      if (emailSubmitButton) emailSubmitButton.disabled = !hasConsent;
+      walletLoginButton.disabled = !hasConsent;
+      if (legalConsentError) legalConsentError.hidden = hasConsent;
+      if (!hasConsent) announce('请先同意服务条款与风险披露');
     }
 
     function readOtp() {
@@ -2323,6 +2375,7 @@
         signatureError: ''
       });
       emailForm.reset();
+      syncLegalConsent();
       otpForm.reset();
       otpInputs.forEach((input) => { input.value = ''; });
       hideError(emailError);
@@ -2343,8 +2396,18 @@
       announce('钱包登录成功');
     }
 
+    if (legalConsent) legalConsent.addEventListener('change', syncLegalConsent);
+    document.querySelectorAll('[data-legal-link]').forEach((link) => {
+      link.addEventListener('click', (event) => event.preventDefault());
+    });
+    syncLegalConsent();
+
     emailForm.addEventListener('submit', (event) => {
       event.preventDefault();
+      if (legalConsent && !legalConsent.checked) {
+        syncLegalConsent();
+        return;
+      }
       const email = emailInput.value.trim();
       const validEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
@@ -2427,6 +2490,10 @@
     });
 
     walletLoginButton.addEventListener('click', () => {
+      if (legalConsent && !legalConsent.checked) {
+        syncLegalConsent();
+        return;
+      }
       walletNotice.textContent = '';
       showScreen('wallets');
     });
