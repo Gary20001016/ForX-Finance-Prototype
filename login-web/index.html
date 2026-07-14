@@ -520,6 +520,36 @@
     .mini-wallet:nth-child(2) { background: #f3f5f4; }
     .mini-wallet:nth-child(3) { color: #fff; background: #3478f6; }
 
+    .login-agreement-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 9px;
+      margin-top: 11px;
+      cursor: pointer;
+    }
+
+    .login-agreement {
+      width: 16px;
+      height: 16px;
+      margin: 1px 0 0;
+      accent-color: var(--green);
+      flex: 0 0 auto;
+    }
+
+    .login-agreement-copy {
+      color: var(--muted-strong);
+      font-size: 10px;
+      line-height: 1.5;
+    }
+
+    .login-agreement-copy a {
+      color: var(--green);
+      text-decoration: none;
+    }
+
+    .login-agreement-copy a:hover { text-decoration: underline; }
+    .login-agreement-error { margin-top: 5px; }
+
     .legal-copy {
       display: block;
       margin-top: 11px;
@@ -2307,7 +2337,11 @@
                 连接外部钱包
               </span>
             </button>
-            <small class="legal-copy">继续即表示你同意服务条款与风险披露</small>
+            <label class="login-agreement-row">
+              <input id="login-agreement" class="login-agreement" type="checkbox" checked aria-describedby="login-agreement-error">
+              <span class="login-agreement-copy">我已阅读并同意 <a href="#terms">服务条款</a> 与 <a href="#risk">风险披露</a></span>
+            </label>
+            <p id="login-agreement-error" class="field-error login-agreement-error" hidden></p>
           </div>
         </section>
 
@@ -2559,6 +2593,8 @@
     const emailForm = document.getElementById('email-form');
     const emailInput = document.getElementById('email-input');
     const emailError = document.getElementById('email-error');
+    const loginAgreement = document.getElementById('login-agreement');
+    const loginAgreementError = document.getElementById('login-agreement-error');
     const otpForm = document.getElementById('otp-form');
     const otpInputs = [...document.querySelectorAll('[data-otp-index]')];
     const otpError = document.getElementById('otp-error');
@@ -2630,6 +2666,17 @@
       node.textContent = message;
       node.hidden = false;
       announce(message);
+    }
+
+    function validateLoginAgreement() {
+      if (loginAgreement.checked) {
+        hideError(loginAgreementError);
+        return true;
+      }
+
+      showError(loginAgreementError, '请先同意服务条款与风险披露');
+      loginAgreement.focus();
+      return false;
     }
 
     function readOtp() {
@@ -2765,9 +2812,11 @@
       otpForm.reset();
       otpInputs.forEach((input) => { input.value = ''; });
       hideError(emailError);
+      hideError(loginAgreementError);
       hideError(otpError);
       hideError(signatureError);
       hideError(accountError);
+      loginAgreement.checked = true;
       accountAgreement.checked = true;
       accountAgreement.disabled = false;
       accountEmail.textContent = 'gary@example.com';
@@ -2828,6 +2877,7 @@
 
     emailForm.addEventListener('submit', (event) => {
       event.preventDefault();
+      if (!validateLoginAgreement()) return;
       const email = emailInput.value.trim();
       const validEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
@@ -2913,6 +2963,10 @@
       if (accountAgreement.checked) hideError(accountError);
     });
 
+    loginAgreement.addEventListener('change', () => {
+      if (loginAgreement.checked) hideError(loginAgreementError);
+    });
+
     createAccountButton.addEventListener('click', beginAccountCreation);
 
     resendButton.addEventListener('click', () => {
@@ -2921,6 +2975,7 @@
     });
 
     walletLoginButton.addEventListener('click', () => {
+      if (!validateLoginAgreement()) return;
       walletNotice.textContent = '';
       showScreen('wallets');
     });
