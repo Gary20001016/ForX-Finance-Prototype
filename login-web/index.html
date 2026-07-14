@@ -1777,27 +1777,6 @@
     .web-mode .privy-progress-item strong { color: var(--text); font-size: 10px; }
     .web-mode .privy-progress-item .is-ready { color: var(--accent); }
 
-    .web-mode .account-creating-card {
-      width: min(520px, calc(100% - 48px));
-      margin: 0 auto;
-      padding: 24px;
-      border: 1px solid var(--line-strong);
-      border-radius: 18px;
-      background: rgba(255, 255, 255, 0.025);
-    }
-
-    .web-mode .account-creating-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 13px 0;
-      border-bottom: 1px solid var(--line);
-      font-size: 11px;
-    }
-
-    .web-mode .account-creating-row:last-child { border-bottom: 0; }
-    .web-mode .account-creating-row span:last-child { color: var(--accent); }
-
     .web-mode .screen-gallery,
     .web-mode .error-gallery { width: min(1240px, calc(100% - 32px)); }
 
@@ -1869,7 +1848,9 @@
       .web-mode .account-identity { grid-template-columns: 1fr; }
       .web-mode .account-step-card { min-height: 0; }
       .web-mode .screen-gallery,
-      .web-mode .error-gallery { width: calc(100% - 24px); }
+      .web-mode .error-gallery { width: 100%; }
+      .web-mode .gallery-heading,
+      .web-mode .gallery-caption { padding-inline: 12px; }
       .web-mode .gallery-device-slot,
       .web-mode .gallery-phone {
         width: 100% !important;
@@ -2060,8 +2041,7 @@
       transform: translateX(-50%);
     }
 
-    .web-mode [data-screen="preparing"] .center-state,
-    .web-mode [data-screen="account-creating"] .center-state {
+    .web-mode [data-screen="preparing"] .center-state {
       inset: auto;
       top: 50%;
       left: 50%;
@@ -2131,14 +2111,6 @@
     .web-mode .account-agreement-row { padding-bottom: 12px; }
     .web-mode .account-dialog .primary { min-height: 46px; }
 
-    .web-mode .account-creating-card {
-      width: 100%;
-      margin-top: 18px;
-      padding: 13px 15px;
-      border-radius: 13px;
-    }
-
-    .web-mode .account-creating-row { padding: 10px 0; font-size: 10px; }
     .web-mode .guide-screen { background: transparent; }
     .web-mode .guide-appbar { display: none; }
 
@@ -2221,7 +2193,6 @@
       }
       .web-mode [data-screen="login"] .auth-sheet,
       .web-mode [data-screen="preparing"] .center-state,
-      .web-mode [data-screen="account-creating"] .center-state,
       .web-mode .account-dialog,
       .web-mode .guide-sheet,
       .web-mode [data-screen="otp"]::after,
@@ -2250,7 +2221,33 @@
         min-height: 620px !important;
       }
       .web-mode .screen-gallery,
-      .web-mode .error-gallery { width: calc(100% - 24px); }
+      .web-mode .error-gallery { width: 100%; }
+
+      .web-mode .gallery-heading,
+      .web-mode .gallery-caption { padding-inline: 12px; }
+    }
+
+    .web-mode .prototype-reset {
+      position: fixed;
+      top: max(16px, env(safe-area-inset-top));
+      right: max(16px, env(safe-area-inset-right));
+      z-index: 80;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 38px;
+      padding: 0 14px;
+      border-color: rgba(255, 255, 255, 0.2);
+      background: rgba(12, 16, 14, 0.9);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.32);
+      backdrop-filter: blur(12px);
+    }
+
+    @media (max-width: 520px) {
+      .web-mode .prototype-reset {
+        top: max(12px, env(safe-area-inset-top));
+        right: max(12px, env(safe-area-inset-right));
+      }
     }
   </style>
 </head>
@@ -2265,8 +2262,9 @@
         <li>完成身份验证</li>
         <li>进入 ForX Finance</li>
       </ol>
-      <button id="prototype-reset" class="prototype-reset" type="button">重置原型</button>
     </header>
+
+    <button id="prototype-reset" class="prototype-reset" type="button">重置原型</button>
 
     <div class="phone-wrap">
       <section class="phone" aria-label="ForX Finance Web 登录原型">
@@ -2393,19 +2391,6 @@
             </label>
             <p id="account-error" class="field-error account-error" hidden></p>
             <button id="create-account" class="primary" type="button">创建账户</button>
-          </div>
-        </section>
-
-        <section class="screen" data-screen="account-creating" hidden aria-busy="true">
-          <div class="center-state">
-            <div class="orbit" aria-hidden="true"></div>
-            <h2 tabindex="-1">正在创建 ForX 账户</h2>
-            <p>Privy Wallet 正在安全签署开户请求<br>不会触发交易或产生费用</p>
-            <div class="account-creating-card" aria-label="账户创建进度">
-              <div class="account-creating-row"><span>创建交易账户</span><span>已完成</span></div>
-              <div class="account-creating-row"><span>Privy Wallet 签名验证</span><span>处理中…</span></div>
-            </div>
-            <div class="progress" aria-label="账户创建中"></div>
           </div>
         </section>
 
@@ -2565,6 +2550,7 @@
       privyWalletReady: false,
       accountAgreementAccepted: true,
       accountCreating: false,
+      accountCreationTimer: null,
       accountError: ''
     };
 
@@ -2755,6 +2741,7 @@
 
     function resetPrototype() {
       window.clearInterval(state.resendTimer);
+      window.clearTimeout(state.accountCreationTimer);
       walletConnectFailedOnce = false;
       Object.assign(state, {
         screen: 'login',
@@ -2771,6 +2758,7 @@
         privyWalletReady: false,
         accountAgreementAccepted: true,
         accountCreating: false,
+        accountCreationTimer: null,
         accountError: ''
       });
       emailForm.reset();
@@ -2781,7 +2769,10 @@
       hideError(signatureError);
       hideError(accountError);
       accountAgreement.checked = true;
+      accountAgreement.disabled = false;
       accountEmail.textContent = 'gary@example.com';
+      createAccountButton.disabled = false;
+      createAccountButton.textContent = '创建账户';
       walletNotice.textContent = '';
       confirmSignatureButton.textContent = '打开钱包';
       renderWalletGuide();
@@ -2798,6 +2789,7 @@
     }
 
     function beginAccountCreation() {
+      if (state.accountCreating) return;
       state.accountAgreementAccepted = accountAgreement.checked;
       if (!state.accountAgreementAccepted) {
         state.accountError = '请先同意服务条款、隐私政策和风险披露';
@@ -2809,11 +2801,17 @@
       state.accountCreating = true;
       state.accountError = '';
       hideError(accountError);
-      showScreen('account-creating');
+      accountAgreement.disabled = true;
+      createAccountButton.disabled = true;
+      createAccountButton.textContent = '正在创建账户…';
       announce('正在创建 ForX 账户并完成 Privy Wallet 签名');
 
-      window.setTimeout(() => {
+      state.accountCreationTimer = window.setTimeout(() => {
         state.accountCreating = false;
+        state.accountCreationTimer = null;
+        accountAgreement.disabled = false;
+        createAccountButton.disabled = false;
+        createAccountButton.textContent = '创建账户';
         successAccount.textContent = `${state.email} · Privy 0x91B4…7D20`;
         showScreen('success');
         announce('邮箱账户创建成功');
@@ -2995,7 +2993,7 @@
     function freezeGalleryScreen(phone) {
       phone.querySelectorAll('*').forEach((node) => {
         [...node.attributes]
-          .filter((attribute) => attribute.name.startsWith('data-'))
+          .filter((attribute) => attribute.name.startsWith('data-') && attribute.name !== 'data-screen')
           .forEach((attribute) => node.removeAttribute(attribute.name));
       });
       phone.querySelectorAll('button, input').forEach((control) => {
@@ -3043,13 +3041,12 @@
         {screen: 'otp', title: '02B · OTP 可重新发送', detail: '倒计时结束后的可点击状态', otp: 'ready'},
         {screen: 'preparing', title: '03 · Privy 钱包准备', detail: '邮箱钱包由系统自动创建并明确展示'},
         {screen: 'account-create', title: '04 · 创建 ForX 账户', detail: '仅邮箱路径展示开户信息与协议确认'},
-        {screen: 'account-creating', title: '05 · 账户创建中', detail: '展示交易账户创建与 Privy 签名进度'},
-        {screen: 'wallets', title: '06 · 钱包选择', detail: '外部钱包路径保持独立'},
-        {screen: 'wallet-guide', title: '07A · 签名引导开始', detail: '三项签名持续展示', guide: 'guide-start'},
-        {screen: 'wallet-guide', title: '07B · 已完成连接', detail: '第一项完成，等待验证钱包', guide: 'guide-connected'},
-        {screen: 'wallet-guide', title: '07C · 等待启用交易', detail: '前两项完成，等待交易授权', guide: 'guide-verified'},
-        {screen: 'wallet-guide', title: '07D · 签名全部完成', detail: '三项完成后由用户进入 ForX', guide: 'guide-complete'},
-        {screen: 'success', title: '08 · 登录成功', detail: '邮箱与外部钱包路径的统一出口'}
+        {screen: 'wallets', title: '05 · 钱包选择', detail: '外部钱包路径保持独立'},
+        {screen: 'wallet-guide', title: '06A · 签名引导开始', detail: '三项签名持续展示', guide: 'guide-start'},
+        {screen: 'wallet-guide', title: '06B · 已完成连接', detail: '第一项完成，等待验证钱包', guide: 'guide-connected'},
+        {screen: 'wallet-guide', title: '06C · 等待启用交易', detail: '前两项完成，等待交易授权', guide: 'guide-verified'},
+        {screen: 'wallet-guide', title: '06D · 签名全部完成', detail: '三项完成后由用户进入 ForX', guide: 'guide-complete'},
+        {screen: 'success', title: '07 · 登录成功', detail: '邮箱与外部钱包路径的统一出口'}
       ];
       const sourcePhone = document.querySelector('.phone');
       const grid = document.getElementById('gallery-grid');
