@@ -2772,6 +2772,7 @@
       accountAgreement.disabled = false;
       accountEmail.textContent = 'gary@example.com';
       createAccountButton.disabled = false;
+      createAccountButton.removeAttribute('aria-busy');
       createAccountButton.textContent = '创建账户';
       walletNotice.textContent = '';
       confirmSignatureButton.textContent = '打开钱包';
@@ -2803,19 +2804,26 @@
       hideError(accountError);
       accountAgreement.disabled = true;
       createAccountButton.disabled = true;
+      createAccountButton.setAttribute('aria-busy', 'true');
       createAccountButton.textContent = '正在创建账户…';
-      announce('正在创建 ForX 账户并完成 Privy Wallet 签名');
+      announce('正在创建 ForX 账户');
 
       state.accountCreationTimer = window.setTimeout(() => {
-        state.accountCreating = false;
-        state.accountCreationTimer = null;
-        accountAgreement.disabled = false;
-        createAccountButton.disabled = false;
-        createAccountButton.textContent = '创建账户';
-        successAccount.textContent = `${state.email} · Privy 0x91B4…7D20`;
-        showScreen('success');
-        announce('邮箱账户创建成功');
-      }, 1400);
+        createAccountButton.textContent = '正在验证钱包…';
+        announce('正在验证 Privy Wallet 签名');
+
+        state.accountCreationTimer = window.setTimeout(() => {
+          state.accountCreating = false;
+          state.accountCreationTimer = null;
+          accountAgreement.disabled = false;
+          createAccountButton.disabled = false;
+          createAccountButton.removeAttribute('aria-busy');
+          createAccountButton.textContent = '创建账户';
+          successAccount.textContent = `${state.email} · Privy 0x91B4…7D20`;
+          showScreen('success');
+          announce('邮箱账户创建成功');
+        }, 1000);
+      }, 900);
     }
 
     emailForm.addEventListener('submit', (event) => {
