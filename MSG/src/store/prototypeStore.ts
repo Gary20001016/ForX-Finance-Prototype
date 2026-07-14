@@ -1,7 +1,10 @@
-import { useSyncExternalStore } from 'react';
+import { useSyncExternalStore } from "react";
 import type {
   ApprovalItem,
   DeliveryRecord,
+  EventTaskValidationResult,
+  EventTestResult,
+  EventTriggerConfig,
   LinkAllowlistEntry,
   LocalizedMessageContent,
   MessageTask,
@@ -9,8 +12,15 @@ import type {
   SystemEventDefinition,
   TranslationBatch,
   UserMessage,
-} from '../domain/types';
-import { approvals, deliveries, tasks, templates, translationBatches, userMessages } from '../mocks/data';
+} from "../domain/types";
+import {
+  approvals,
+  deliveries,
+  tasks,
+  templates,
+  translationBatches,
+  userMessages,
+} from "../mocks/data";
 
 export interface PrototypeState {
   messages: UserMessage[];
@@ -23,223 +33,1043 @@ export interface PrototypeState {
   events: SystemEventDefinition[];
 }
 
-const STORAGE_KEY = 'forx-finance-message-center-prototype-v1';
+const STORAGE_KEY = "forx-finance-message-center-prototype-v1";
 const listeners = new Set<() => void>();
 
-const contentFor = (title: string, category = '消息通知'): LocalizedMessageContent => ({
-  sourceLocale:'zh-CN',
-  locales:['zh-CN','en-US'],
-  web:{
+const contentFor = (
+  title: string,
+  category = "消息通知",
+): LocalizedMessageContent => ({
+  sourceLocale: "zh-CN",
+  locales: ["zh-CN", "en-US"],
+  web: {
     title,
-    summary:`${category}：请查看最新消息详情。`,
-    body:`尊敬的 {{ user_nickname }}，${title}。相关金额、币种、交易对与时间信息请以账户记录为准。`,
-    riskCopy:category.includes('风控') || title.includes('风险') ? '市场波动较大，请立即核对账户与仓位。' : undefined,
-    actionText:'查看详情',
-    targetUrl:'forxfinance://security/devices',
+    summary: `${category}：请查看最新消息详情。`,
+    body: `尊敬的 {{ user_nickname }}，${title}。相关金额、币种、交易对与时间信息请以账户记录为准。`,
+    riskCopy:
+      category.includes("风控") || title.includes("风险")
+        ? "市场波动较大，请立即核对账户与仓位。"
+        : undefined,
+    actionText: "查看详情",
+    targetUrl: "forxfinance://security/devices",
   },
-  push:{ title, body:`${category}：请立即查看。`, deepLink:'forxfinance://security/devices', platform:'全部设备', priority:title.includes('风险') ? '紧急' : '高', collapseKey:`message-${title.slice(0,8)}` },
+  push: {
+    title,
+    body: `${category}：请立即查看。`,
+    deepLink: "forxfinance://security/devices",
+    platform: "全部设备",
+    priority: title.includes("风险") ? "紧急" : "高",
+    collapseKey: `message-${title.slice(0, 8)}`,
+  },
 });
 
 const allowlistSeed: LinkAllowlistEntry[] = [
-  { id:'LINK-001', name:'提现详情', type:'Deep Link', pattern:'forxfinance://wallet/withdrawal/:id', platforms:['iOS','Android'], parameterRule:'id 为字母数字，最长 64 位', effectiveAt:'2026-01-01 00:00', expiresAt:'2027-12-31 23:59', status:'启用', owner:'资金平台' },
-  { id:'LINK-002', name:'设备管理', type:'Deep Link', pattern:'forxfinance://security/devices', platforms:['iOS','Android'], parameterRule:'不允许额外参数', effectiveAt:'2026-01-01 00:00', expiresAt:'长期', status:'启用', owner:'安全中心' },
-  { id:'LINK-003', name:'公告详情', type:'Web URL', pattern:'https://www.forxfinance.example/announcements/*', platforms:['Web','iOS','Android'], parameterRule:'仅允许公告数字 ID', effectiveAt:'2026-01-01 00:00', expiresAt:'2027-12-31 23:59', status:'启用', owner:'内容运营' },
+  {
+    id: "LINK-001",
+    name: "提现详情",
+    type: "Deep Link",
+    pattern: "forxfinance://wallet/withdrawal/:id",
+    platforms: ["iOS", "Android"],
+    parameterRule: "id 为字母数字，最长 64 位",
+    effectiveAt: "2026-01-01 00:00",
+    expiresAt: "2027-12-31 23:59",
+    status: "启用",
+    owner: "资金平台",
+  },
+  {
+    id: "LINK-002",
+    name: "设备管理",
+    type: "Deep Link",
+    pattern: "forxfinance://security/devices",
+    platforms: ["iOS", "Android"],
+    parameterRule: "不允许额外参数",
+    effectiveAt: "2026-01-01 00:00",
+    expiresAt: "长期",
+    status: "启用",
+    owner: "安全中心",
+  },
+  {
+    id: "LINK-003",
+    name: "公告详情",
+    type: "Web URL",
+    pattern: "https://www.forxfinance.example/announcements/*",
+    platforms: ["Web", "iOS", "Android"],
+    parameterRule: "仅允许公告数字 ID",
+    effectiveAt: "2026-01-01 00:00",
+    expiresAt: "2027-12-31 23:59",
+    status: "启用",
+    owner: "内容运营",
+  },
 ];
 
 const eventSeed: SystemEventDefinition[] = [
-  ['deposit.credited','充值到账','资产','deposit_credited v1','wallet-gateway'],
-  ['withdrawal.succeeded','提现成功','资产','withdrawal_succeeded v1','withdrawal-service'],
-  ['withdrawal.failed','提现失败','资产','withdrawal_failed v1','withdrawal-service'],
-  ['order.filled','订单成交','交易','order_filled v1','order-service'],
-  ['liquidation.warning','合约强平预警','风控','liquidation_warning v21','futures-risk'],
-  ['trial_fund.credited','体验金到账','奖励','trial_fund_credited v1','reward-service'],
-  ['points.credited','积分到账','奖励','points_credited v1','loyalty-service'],
-  ['commission.credited','返佣到账','奖励','commission_credited v1','broker-service'],
-].map(([id,name,line,template,caller], index) => ({ id,name,line,version:'1.0.0',template,caller,calls:index===3?'1.28M':`${12 + index * 6}.4K`,failure:index===4?'1.84%':'0.04%',last:'18:06:31',status:index===4?'轻微延迟':'运行正常',variables:['user_nickname','amount','currency','symbol','occurred_at'] }));
-
-const normalizeCategory = (name:string, category:string) => {
-  if (name.includes('强平') || name.includes('风险')) return '风控通知';
-  if (['系统公告','交易通知','资产通知','安全通知','奖励通知','活动通知','风控通知'].includes(category)) return category;
-  if (name.includes('登录')) return '安全通知';
-  if (name.includes('提现') || name.includes('充值')) return '资产通知';
-  return '活动通知';
-};
-
-const enrichTemplates = (): MessageTemplate[] => templates.map((template) => ({
-  ...template,
-  channels:template.channels.filter((channel) => channel === '站内信' || channel === 'Push'),
-  category:normalizeCategory(template.name,template.category),
-  content:template.content || contentFor(template.name, normalizeCategory(template.name,template.category)),
-  variables:['user_nickname','amount','currency','symbol','occurred_at'],
-  owner:template.owner || '消息运营',
+  ["deposit.credited", "充值到账", "资产", "wallet-gateway"],
+  ["withdrawal.succeeded", "提现成功", "资产", "withdrawal-service"],
+  ["withdrawal.failed", "提现失败", "资产", "withdrawal-service"],
+  ["order.filled", "订单成交", "交易", "order-service"],
+  ["liquidation.warning", "合约强平预警", "风控", "futures-risk"],
+  ["trial_fund.credited", "体验金到账", "奖励", "reward-service"],
+  ["points.credited", "积分到账", "奖励", "loyalty-service"],
+  ["commission.credited", "返佣到账", "奖励", "broker-service"],
+].map(([id, name, line, caller], index) => ({
+  id,
+  name,
+  line,
+  version: "1.0.0",
+  caller,
+  calls: index === 3 ? "1.28M" : `${12 + index * 6}.4K`,
+  failure: index === 4 ? "1.84%" : "0.04%",
+  last: "18:06:31",
+  status: index === 4 ? "轻微延迟" : "运行正常",
+  variables: ["user_nickname", "amount", "currency", "symbol", "occurred_at"],
+  description: `${name}业务事件，由 ${caller} 推送。`,
 }));
 
-const enrichTasks = (): MessageTask[] => tasks.map((task) => ({
-  ...task,
-  channels:task.channels.filter((channel) => channel === '站内信' || channel === 'Push'),
-  category:normalizeCategory(task.name,task.category),
-  contentMode:'template' as const,
-  content:contentFor(task.name, normalizeCategory(task.name,task.category)),
-  expiresAt:'2026-07-14 20:00',
-  audienceType:'all' as const,
-  sampleUsers:['UID 82***19 · zh-CN · iOS','UID 51***02 · en-US · Android','UID 18***87 · zh-CN · Web'],
-})).filter((task) => task.channels.length > 0 && task.type !== '自动化');
+const normalizeCategory = (name: string, category: string) => {
+  if (name.includes("强平") || name.includes("风险")) return "风控通知";
+  if (
+    [
+      "系统公告",
+      "交易通知",
+      "资产通知",
+      "安全通知",
+      "奖励通知",
+      "活动通知",
+      "风控通知",
+    ].includes(category)
+  )
+    return category;
+  if (name.includes("登录")) return "安全通知";
+  if (name.includes("提现") || name.includes("充值")) return "资产通知";
+  return "活动通知";
+};
+
+const enrichTemplates = (): MessageTemplate[] =>
+  templates.map((template) => ({
+    ...template,
+    channels: template.channels.filter(
+      (channel) => channel === "站内信" || channel === "Push",
+    ),
+    category: normalizeCategory(template.name, template.category),
+    content:
+      template.content ||
+      contentFor(
+        template.name,
+        normalizeCategory(template.name, template.category),
+      ),
+    variables: ["user_nickname", "amount", "currency", "symbol", "occurred_at"],
+    owner: template.owner || "消息运营",
+  }));
+
+const makeEventConfig = (event: SystemEventDefinition): EventTriggerConfig => ({
+  eventId: event.id,
+  eventVersion: event.version,
+  conditionExpression:
+    event.id === "liquidation.warning" ? "margin_rate < 0.2" : "",
+  variableMappings: event.variables.map((variable) => ({
+    eventField: variable,
+    templateVariable: variable,
+    required: true,
+  })),
+  dedupeKey: "{{ event_id }}:{{ user_id }}",
+  eventTtlSeconds: 300,
+  maxRetries: 3,
+  retryBackoffSeconds: 30,
+});
+
+const enrichTasks = (seededTemplates: MessageTemplate[]): MessageTask[] =>
+  tasks
+    .map((task) => {
+      const template = seededTemplates.find((item) =>
+        task.template.startsWith(`${item.code} `),
+      );
+      const eventId = task.template.startsWith("withdraw_success ")
+        ? "withdrawal.succeeded"
+        : task.template.startsWith("liquidation_warning ")
+          ? "liquidation.warning"
+          : undefined;
+      const event = eventSeed.find((item) => item.id === eventId);
+      const isEvent = Boolean(event && template);
+      return {
+        ...task,
+        channels: task.channels.filter(
+          (channel) => channel === "站内信" || channel === "Push",
+        ),
+        category: normalizeCategory(task.name, task.category),
+        contentMode: "template" as const,
+        content:
+          template?.content ||
+          contentFor(task.name, normalizeCategory(task.name, task.category)),
+        expiresAt: "2026-07-14 20:00",
+        audienceType: isEvent ? undefined : ("all" as const),
+        sampleUsers: [
+          "UID 82***19 · zh-CN · iOS",
+          "UID 51***02 · en-US · Android",
+          "UID 18***87 · zh-CN · Web",
+        ],
+        triggerType: isEvent ? ("event" as const) : ("manual" as const),
+        type: isEvent ? "事件触发" : task.type,
+        templateId: template?.id,
+        templateVersion: template?.version,
+        eventConfig: event ? makeEventConfig(event) : undefined,
+        audience: isEvent ? "事件主体用户" : task.audience,
+        audienceCount: isEvent ? 1 : task.audienceCount,
+        schedule: isEvent ? "事件到达时" : task.schedule,
+        status:
+          isEvent &&
+          template?.status === "已发布" &&
+          template.translationReadiness === "全部审核通过"
+            ? "已启用"
+            : task.status,
+      };
+    })
+    .filter((task) => task.channels.length > 0 && task.type !== "自动化");
 
 const createSeed = (): PrototypeState => {
-  const seededTasks = enrichTasks();
   const seededTemplates = enrichTemplates();
+  const seededTasks = enrichTasks(seededTemplates);
   const firstPhaseApprovals: ApprovalItem[] = [
-    ...approvals.filter((item) => item.objectType === '消息任务' || item.objectType === '消息模板'),
-    { id:'APR-8816', objectType:'紧急任务', name:'强平预警 App Push 紧急补发', version:'v1', risk:'关键', nature:'强事务', audience:18400, cost:'Web ¥0 · Push ¥0', schedule:'立即', step:'业务 + 风控双审', submitter:'赵辰', submitterId:'platform-11', submittedAt:'18:02', status:'紧急', emergency:true },
+    ...approvals.filter(
+      (item) =>
+        item.objectType === "消息任务" || item.objectType === "消息模板",
+    ),
+    {
+      id: "APR-8816",
+      objectType: "紧急任务",
+      name: "强平预警 App Push 紧急补发",
+      version: "v1",
+      risk: "关键",
+      nature: "强事务",
+      audience: 18400,
+      cost: "Web ¥0 · Push ¥0",
+      schedule: "立即",
+      step: "业务 + 风控双审",
+      submitter: "赵辰",
+      submitterId: "platform-11",
+      submittedAt: "18:02",
+      status: "紧急",
+      emergency: true,
+    },
   ];
   return {
-    messages:JSON.parse(JSON.stringify(userMessages)),
-    tasks:seededTasks,
-    templates:seededTemplates,
-    translationBatches:JSON.parse(JSON.stringify(translationBatches)),
-    approvals:firstPhaseApprovals.map((item) => {
-      const task = seededTasks.find((candidate) => candidate.name === item.name);
-      const template = seededTemplates.find((candidate) => candidate.name === item.name);
-      return { ...item, cost:'Web ¥0 · Push ¥0', taskId:task?.id, templateId:template?.id, channels:task?.channels || template?.channels || ['站内信','Push'], locales:task?.content?.locales || template?.locales || ['zh-CN'], content:task?.content || template?.content || contentFor(item.name, item.nature), sampleUsers:task?.sampleUsers || ['UID 82***19 · zh-CN · iOS','UID 51***02 · en-US · Android'], expiresAt:task?.expiresAt || '2026-07-14 20:00', changes:['新增 App Push 紧急优先级','更新 Deep Link 为已备案路径'] };
+    messages: JSON.parse(JSON.stringify(userMessages)),
+    tasks: seededTasks,
+    templates: seededTemplates,
+    translationBatches: JSON.parse(JSON.stringify(translationBatches)),
+    approvals: firstPhaseApprovals.map((item) => {
+      const task = seededTasks.find(
+        (candidate) => candidate.name === item.name,
+      );
+      const template = seededTemplates.find(
+        (candidate) => candidate.name === item.name,
+      );
+      return {
+        ...item,
+        cost: "Web ¥0 · Push ¥0",
+        taskId: task?.id,
+        templateId: task?.templateId || template?.id,
+        templateVersion: task?.templateVersion || template?.version,
+        triggerType: task?.triggerType,
+        eventConfig: task?.eventConfig,
+        channels: task?.channels || template?.channels || ["站内信", "Push"],
+        locales: task?.content?.locales || template?.locales || ["zh-CN"],
+        content:
+          task?.content ||
+          template?.content ||
+          contentFor(item.name, item.nature),
+        sampleUsers: task?.sampleUsers || [
+          "UID 82***19 · zh-CN · iOS",
+          "UID 51***02 · en-US · Android",
+        ],
+        expiresAt: task?.expiresAt || "2026-07-14 20:00",
+        changes: ["新增 App Push 紧急优先级", "更新 Deep Link 为已备案路径"],
+      };
     }),
-    deliveries:deliveries.filter((record)=>record.channel==='站内信'||record.channel==='Push').map((record, index) => ({ ...record, eventCode:index < eventSeed.length ? eventSeed[index].id : undefined, category:record.task.includes('风险')?'风控通知':'资产通知', risk:record.task.includes('风险')?'紧急':'普通', devicePlatform:record.channel==='Push'?(index % 2 ? 'iOS':'Android'):'Web', providerMessageId:`PM-${90001 + index}`, clickedAt:record.status==='已点击'?'17:59:02.118':undefined, errorCode:record.error?.split(' · ')[0], retryable:record.error?.includes('TEMP'), tokenStatus:record.error?.includes('Invalid device token')?'已失效':record.channel==='Push'?'有效':'不适用' })),
-    allowlist:allowlistSeed,
-    events:eventSeed,
+    deliveries: deliveries
+      .filter(
+        (record) => record.channel === "站内信" || record.channel === "Push",
+      )
+      .map((record, index) => ({
+        ...record,
+        eventCode: index < eventSeed.length ? eventSeed[index].id : undefined,
+        category: record.task.includes("风险") ? "风控通知" : "资产通知",
+        risk: record.task.includes("风险") ? "紧急" : "普通",
+        devicePlatform:
+          record.channel === "Push"
+            ? (index % 2 ? "iOS" : "Android")
+            : index % 3 === 1
+              ? "iOS"
+              : "Web",
+        providerMessageId: `PM-${90001 + index}`,
+        clickedAt: record.status === "已点击" ? "17:59:02.118" : undefined,
+        errorCode: record.error?.split(" · ")[0],
+        retryable: record.error?.includes("TEMP"),
+        tokenStatus: record.error?.includes("Invalid device token")
+          ? "已失效"
+          : record.channel === "Push"
+            ? "有效"
+            : "不适用",
+      })),
+    allowlist: allowlistSeed,
+    events: eventSeed,
+  };
+};
+
+const migrateSavedState = (saved: PrototypeState): PrototypeState => {
+  const fresh = createSeed();
+  const mergedTemplates = (saved.templates || fresh.templates).map((template) => ({
+    ...fresh.templates.find((item) => item.id === template.id),
+    ...template,
+  }));
+  const mergedTasks = (saved.tasks || fresh.tasks).map((task) => {
+    const baseline = fresh.tasks.find((item) => item.id === task.id);
+    const triggerType = task.triggerType || baseline?.triggerType || (task.type === "事件触发" ? "event" : "manual");
+    return {
+      ...baseline,
+      ...task,
+      triggerType,
+      type: triggerType === "event" ? "事件触发" : task.type,
+      templateId: task.templateId || baseline?.templateId,
+      templateVersion: task.templateVersion || baseline?.templateVersion,
+      eventConfig: task.eventConfig || baseline?.eventConfig,
+      status: baseline?.triggerType === "event" ? baseline.status : task.status,
+    };
+  });
+  const mergedEvents = fresh.events.map((event) => {
+    const persisted = saved.events?.find((item) => item.id === event.id);
+    if (!persisted) return event;
+    const { template: _template, templateId: _templateId, ...definition } = persisted;
+    return { ...event, ...definition, variables: persisted.variables || event.variables };
+  });
+  for (const event of saved.events || []) {
+    if (!mergedEvents.some((item) => item.id === event.id)) {
+      const { template: _template, templateId: _templateId, ...definition } = event;
+      mergedEvents.push(definition);
+    }
+  }
+  const mergedApprovals = (saved.approvals || fresh.approvals).map((approval) => {
+    const task = mergedTasks.find((item) => item.id === approval.taskId || item.name === approval.name);
+    return {
+      ...approval,
+      triggerType: approval.triggerType || task?.triggerType,
+      templateId: approval.templateId || task?.templateId,
+      templateVersion: approval.templateVersion || task?.templateVersion,
+      eventConfig: approval.eventConfig || task?.eventConfig,
+    };
+  });
+  return {
+    ...fresh,
+    ...saved,
+    templates: mergedTemplates,
+    tasks: mergedTasks,
+    events: mergedEvents,
+    approvals: mergedApprovals,
   };
 };
 
 const load = (): PrototypeState => {
-  if (typeof window === 'undefined') return createSeed();
+  if (typeof window === "undefined") return createSeed();
   try {
     const saved = window.localStorage.getItem(STORAGE_KEY);
-    return saved ? JSON.parse(saved) as PrototypeState : createSeed();
-  } catch { return createSeed(); }
+    return saved ? migrateSavedState(JSON.parse(saved) as PrototypeState) : createSeed();
+  } catch {
+    return createSeed();
+  }
 };
 
 let state = load();
 
 const persist = () => {
-  if (typeof window !== 'undefined') {
-    try { window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch { /* storage is optional */ }
+  if (typeof window !== "undefined") {
+    try {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    } catch {
+      /* storage is optional */
+    }
   }
 };
 
-const emit = () => { persist(); listeners.forEach((listener) => listener()); };
-const update = (recipe: (current: PrototypeState) => PrototypeState) => { state = recipe(state); emit(); };
+const emit = () => {
+  persist();
+  listeners.forEach((listener) => listener());
+};
+const update = (recipe: (current: PrototypeState) => PrototypeState) => {
+  state = recipe(state);
+  emit();
+};
 
 export const getPrototypeState = () => state;
-export const subscribePrototypeStore = (listener: () => void) => { listeners.add(listener); return () => listeners.delete(listener); };
-export const usePrototypeStore = () => useSyncExternalStore(subscribePrototypeStore, getPrototypeState, getPrototypeState);
+export const subscribePrototypeStore = (listener: () => void) => {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+};
+export const usePrototypeStore = () =>
+  useSyncExternalStore(
+    subscribePrototypeStore,
+    getPrototypeState,
+    getPrototypeState,
+  );
 export const resetPrototypeStore = () => {
   state = createSeed();
-  if (typeof window !== 'undefined' && typeof window.localStorage?.removeItem === 'function') window.localStorage.removeItem(STORAGE_KEY);
+  if (
+    typeof window !== "undefined" &&
+    typeof window.localStorage?.removeItem === "function"
+  )
+    window.localStorage.removeItem(STORAGE_KEY);
   listeners.forEach((listener) => listener());
 };
 
-export const markMessageRead = (id: string) => update((current) => ({ ...current, messages:current.messages.map((item) => item.id === id ? { ...item, read:true } : item) }));
-export const markAllMessagesRead = () => update((current) => ({ ...current, messages:current.messages.map((item) => ({ ...item, read:true })) }));
-export const acknowledgeRiskMessage = (id:string) => update((current)=>({ ...current,messages:current.messages.map((item)=>item.id===id?{...item,read:true,acknowledgedAt:'刚刚'}:item) }));
+export const markMessageRead = (id: string) =>
+  update((current) => ({
+    ...current,
+    messages: current.messages.map((item) =>
+      item.id === id ? { ...item, read: true } : item,
+    ),
+  }));
+export const markAllMessagesRead = () =>
+  update((current) => ({
+    ...current,
+    messages: current.messages.map((item) => ({ ...item, read: true })),
+  }));
+export const acknowledgeRiskMessage = (id: string) =>
+  update((current) => ({
+    ...current,
+    messages: current.messages.map((item) =>
+      item.id === id ? { ...item, read: true, acknowledgedAt: "刚刚" } : item,
+    ),
+  }));
 
-export const createTranslationBatch = ({ templateId, targetLocales, createdBy }: { templateId:string; targetLocales:string[]; createdBy:string }) => {
+export const createTranslationBatch = ({
+  templateId,
+  targetLocales,
+  createdBy,
+}: {
+  templateId: string;
+  targetLocales: string[];
+  createdBy: string;
+}) => {
   const template = state.templates.find((item) => item.id === templateId);
-  if (!template) throw new Error('模板不存在');
+  if (!template) throw new Error("模板不存在");
   const stamp = Date.now().toString().slice(-7);
   const batch: TranslationBatch = {
-    id:`MT-${stamp}`, templateId, templateVersion:template.version, sourceLocale:template.sourceLocale, targetLocales, status:'待人工审核', createdBy, createdAt:'刚刚', updatedAt:'刚刚',
-    items:targetLocales.map((locale,index) => ({ id:`MTI-${stamp}${index}`, batchId:`MT-${stamp}`, templateId, templateName:template.name, sourceLocale:template.sourceLocale, targetLocale:locale, externalTaskId:`EXT-MT-${stamp}${index}`, attemptNo:1, status:'待人工审核', sourceContentHash:`sha256:${stamp}${index}`, machineTitle:`${template.content?.web.title || template.name} · ${locale}`, machineSummary:template.content?.web.summary || '', machineBody:template.content?.web.body || '', submittedAt:'刚刚', translatedAt:'刚刚', submitter:createdBy, variablesValid:true })),
+    id: `MT-${stamp}`,
+    templateId,
+    templateVersion: template.version,
+    sourceLocale: template.sourceLocale,
+    targetLocales,
+    status: "待人工审核",
+    createdBy,
+    createdAt: "刚刚",
+    updatedAt: "刚刚",
+    items: targetLocales.map((locale, index) => ({
+      id: `MTI-${stamp}${index}`,
+      batchId: `MT-${stamp}`,
+      templateId,
+      templateName: template.name,
+      sourceLocale: template.sourceLocale,
+      targetLocale: locale,
+      externalTaskId: `EXT-MT-${stamp}${index}`,
+      attemptNo: 1,
+      status: "待人工审核",
+      sourceContentHash: `sha256:${stamp}${index}`,
+      machineTitle: `${template.content?.web.title || template.name} · ${locale}`,
+      machineSummary: template.content?.web.summary || "",
+      machineBody: template.content?.web.body || "",
+      submittedAt: "刚刚",
+      translatedAt: "刚刚",
+      submitter: createdBy,
+      variablesValid: true,
+    })),
   };
-  update((current) => ({ ...current, translationBatches:[batch, ...current.translationBatches], templates:current.templates.map((item) => item.id === templateId ? { ...item, translationBatchId:batch.id, translationReadiness:'待人工审核', locales:[item.sourceLocale,...targetLocales], content:item.content ? { ...item.content, locales:[item.sourceLocale,...targetLocales] } : item.content, status:'审核中', updatedAt:'刚刚' } : item) }));
+  update((current) => ({
+    ...current,
+    translationBatches: [batch, ...current.translationBatches],
+    templates: current.templates.map((item) =>
+      item.id === templateId
+        ? {
+            ...item,
+            translationBatchId: batch.id,
+            translationReadiness: "待人工审核",
+            locales: [item.sourceLocale, ...targetLocales],
+            content: item.content
+              ? {
+                  ...item.content,
+                  locales: [item.sourceLocale, ...targetLocales],
+                }
+              : item.content,
+            status: "审核中",
+            updatedAt: "刚刚",
+          }
+        : item,
+    ),
+  }));
   return batch;
 };
 
 const recomputeBatch = (batch: TranslationBatch): TranslationBatch => {
-  const approved = batch.items.every((item) => item.status === '审核通过');
-  const failed = batch.items.some((item) => item.status === '翻译失败' || item.status === '审核驳回');
-  return { ...batch, status:approved?'全部审核通过':failed?'部分失败':'待人工审核', updatedAt:'刚刚' };
-};
-
-export const approveTranslation = (itemId: string, values: { title:string; summary:string; body:string; reviewer:string }) => update((current) => {
-  const batches = current.translationBatches.map((batch) => recomputeBatch({ ...batch, items:batch.items.map((item) => item.id === itemId ? { ...item, status:'审核通过', reviewedTitle:values.title, reviewedSummary:values.summary, reviewedBody:values.body, reviewer:values.reviewer, reviewedAt:'刚刚' } : item) }));
-  const readyIds = new Set(batches.filter((batch) => batch.status === '全部审核通过').map((batch) => batch.templateId));
-  return { ...current, translationBatches:batches, templates:current.templates.map((template) => readyIds.has(template.id) ? { ...template, translationReadiness:'全部审核通过', status:'待业务审核' } : template) };
-});
-
-export const rejectTranslation = (itemId:string, reason:string) => update((current) => ({ ...current, translationBatches:current.translationBatches.map((batch) => recomputeBatch({ ...batch, items:batch.items.map((item) => item.id === itemId ? { ...item, status:'审核驳回', errorMessage:reason, reviewedAt:'刚刚' } : item) })) }));
-export const retryTranslation = (itemId:string) => update((current) => ({ ...current, translationBatches:current.translationBatches.map((batch) => recomputeBatch({ ...batch, items:batch.items.map((item) => item.id === itemId ? { ...item, status:'待人工审核', attemptNo:item.attemptNo + 1, externalTaskId:`EXT-MT-${Date.now().toString().slice(-8)}`, errorCode:undefined, errorMessage:undefined, translatedAt:'刚刚' } : item) })) }));
-
-export type TaskSubmission = Pick<MessageTask,'name'|'category'|'nature'|'risk'|'template'|'channels'|'audience'|'audienceCount'|'schedule'|'creator'|'team'|'contentMode'|'content'> & Partial<Pick<MessageTask,'expiresAt'|'retentionDays'|'audienceType'|'sampleUsers'|'translationBatchId'>>;
-
-export const saveTaskDraft = (input: TaskSubmission, existingTaskId?:string) => {
-  const task: MessageTask = { ...input, id:existingTaskId||`MSG-DRAFT-${Date.now().toString().slice(-5)}`, type:'人工群发', status:'草稿', approval:'未提交', progress:0, successRate:0, createdAt:'刚刚' };
-  update((current) => ({
-    ...current,
-    tasks:existingTaskId ? current.tasks.map((item)=>item.id===existingTaskId?task:item) : [task,...current.tasks],
-    approvals:existingTaskId ? current.approvals.map((item)=>item.taskId===existingTaskId&&['待我审核','待审核','紧急'].includes(item.status)?{...item,status:'已撤回',reviewedAt:'刚刚',opinion:'任务创建人重新编辑，旧审批自动失效'}:item) : current.approvals,
-  }));
-  return task;
-};
-
-export const submitTask = (input: TaskSubmission, existingTaskId?:string) => {
-  const task: MessageTask = { ...input, id:existingTaskId||`MSG-${Date.now().toString().slice(-9)}`, type:'人工群发', status:'待审核', approval:input.risk==='高'||input.risk==='关键'?'业务 + 风控双审':'一级审核', progress:0, successRate:0, createdAt:'刚刚', sampleUsers:input.sampleUsers || ['UID 82***19 · zh-CN · iOS','UID 51***02 · en-US · Android'] };
-  const approval: ApprovalItem = { id:`APR-${Date.now().toString().slice(-6)}`, objectType:'消息任务', name:task.name, version:'v1', risk:task.risk, nature:task.nature, audience:task.audienceCount, cost:'Web ¥0 · Push ¥0', schedule:task.schedule, step:task.risk==='高'||task.risk==='关键'?'业务 + 风控双审':'一级审核', submitter:task.creator, submitterId:'admin-01', submittedAt:'刚刚', status:'待我审核', taskId:task.id, channels:task.channels, locales:task.content?.locales, content:task.content, sampleUsers:task.sampleUsers, expiresAt:task.expiresAt, changes:['首次提交审核，内容与配置已冻结'] };
-  update((current) => ({
-    ...current,
-    tasks:existingTaskId ? current.tasks.map((item)=>item.id===existingTaskId?task:item) : [task,...current.tasks],
-    approvals:[approval,...current.approvals.map((item)=>existingTaskId&&item.taskId===existingTaskId&&['待我审核','待审核','紧急'].includes(item.status)?{...item,status:'已撤回',reviewedAt:'刚刚',opinion:'任务内容重新提交，旧审批自动失效'}:item)],
-  }));
-  return task;
-};
-
-export const updateTaskStatus = (taskId:string, status:string) => update((current) => ({ ...current, tasks:current.tasks.map((task) => task.id === taskId ? { ...task, status, approval:status==='已取消'?'已终止':task.approval } : task) }));
-
-export const reviewApproval = (approvalId:string, result:{ decision:'approve'|'reject'; reviewer:string; opinion:string }) => update((current) => {
-  const approval = current.approvals.find((item) => item.id === approvalId);
-  const status = result.decision === 'approve' ? '已通过' : '已驳回';
+  const approved = batch.items.every((item) => item.status === "审核通过");
+  const failed = batch.items.some(
+    (item) => item.status === "翻译失败" || item.status === "审核驳回",
+  );
   return {
-    ...current,
-    approvals:current.approvals.map((item) => item.id === approvalId ? { ...item, status, reviewer:result.reviewer, reviewedAt:'刚刚', opinion:result.opinion } : item),
-    tasks:current.tasks.map((task) => task.id === approval?.taskId || task.name === approval?.name ? { ...task, status:result.decision==='approve'?'待发送':'已驳回', approval:status } : task),
-    templates:current.templates.map((template) => template.id === approval?.templateId || (approval?.objectType === '消息模板' && template.name === approval.name) ? { ...template, status:result.decision==='approve'?'已发布':'已驳回', updatedAt:'刚刚' } : template),
+    ...batch,
+    status: approved ? "全部审核通过" : failed ? "部分失败" : "待人工审核",
+    updatedAt: "刚刚",
   };
-});
+};
 
-export const saveTemplate = (input: Omit<MessageTemplate,'id'|'translationBatchId'|'translationReadiness'|'version'|'status'|'updatedAt'>) => {
-  const template: MessageTemplate = { ...input, id:`TPL-${Date.now().toString().slice(-6)}`, translationBatchId:'', translationReadiness:'未提交', version:'v1', status:'草稿', updatedAt:'刚刚' };
-  update((current) => ({ ...current, templates:[template,...current.templates] }));
+export const approveTranslation = (
+  itemId: string,
+  values: { title: string; summary: string; body: string; reviewer: string },
+) =>
+  update((current) => {
+    const batches = current.translationBatches.map((batch) =>
+      recomputeBatch({
+        ...batch,
+        items: batch.items.map((item) =>
+          item.id === itemId
+            ? {
+                ...item,
+                status: "审核通过",
+                reviewedTitle: values.title,
+                reviewedSummary: values.summary,
+                reviewedBody: values.body,
+                reviewer: values.reviewer,
+                reviewedAt: "刚刚",
+              }
+            : item,
+        ),
+      }),
+    );
+    const readyIds = new Set(
+      batches
+        .filter((batch) => batch.status === "全部审核通过")
+        .map((batch) => batch.templateId),
+    );
+    return {
+      ...current,
+      translationBatches: batches,
+      templates: current.templates.map((template) =>
+        readyIds.has(template.id)
+          ? {
+              ...template,
+              translationReadiness: "全部审核通过",
+              status: "待业务审核",
+            }
+          : template,
+      ),
+    };
+  });
+
+export const rejectTranslation = (itemId: string, reason: string) =>
+  update((current) => ({
+    ...current,
+    translationBatches: current.translationBatches.map((batch) =>
+      recomputeBatch({
+        ...batch,
+        items: batch.items.map((item) =>
+          item.id === itemId
+            ? {
+                ...item,
+                status: "审核驳回",
+                errorMessage: reason,
+                reviewedAt: "刚刚",
+              }
+            : item,
+        ),
+      }),
+    ),
+  }));
+export const retryTranslation = (itemId: string) =>
+  update((current) => ({
+    ...current,
+    translationBatches: current.translationBatches.map((batch) =>
+      recomputeBatch({
+        ...batch,
+        items: batch.items.map((item) =>
+          item.id === itemId
+            ? {
+                ...item,
+                status: "待人工审核",
+                attemptNo: item.attemptNo + 1,
+                externalTaskId: `EXT-MT-${Date.now().toString().slice(-8)}`,
+                errorCode: undefined,
+                errorMessage: undefined,
+                translatedAt: "刚刚",
+              }
+            : item,
+        ),
+      }),
+    ),
+  }));
+
+export type TaskSubmission = Pick<
+  MessageTask,
+  | "name"
+  | "category"
+  | "nature"
+  | "risk"
+  | "template"
+  | "channels"
+  | "audience"
+  | "audienceCount"
+  | "schedule"
+  | "creator"
+  | "team"
+  | "contentMode"
+  | "content"
+> &
+  Partial<
+    Pick<
+      MessageTask,
+      | "expiresAt"
+      | "retentionDays"
+      | "audienceType"
+      | "sampleUsers"
+      | "translationBatchId"
+      | "triggerType"
+      | "templateId"
+      | "templateVersion"
+      | "eventConfig"
+    >
+  >;
+
+export const validateEventTaskConfig = (
+  config: EventTriggerConfig | undefined,
+  event: SystemEventDefinition | undefined,
+  template: MessageTemplate | undefined,
+): EventTaskValidationResult => {
+  if (!config || !event) return { valid: false, reason: "请选择系统事件" };
+  if (
+    !template ||
+    template.status !== "已发布" ||
+    template.translationReadiness !== "全部审核通过"
+  )
+    return { valid: false, reason: "模板尚未发布或多语言审核未完成" };
+  if (!config.dedupeKey.trim())
+    return { valid: false, reason: "去重键不能为空" };
+  if (config.eventTtlSeconds <= 0)
+    return { valid: false, reason: "事件有效期必须大于 0 秒" };
+  if (config.eventTtlSeconds > 604800)
+    return { valid: false, reason: "事件有效期不能超过 604800 秒" };
+  if (config.maxRetries < 0 || config.maxRetries > 10)
+    return { valid: false, reason: "最大重试次数必须在 0–10 之间" };
+  if (config.retryBackoffSeconds < 1 || config.retryBackoffSeconds > 3600)
+    return { valid: false, reason: "首次退避必须在 1–3600 秒之间" };
+  const eventFields = new Set(event.variables);
+  const mapped = new Map(
+    config.variableMappings.map((item) => [
+      item.templateVariable,
+      item.eventField,
+    ]),
+  );
+  const missing = (template.variables || []).filter(
+    (item) => !mapped.get(item),
+  );
+  if (missing.length)
+    return { valid: false, reason: `缺少变量映射：${missing.join("、")}` };
+  const invalid = config.variableMappings.find(
+    (item) => item.required && !eventFields.has(item.eventField),
+  );
+  if (invalid)
+    return { valid: false, reason: `事件字段不存在：${invalid.eventField}` };
+  return { valid: true };
+};
+
+export const saveTaskDraft = (
+  input: TaskSubmission,
+  existingTaskId?: string,
+) => {
+  const triggerType = input.triggerType || "manual";
+  const task: MessageTask = {
+    ...input,
+    triggerType,
+    id: existingTaskId || `MSG-DRAFT-${Date.now().toString().slice(-5)}`,
+    type: triggerType === "event" ? "事件触发" : "人工群发",
+    status: "草稿",
+    approval: "未提交",
+    progress: 0,
+    successRate: 0,
+    createdAt: "刚刚",
+  };
+  update((current) => ({
+    ...current,
+    tasks: existingTaskId
+      ? current.tasks.map((item) => (item.id === existingTaskId ? task : item))
+      : [task, ...current.tasks],
+    approvals: existingTaskId
+      ? current.approvals.map((item) =>
+          item.taskId === existingTaskId &&
+          ["待我审核", "待审核", "紧急"].includes(item.status)
+            ? {
+                ...item,
+                status: "已撤回",
+                reviewedAt: "刚刚",
+                opinion: "任务创建人重新编辑，旧审批自动失效",
+              }
+            : item,
+        )
+      : current.approvals,
+  }));
+  return task;
+};
+
+export const submitTask = (input: TaskSubmission, existingTaskId?: string) => {
+  const triggerType = input.triggerType || "manual";
+  if (triggerType === "event") {
+    const validation = validateEventTaskConfig(
+      input.eventConfig,
+      state.events.find((item) => item.id === input.eventConfig?.eventId),
+      state.templates.find((item) => item.id === input.templateId),
+    );
+    if (!validation.valid) throw new Error(validation.reason);
+  }
+  const task: MessageTask = {
+    ...input,
+    triggerType,
+    id: existingTaskId || `MSG-${Date.now().toString().slice(-9)}`,
+    type: triggerType === "event" ? "事件触发" : "人工群发",
+    status: "待审核",
+    approval:
+      input.risk === "高" || input.risk === "关键"
+        ? "业务 + 风控双审"
+        : "一级审核",
+    progress: 0,
+    successRate: 0,
+    createdAt: "刚刚",
+    sampleUsers: input.sampleUsers || [
+      "UID 82***19 · zh-CN · iOS",
+      "UID 51***02 · en-US · Android",
+    ],
+  };
+  const approval: ApprovalItem = {
+    id: `APR-${Date.now().toString().slice(-6)}`,
+    objectType: "消息任务",
+    name: task.name,
+    version: "v1",
+    risk: task.risk,
+    nature: task.nature,
+    audience: task.audienceCount,
+    cost: "Web ¥0 · Push ¥0",
+    schedule: task.schedule,
+    step:
+      task.risk === "高" || task.risk === "关键"
+        ? "业务 + 风控双审"
+        : "一级审核",
+    submitter: task.creator,
+    submitterId: "admin-01",
+    submittedAt: "刚刚",
+    status: "待我审核",
+    taskId: task.id,
+    templateId: task.templateId,
+    templateVersion: task.templateVersion,
+    triggerType: task.triggerType,
+    eventConfig: task.eventConfig,
+    channels: task.channels,
+    locales: task.content?.locales,
+    content: task.content,
+    sampleUsers: task.sampleUsers,
+    expiresAt: task.expiresAt,
+    changes: ["首次提交审核，内容与配置已冻结"],
+  };
+  update((current) => ({
+    ...current,
+    tasks: existingTaskId
+      ? current.tasks.map((item) => (item.id === existingTaskId ? task : item))
+      : [task, ...current.tasks],
+    approvals: [
+      approval,
+      ...current.approvals.map((item) =>
+        existingTaskId &&
+        item.taskId === existingTaskId &&
+        ["待我审核", "待审核", "紧急"].includes(item.status)
+          ? {
+              ...item,
+              status: "已撤回",
+              reviewedAt: "刚刚",
+              opinion: "任务内容重新提交，旧审批自动失效",
+            }
+          : item,
+      ),
+    ],
+  }));
+  return task;
+};
+
+export const updateTaskStatus = (taskId: string, status: string) =>
+  update((current) => ({
+    ...current,
+    tasks: current.tasks.map((task) =>
+      task.id === taskId
+        ? {
+            ...task,
+            status,
+            approval: status === "已取消" ? "已终止" : task.approval,
+          }
+        : task,
+    ),
+  }));
+
+export const reviewApproval = (
+  approvalId: string,
+  result: { decision: "approve" | "reject"; reviewer: string; opinion: string },
+) =>
+  update((current) => {
+    const approval = current.approvals.find((item) => item.id === approvalId);
+    const status = result.decision === "approve" ? "已通过" : "已驳回";
+    return {
+      ...current,
+      approvals: current.approvals.map((item) =>
+        item.id === approvalId
+          ? {
+              ...item,
+              status,
+              reviewer: result.reviewer,
+              reviewedAt: "刚刚",
+              opinion: result.opinion,
+            }
+          : item,
+      ),
+      tasks: current.tasks.map((task) =>
+        task.id === approval?.taskId || task.name === approval?.name
+          ? {
+              ...task,
+              status:
+                result.decision === "approve"
+                  ? task.triggerType === "event"
+                    ? "已启用"
+                    : "待发送"
+                  : "已驳回",
+              approval: status,
+            }
+          : task,
+      ),
+      templates: current.templates.map((template) =>
+        template.id === approval?.templateId ||
+        (approval?.objectType === "消息模板" && template.name === approval.name)
+          ? {
+              ...template,
+              status: result.decision === "approve" ? "已发布" : "已驳回",
+              updatedAt: "刚刚",
+            }
+          : template,
+      ),
+    };
+  });
+
+export const saveTemplate = (
+  input: Omit<
+    MessageTemplate,
+    | "id"
+    | "translationBatchId"
+    | "translationReadiness"
+    | "version"
+    | "status"
+    | "updatedAt"
+  >,
+) => {
+  const template: MessageTemplate = {
+    ...input,
+    id: `TPL-${Date.now().toString().slice(-6)}`,
+    translationBatchId: "",
+    translationReadiness: "未提交",
+    version: "v1",
+    status: "草稿",
+    updatedAt: "刚刚",
+  };
+  update((current) => ({
+    ...current,
+    templates: [template, ...current.templates],
+  }));
   return template;
 };
 
-export const updateTemplate = (id:string, changes:Partial<MessageTemplate>) => {
-  let result=state.templates.find((item)=>item.id===id);
-  update((current)=>({ ...current,templates:current.templates.map((item)=>{if(item.id!==id)return item;result={...item,...changes,translationReadiness:'未提交',translationBatchId:'',status:'草稿',version:`v${Number(item.version.replace(/\D/g,''))+1}`,updatedAt:'刚刚'};return result;}) }));
-  if(!result)throw new Error('模板不存在');
+export const updateTemplate = (
+  id: string,
+  changes: Partial<MessageTemplate>,
+) => {
+  let result = state.templates.find((item) => item.id === id);
+  update((current) => ({
+    ...current,
+    templates: current.templates.map((item) => {
+      if (item.id !== id) return item;
+      result = {
+        ...item,
+        ...changes,
+        translationReadiness: "未提交",
+        translationBatchId: "",
+        status: "草稿",
+        version: `v${Number(item.version.replace(/\D/g, "")) + 1}`,
+        updatedAt: "刚刚",
+      };
+      return result;
+    }),
+  }));
+  if (!result) throw new Error("模板不存在");
   return result;
 };
 
-export const submitTemplateForApproval = (templateId:string) => {
-  const template=state.templates.find((item)=>item.id===templateId);
-  if(!template)throw new Error('模板不存在');
-  if(template.translationReadiness!=='全部审核通过')throw new Error('多语言人工审核尚未全部通过');
-  const existing=state.approvals.find((item)=>item.templateId===templateId&&['待我审核','待审核'].includes(item.status));
-  if(existing)return existing;
-  const approval:ApprovalItem={id:`APR-${Date.now().toString().slice(-6)}`,objectType:'消息模板',name:template.name,version:template.version,risk:template.risk,nature:template.nature,audience:0,cost:'Web ¥0 · Push ¥0',schedule:'审核通过后发布',step:template.risk==='高'||template.risk==='关键'?'业务 + 风控双审':'一级审核',submitter:'Gary Ma',submitterId:'admin-01',submittedAt:'刚刚',status:'待我审核',templateId:template.id,channels:template.channels,locales:template.locales,content:template.content,expiresAt:'长期',changes:['全部目标语言已完成人工审核','提交不可变模板版本发布']};
-  update((current)=>({...current,approvals:[approval,...current.approvals],templates:current.templates.map((item)=>item.id===templateId?{...item,status:'待业务审核',updatedAt:'刚刚'}:item)}));
+export const submitTemplateForApproval = (templateId: string) => {
+  const template = state.templates.find((item) => item.id === templateId);
+  if (!template) throw new Error("模板不存在");
+  if (template.translationReadiness !== "全部审核通过")
+    throw new Error("多语言人工审核尚未全部通过");
+  const existing = state.approvals.find(
+    (item) =>
+      item.templateId === templateId &&
+      ["待我审核", "待审核"].includes(item.status),
+  );
+  if (existing) return existing;
+  const approval: ApprovalItem = {
+    id: `APR-${Date.now().toString().slice(-6)}`,
+    objectType: "消息模板",
+    name: template.name,
+    version: template.version,
+    risk: template.risk,
+    nature: template.nature,
+    audience: 0,
+    cost: "Web ¥0 · Push ¥0",
+    schedule: "审核通过后发布",
+    step:
+      template.risk === "高" || template.risk === "关键"
+        ? "业务 + 风控双审"
+        : "一级审核",
+    submitter: "Gary Ma",
+    submitterId: "admin-01",
+    submittedAt: "刚刚",
+    status: "待我审核",
+    templateId: template.id,
+    channels: template.channels,
+    locales: template.locales,
+    content: template.content,
+    expiresAt: "长期",
+    changes: ["全部目标语言已完成人工审核", "提交不可变模板版本发布"],
+  };
+  update((current) => ({
+    ...current,
+    approvals: [approval, ...current.approvals],
+    templates: current.templates.map((item) =>
+      item.id === templateId
+        ? { ...item, status: "待业务审核", updatedAt: "刚刚" }
+        : item,
+    ),
+  }));
   return approval;
 };
 
-export const addAllowlistEntry = (input: Omit<LinkAllowlistEntry,'id'>) => update((current) => ({ ...current, allowlist:[{ ...input, id:`LINK-${Date.now().toString().slice(-5)}` },...current.allowlist] }));
-export const updateAllowlistEntry = (id:string, changes:Partial<LinkAllowlistEntry>) => update((current) => ({ ...current, allowlist:current.allowlist.map((item) => item.id === id ? { ...item,...changes } : item) }));
+export const addAllowlistEntry = (input: Omit<LinkAllowlistEntry, "id">) =>
+  update((current) => ({
+    ...current,
+    allowlist: [
+      { ...input, id: `LINK-${Date.now().toString().slice(-5)}` },
+      ...current.allowlist,
+    ],
+  }));
+export const updateAllowlistEntry = (
+  id: string,
+  changes: Partial<LinkAllowlistEntry>,
+) =>
+  update((current) => ({
+    ...current,
+    allowlist: current.allowlist.map((item) =>
+      item.id === id ? { ...item, ...changes } : item,
+    ),
+  }));
 
-export const retryDelivery = (id:string) => update((current) => ({ ...current, deliveries:current.deliveries.map((item) => item.id === id && item.retryable ? { ...item, status:'重试中', retryCount:item.retryCount + 1, error:undefined, errorCode:undefined } : item) }));
-export const suppressDeliveryToken = (id:string) => update((current) => ({ ...current, deliveries:current.deliveries.map((item) => item.id === id ? { ...item, tokenStatus:'已失效', status:'已抑制' } : item) }));
+export const retryDelivery = (id: string) =>
+  update((current) => ({
+    ...current,
+    deliveries: current.deliveries.map((item) =>
+      item.id === id && item.retryable
+        ? {
+            ...item,
+            status: "重试中",
+            retryCount: item.retryCount + 1,
+            error: undefined,
+            errorCode: undefined,
+          }
+        : item,
+    ),
+  }));
+export const suppressDeliveryToken = (id: string) =>
+  update((current) => ({
+    ...current,
+    deliveries: current.deliveries.map((item) =>
+      item.id === id
+        ? { ...item, tokenStatus: "已失效", status: "已抑制" }
+        : item,
+    ),
+  }));
 
-export const testSystemEvent = (eventId:string) => update((current) => {
-  const event = current.events.find((item) => item.id === eventId);
-  if (!event) return current;
-  const record:DeliveryRecord = { id:`DLV-TEST-${Date.now().toString().slice(-5)}`, task:`测试 · ${event.name}`, user:'UID TEST-001', destination:'device ***test', channel:'Push', provider:'FCM Sandbox', status:'已送达', submittedAt:'刚刚', deliveredAt:'刚刚', retryCount:0, cost:'—', eventCode:event.id, category:event.line, risk:event.line==='风控'?'紧急':'普通', devicePlatform:'Android', providerMessageId:`PM-TEST-${Date.now().toString().slice(-4)}`, tokenStatus:'有效' };
-  return { ...current, events:current.events.map((item) => item.id === eventId ? { ...item, lastTestAt:'刚刚' } : item), deliveries:[record,...current.deliveries] };
-});
+export const testSystemEvent = (eventId: string): EventTestResult => {
+  const event = state.events.find((item) => item.id === eventId);
+  if (!event) return { ok: false, reason: "系统事件不存在" };
+  const task = state.tasks.find(
+    (item) =>
+      item.triggerType === "event" &&
+      item.eventConfig?.eventId === eventId &&
+      item.status === "已启用",
+  );
+  if (!task) return { ok: false, reason: "没有已启用的事件触发任务" };
+  const template = state.templates.find((item) => item.id === task.templateId);
+  const validation = validateEventTaskConfig(task.eventConfig, event, template);
+  if (!validation.valid) return { ok: false, reason: validation.reason };
+  const channel = task.channels.includes("Push") ? "Push" : "站内信";
+  const stamp = Date.now().toString().slice(-5);
+  const record: DeliveryRecord = {
+    id: `DLV-TEST-${stamp}`,
+    task: `测试 · ${task.name}`,
+    user: "UID TEST-001",
+    destination: channel === "Push" ? "device ***test" : "站内账户",
+    channel,
+    provider: channel === "Push" ? "FCM Sandbox" : "ForX Finance Inbox",
+    status: "已送达",
+    submittedAt: "刚刚",
+    deliveredAt: "刚刚",
+    retryCount: 0,
+    cost: "—",
+    eventCode: event.id,
+    category: task.category,
+    risk: task.risk === "关键" ? "紧急" : "普通",
+    devicePlatform: channel === "Push" ? "Android" : "Web",
+    providerMessageId: `PM-TEST-${stamp}`,
+    tokenStatus: channel === "Push" ? "有效" : "不适用",
+  };
+  update((current) => ({
+    ...current,
+    events: current.events.map((item) =>
+      item.id === eventId ? { ...item, lastTestAt: "刚刚" } : item,
+    ),
+    deliveries: [record, ...current.deliveries],
+  }));
+  return { ok: true, deliveryId: record.id, taskId: task.id };
+};
 
-export const registerSystemEvent = (input: Omit<SystemEventDefinition,'calls'|'failure'|'last'|'status'>) => update((current) => ({ ...current, events:[{ ...input,calls:'0',failure:'0%',last:'尚未调用',status:'待联调' },...current.events] }));
+export const registerSystemEvent = (
+  input: Omit<SystemEventDefinition, "calls" | "failure" | "last" | "status">,
+) =>
+  update((current) => ({
+    ...current,
+    events: [
+      {
+        ...input,
+        calls: "0",
+        failure: "0%",
+        last: "尚未调用",
+        status: "待联调",
+      },
+      ...current.events,
+    ],
+  }));
 
-export const validateActionUrl = (url:string | undefined) => !url || state.allowlist.some((entry) => entry.status === '启用' && (entry.pattern === url || (entry.pattern.endsWith('*') && url.startsWith(entry.pattern.slice(0,-1))) || (entry.pattern.includes(':id') && url.startsWith(entry.pattern.split(':id')[0]))));
+export const validateActionUrl = (url: string | undefined) =>
+  !url ||
+  state.allowlist.some(
+    (entry) =>
+      entry.status === "启用" &&
+      (entry.pattern === url ||
+        (entry.pattern.endsWith("*") &&
+          url.startsWith(entry.pattern.slice(0, -1))) ||
+        (entry.pattern.includes(":id") &&
+          url.startsWith(entry.pattern.split(":id")[0]))),
+  );

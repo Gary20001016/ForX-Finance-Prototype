@@ -64,7 +64,7 @@ export default function AdminLayout() {
         {!collapsed && (
           <div className="sider-health">
             <span className="health-dot" />
-            <div><strong>Web 站内信正常</strong><span>App Push 正常</span></div>
+            <div><strong>站内信正常</strong><span>App Push 正常</span></div>
           </div>
         )}
       </Sider>

@@ -31,7 +31,7 @@ npm run build
 - `/segments`：用户分群
 - `/events`：业务事件管理
 - `/approvals`：风险分级审核中心
-- `/deliveries`：Web 站内信和 App Push 发送记录
+- `/deliveries`：站内信（Web + App）和 App Push 发送记录
 - `/analytics`：消息数据分析
 - `/settings`：消息分类、保留期、跳转白名单、权限和审计日志
 - `/inbox`：用户侧消息中心

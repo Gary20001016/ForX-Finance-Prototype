@@ -9,6 +9,7 @@ import { markAllMessagesRead, markMessageRead, usePrototypeStore } from '../../s
 export default function InboxPage() {
   const navigate = useNavigate();
   const { messages } = usePrototypeStore();
+  const [client, setClient] = useState<'web' | 'app'>('web');
   const [category, setCategory] = useState<'all' | MessageCategoryCode>('all');
   const [unreadOnly, setUnreadOnly] = useState(false);
   const unread = messages.filter((message) => !message.read).length;
@@ -28,9 +29,10 @@ export default function InboxPage() {
     onOk:markAllMessagesRead,
   });
 
-  return <main className="inbox-shell">
-    <header className="inbox-topbar"><div className="inbox-brand"><span>F</span><strong>ForX Finance</strong></div><Space><Button type="text" onClick={() => navigate('/dashboard')}>运营后台</Button><div className="inbox-avatar">GM</div></Space></header>
+  return <main className={`inbox-shell inbox-client-${client}`}>
+    <header className="inbox-topbar"><div className="inbox-brand"><span>F</span><strong>ForX Finance</strong></div><Space><div className="inbox-client-switch" aria-label="客户端预览"><Button type={client === 'web' ? 'primary' : 'text'} size="small" onClick={() => setClient('web')}>Web 端</Button><Button type={client === 'app' ? 'primary' : 'text'} size="small" onClick={() => setClient('app')}>App 端</Button></div><Button type="text" onClick={() => navigate('/dashboard')}>运营后台</Button><div className="inbox-avatar">GM</div></Space></header>
     <div className="inbox-container">
+      <div className="inbox-client-note"><strong>{client === 'web' ? 'Web 消息中心视图' : 'App 消息中心视图'}</strong><span>Web / App 共享已读状态</span></div>
       <section className="inbox-hero"><div><h1>消息中心</h1><p><Badge count={unread} dot={unread > 0}><IconNotification /></Badge><strong>{unread} 条未读</strong> · 重要资金与风险消息会优先展示</p></div><Button icon={<IconCheck />} disabled={unread === 0} onClick={markAllRead}>全部已读</Button></section>
       <nav className="inbox-categories" aria-label="消息分类">
         <Button type={category === 'all' ? 'primary':'secondary'} onClick={() => setCategory('all')}>全部</Button>

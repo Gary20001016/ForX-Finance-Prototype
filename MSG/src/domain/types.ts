@@ -1,5 +1,5 @@
-export type Channel = '站内信' | 'Push' | '邮件' | '短信';
-export type RiskLevel = '低' | '中' | '高' | '关键';
+export type Channel = "站内信" | "Push" | "邮件" | "短信";
+export type RiskLevel = "低" | "中" | "高" | "关键";
 
 export interface WebMessageContent {
   title: string;
@@ -15,8 +15,8 @@ export interface PushMessageContent {
   body: string;
   imageUrl?: string;
   deepLink?: string;
-  platform: '全部设备' | 'iOS' | 'Android';
-  priority: '普通' | '高' | '紧急';
+  platform: "全部设备" | "iOS" | "Android";
+  priority: "普通" | "高" | "紧急";
   collapseKey?: string;
 }
 
@@ -25,6 +25,25 @@ export interface LocalizedMessageContent {
   locales: string[];
   web: WebMessageContent;
   push: PushMessageContent;
+}
+
+export type TaskTriggerType = "manual" | "event";
+
+export interface EventVariableMapping {
+  eventField: string;
+  templateVariable: string;
+  required: boolean;
+}
+
+export interface EventTriggerConfig {
+  eventId: string;
+  eventVersion: string;
+  conditionExpression: string;
+  variableMappings: EventVariableMapping[];
+  dedupeKey: string;
+  eventTtlSeconds: number;
+  maxRetries: number;
+  retryBackoffSeconds: number;
 }
 
 export interface MessageTask {
@@ -45,14 +64,18 @@ export interface MessageTask {
   successRate: number;
   creator: string;
   team: string;
-  contentMode?: 'template' | 'temporary';
+  contentMode?: "template" | "temporary";
   content?: LocalizedMessageContent;
   expiresAt?: string;
   retentionDays?: number;
-  audienceType?: 'all' | 'uid' | 'vip' | 'agent' | 'campaign';
+  audienceType?: "all" | "uid" | "vip" | "agent" | "campaign";
   sampleUsers?: string[];
   translationBatchId?: string;
   createdAt?: string;
+  triggerType?: TaskTriggerType;
+  templateId?: string;
+  templateVersion?: string;
+  eventConfig?: EventTriggerConfig;
 }
 
 export interface MessageTemplate {
@@ -69,15 +92,29 @@ export interface MessageTemplate {
   translationReadiness: TranslationBatchStatus;
   version: string;
   status: string;
-  eventCode?: string;
   updatedAt: string;
   content?: LocalizedMessageContent;
   variables?: string[];
   owner?: string;
 }
 
-export type TranslationItemStatus = '未提交' | '排队中' | '翻译中' | '待人工审核' | '审核通过' | '翻译失败' | '审核驳回' | '已取消';
-export type TranslationBatchStatus = '未提交' | '机翻处理中' | '待人工审核' | '全部审核通过' | '部分失败' | '审核被驳回' | '已取消';
+export type TranslationItemStatus =
+  | "未提交"
+  | "排队中"
+  | "翻译中"
+  | "待人工审核"
+  | "审核通过"
+  | "翻译失败"
+  | "审核驳回"
+  | "已取消";
+export type TranslationBatchStatus =
+  | "未提交"
+  | "机翻处理中"
+  | "待人工审核"
+  | "全部审核通过"
+  | "部分失败"
+  | "审核被驳回"
+  | "已取消";
 
 export interface TranslationItem {
   id: string;
@@ -160,6 +197,9 @@ export interface ApprovalItem {
   reviewer?: string;
   reviewedAt?: string;
   opinion?: string;
+  triggerType?: TaskTriggerType;
+  templateVersion?: string;
+  eventConfig?: EventTriggerConfig;
 }
 
 export interface DeliveryRecord {
@@ -178,24 +218,24 @@ export interface DeliveryRecord {
   eventCode?: string;
   category?: string;
   risk?: string;
-  devicePlatform?: 'iOS' | 'Android' | 'Web';
+  devicePlatform?: "iOS" | "Android" | "Web";
   providerMessageId?: string;
   clickedAt?: string;
   errorCode?: string;
   retryable?: boolean;
-  tokenStatus?: '有效' | '已失效' | '不适用';
+  tokenStatus?: "有效" | "已失效" | "不适用";
 }
 
 export interface LinkAllowlistEntry {
   id: string;
   name: string;
-  type: 'Deep Link' | 'Web URL';
+  type: "Deep Link" | "Web URL";
   pattern: string;
-  platforms: Array<'Web' | 'iOS' | 'Android'>;
+  platforms: Array<"Web" | "iOS" | "Android">;
   parameterRule: string;
   effectiveAt: string;
   expiresAt: string;
-  status: '启用' | '停用' | '已过期';
+  status: "启用" | "停用" | "已过期";
   owner: string;
 }
 
@@ -204,7 +244,8 @@ export interface SystemEventDefinition {
   name: string;
   line: string;
   version: string;
-  template: string;
+  /** @deprecated Templates are connected through event-triggered tasks. */
+  template?: string;
   templateId?: string;
   caller: string;
   calls: string;
@@ -213,6 +254,19 @@ export interface SystemEventDefinition {
   status: string;
   variables: string[];
   lastTestAt?: string;
+  description?: string;
+}
+
+export interface EventTaskValidationResult {
+  valid: boolean;
+  reason?: string;
+}
+
+export interface EventTestResult {
+  ok: boolean;
+  reason?: string;
+  deliveryId?: string;
+  taskId?: string;
 }
 
 export interface ChannelProvider {
@@ -241,8 +295,15 @@ export interface CompliancePolicy {
   effectiveAt: string;
 }
 
-export type MessageCategoryCode = 'system_notice' | 'trade_notice' | 'asset_notice' | 'security_notice' | 'reward_notice' | 'campaign_notice' | 'risk_notice';
-export type MessageRisk = '普通' | '重要' | '紧急';
+export type MessageCategoryCode =
+  | "system_notice"
+  | "trade_notice"
+  | "asset_notice"
+  | "security_notice"
+  | "reward_notice"
+  | "campaign_notice"
+  | "risk_notice";
+export type MessageRisk = "普通" | "重要" | "紧急";
 
 export interface MessageCategory {
   code: MessageCategoryCode;
@@ -260,7 +321,7 @@ export interface UserMessage {
   createdAt: string;
   read: boolean;
   risk: MessageRisk;
-  source: '系统事件' | '人工发送';
+  source: "系统事件" | "人工发送";
   actionText?: string;
   targetUrl?: string;
   expiresAt?: string;
