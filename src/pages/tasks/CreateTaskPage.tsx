@@ -16,7 +16,6 @@ import {
   Select,
   Space,
   Steps,
-  Switch,
   Tag,
 } from "@arco-design/web-react";
 import {
@@ -705,8 +704,6 @@ export default function CreateTaskPage() {
             frequencyWindowValue: copiedTask?.frequencyPolicy?.windowValue,
             frequencyWindowUnit: copiedTask?.frequencyPolicy?.windowUnit,
             quiet: "遵守并延迟",
-            dedupe: true,
-            rate: 1200,
           }}
           onValuesChange={updateSnapshot}
         >
@@ -1254,20 +1251,6 @@ export default function CreateTaskPage() {
                         { label: "命中后跳过", value: "跳过" },
                       ]}
                     />
-                  </FormItem>
-                </Grid.Col>
-                <Grid.Col span={8}>
-                  <FormItem label="发送速率（每秒）" field="rate">
-                    <InputNumber min={1} max={5000} style={{ width: "100%" }} />
-                  </FormItem>
-                </Grid.Col>
-                <Grid.Col span={8}>
-                  <FormItem
-                    label="用户去重"
-                    field="dedupe"
-                    triggerPropName="checked"
-                  >
-                    <Switch checkedText="按 UID 去重" />
                   </FormItem>
                 </Grid.Col>
               </Grid.Row>
