@@ -21,24 +21,30 @@ import PageHeader from "../../components/PageHeader";
 import FilterBar from "../../components/FilterBar";
 import ResourceTable from "../../components/ResourceTable";
 import StatusTag from "../../components/StatusTag";
-import type { MessageTask } from "../../domain/types";
+import type { ManualTaskOperation, MessageTask } from "../../domain/types";
 import MessagePreview from "../../components/MessagePreview";
 import {
-  updateTaskStatus,
+  performManualTaskOperation,
   usePrototypeStore,
 } from "../../store/prototypeStore";
+import {
+  MANUAL_TASK_STATUSES,
+  canEditManualTask,
+  getManualTaskOperations,
+  isManualTaskStatus,
+} from "./taskLifecycle";
 
 const channelColors: Record<string, string> = {
   站内信: "arcoblue",
   Push: "purple",
 };
 export const canEditTask = (status: string) =>
-  !["发送中", "已完成"].includes(status);
+  isManualTaskStatus(status) && canEditManualTask(status);
 
 export default function TaskListPage() {
   const navigate = useNavigate();
   const store = usePrototypeStore();
-  const tasks = store.tasks;
+  const tasks = store.tasks.filter((task) => task.triggerType !== "event");
   const [keyword, setKeyword] = useState("");
   const [status, setStatus] = useState<string>();
   const [nature, setNature] = useState<string>();
@@ -62,36 +68,75 @@ export default function TaskListPage() {
     [tasks, keyword, status, nature, channel],
   );
 
-  const handleTaskAction = (key: string, row: MessageTask) => {
-    if (key === "view") setSelected(row);
-    if (key === "copy") {
+  const operationsFor = (row: MessageTask): ManualTaskOperation[] =>
+    !isManualTaskStatus(row.status)
+      ? ["查看详情", "复制任务"]
+      : getManualTaskOperations({
+          status: row.status,
+          deliveryResult: row.deliveryResult,
+        });
+
+  const handleTaskAction = (operation: string, row: MessageTask) => {
+    if (operation === "查看详情") setSelected(row);
+    if (operation === "复制任务") {
       Message.info(`正在复制「${row.name}」的内容、受众与发送配置`);
       navigate("/tasks/create", { state: { copyTask: row } });
     }
-    if (key === "edit" && canEditTask(row.status))
-      navigate("/tasks/create", { state: { copyTask: row, resume: true } });
-    if (key === "pause")
+    if (
+      operation === "编辑任务" &&
+      canEditTask(row.status)
+    ) {
+      const openEditor = () =>
+        navigate("/tasks/create", { state: { copyTask: row, resume: true } });
+      if (row.status === "待发送")
+        Modal.confirm({
+          title: `编辑任务 · ${row.name}`,
+          content: "编辑后原审批结果失效，保存后任务回到草稿。",
+          okText: "继续编辑",
+          onOk: openEditor,
+        });
+      else openEditor();
+    }
+    if (operation === "撤回审核")
       Modal.confirm({
-        title: `暂停任务 · ${row.name}`,
-        content: "已生成但未发送的消息将保留。",
+        title: `撤回审核 · ${row.name}`,
+        content: "撤回后任务回到草稿，当前审批实例立即失效。",
+        okText: "确认撤回",
         onOk: () => {
-          updateTaskStatus(row.id, "已暂停");
+          performManualTaskOperation(row.id, "撤回审核");
+          Message.success("审核已撤回，任务已回到草稿");
+        },
+      });
+    if (operation === "暂停发送")
+      Modal.confirm({
+        title: `暂停发送 · ${row.name}`,
+        content: "已生成但未发送的消息将保留。",
+        okText: "确认暂停",
+        onOk: () => {
+          performManualTaskOperation(row.id, "暂停发送");
           Message.success("任务已暂停");
         },
       });
-    if (key === "resume") {
-      updateTaskStatus(row.id, "发送中");
+    if (operation === "恢复发送") {
+      performManualTaskOperation(row.id, "恢复发送");
       Message.success("任务已恢复发送");
     }
-    if (key === "cancel")
+    if (operation === "取消任务")
       Modal.confirm({
         title: `取消任务 · ${row.name}`,
         content: "取消后不再生成或发送新实例，已送达消息无法撤回。",
+        okText: "确认取消",
         onOk: () => {
-          updateTaskStatus(row.id, "已取消");
+          performManualTaskOperation(row.id, "取消任务");
           Message.success("任务已取消");
         },
       });
+    if (operation === "重试失败项") {
+      Message.info(`正在基于「${row.name}」创建失败项重试任务`);
+      navigate("/tasks/create", {
+        state: { copyTask: row, retryFailed: true },
+      });
+    }
   };
 
   const columns: TableColumnProps<MessageTask>[] = [
@@ -110,13 +155,10 @@ export default function TaskListPage() {
       width: 190,
       render: (_, row) => (
         <div>
-          {row.triggerType === "event" ? "系统事件触发" : "人工发送"}
+          人工发送
           <div className="muted">
             {row.category} · {row.nature}
           </div>
-          {row.eventConfig && (
-            <div className="mono muted">{row.eventConfig.eventId}</div>
-          )}
         </div>
       ),
     },
@@ -162,14 +204,27 @@ export default function TaskListPage() {
     },
     { title: "计划时间", dataIndex: "schedule", width: 170 },
     {
-      title: "状态",
-      width: 118,
+      title: "任务状态",
+      width: 104,
+      render: (_, row) => <StatusTag status={row.status} />,
+    },
+    {
+      title: "审核状态",
+      width: 104,
       render: (_, row) => (
-        <div>
-          <StatusTag status={row.status} />
-          <div className="muted approval-copy">{row.approval}</div>
-        </div>
+        <StatusTag
+          status={
+            row.approvalStatus ||
+            (row.approval.includes("通过") ? "通过" : row.approval)
+          }
+        />
       ),
+    },
+    {
+      title: "发送结果",
+      width: 104,
+      render: (_, row) =>
+        <StatusTag status={row.deliveryResult || "未开始"} />,
     },
     {
       title: "进度",
@@ -200,23 +255,9 @@ export default function TaskListPage() {
           trigger="click"
           droplist={
             <Menu onClickMenuItem={(key) => handleTaskAction(key, row)}>
-              <Menu.Item key="view">查看详情</Menu.Item>
-              <Menu.Item key="edit" disabled={!canEditTask(row.status)}>
-                {row.status === "草稿" ? "继续编辑" : "再次编辑"}
-              </Menu.Item>
-              <Menu.Item key="copy">复制任务</Menu.Item>
-              <Menu.Item key="pause" disabled={row.status !== "发送中"}>
-                暂停发送
-              </Menu.Item>
-              <Menu.Item key="resume" disabled={row.status !== "已暂停"}>
-                恢复发送
-              </Menu.Item>
-              <Menu.Item
-                key="cancel"
-                disabled={["已完成", "已取消"].includes(row.status)}
-              >
-                取消任务
-              </Menu.Item>
+              {operationsFor(row).map((operation) => (
+                <Menu.Item key={operation}>{operation}</Menu.Item>
+              ))}
             </Menu>
           }
         >
@@ -233,15 +274,15 @@ export default function TaskListPage() {
   return (
     <section className="page-stack">
       <PageHeader
-        title="消息任务"
-        description="统一创建、审核和追踪人工群发与系统事件消息。"
+        title="人工消息任务"
+        description="创建、审核和追踪一次性人工发送任务；事件自动通知在事件通知规则中管理。"
         actions={
           <Button
             type="primary"
             icon={<IconPlus />}
             onClick={() => navigate("/tasks/create")}
           >
-            新建消息任务
+            新建人工消息任务
           </Button>
         }
       />
@@ -267,18 +308,7 @@ export default function TaskListPage() {
           allowClear
           style={{ width: 150 }}
         >
-          {[
-            "草稿",
-            "待审核",
-            "已驳回",
-            "已启用",
-            "待发送",
-            "发送中",
-            "已暂停",
-            "已完成",
-            "部分完成",
-            "失败",
-          ].map((item) => (
+          {MANUAL_TASK_STATUSES.map((item) => (
             <Select.Option key={item} value={item}>
               {item}
             </Select.Option>
@@ -327,10 +357,33 @@ export default function TaskListPage() {
               data={[
                 { label: "任务 ID", value: selected.id },
                 {
-                  label: "状态",
+                  label: "任务状态",
                   value: <StatusTag status={selected.status} />,
                 },
-                { label: "审批", value: selected.approval },
+                {
+                  label: "审核状态",
+                  value: (
+                    <StatusTag
+                      status={
+                        selected.approvalStatus ||
+                        (selected.approval.includes("通过")
+                          ? "通过"
+                          : selected.approval)
+                      }
+                    />
+                  ),
+                },
+                {
+                  label: "发送结果",
+                  value:
+                    selected.triggerType === "event" ? (
+                      "查看发送记录"
+                    ) : (
+                      <StatusTag
+                        status={selected.deliveryResult || "未开始"}
+                      />
+                    ),
+                },
                 {
                   label: "触发方式",
                   value:

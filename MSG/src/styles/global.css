@@ -704,6 +704,96 @@ select {
 .audience-preview i {
   color: #98a2b3;
 }
+.uid-audience-importer {
+  margin-bottom: 20px;
+}
+.uid-manual-entry,
+.uid-import-result {
+  display: grid;
+  gap: 12px;
+}
+.uid-import-heading,
+.uid-import-file {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 20px;
+}
+.uid-import-heading .arco-typography,
+.uid-import-file span {
+  margin: 4px 0 0;
+}
+.uid-import-file > div {
+  display: grid;
+  gap: 2px;
+}
+.uid-import-file span {
+  color: #667085;
+  font-size: 12px;
+}
+.uid-upload-zone {
+  display: grid;
+  place-items: center;
+  gap: 6px;
+  min-height: 112px;
+  padding: 20px;
+  border: 1px dashed #98a2b3;
+  border-radius: 10px;
+  background: #f8fafc;
+  color: #344054;
+  cursor: pointer;
+  transition: 0.18s ease;
+}
+.uid-upload-zone:hover {
+  border-color: #155eef;
+  background: #f5f8ff;
+}
+.uid-upload-zone span {
+  color: #667085;
+  font-size: 12px;
+}
+.uid-upload-zone.is-disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+.uid-import-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin: 4px 0;
+}
+.uid-import-stats > div {
+  padding: 14px;
+  border: 1px solid #e4e7ec;
+  border-radius: 10px;
+  background: #fff;
+}
+.uid-import-errors {
+  margin-top: 4px;
+}
+.uid-import-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.uid-final-count {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 4px 16px;
+  padding: 16px;
+  border-radius: 10px;
+  background: #eff6ff;
+  color: #175cd3;
+}
+.uid-final-count strong {
+  grid-row: span 2;
+  font-size: 26px;
+}
+.uid-final-count small {
+  color: #475467;
+}
 .summary-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.6fr) minmax(300px, 0.7fr);
@@ -1725,6 +1815,14 @@ select {
   }
   .audience-preview i {
     transform: rotate(90deg);
+  }
+  .uid-import-heading,
+  .uid-import-file {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .uid-import-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .analytics-kpis {
     grid-template-columns: 1fr 1fr;

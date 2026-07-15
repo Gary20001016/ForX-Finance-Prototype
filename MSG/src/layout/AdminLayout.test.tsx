@@ -9,7 +9,9 @@ it('shows primary navigation and current product context', () => {
       <AdminLayout />
     </MemoryRouter>,
   );
-  expect(screen.getByTestId('nav-/tasks')).toHaveTextContent('消息任务');
+  expect(screen.getByTestId('nav-/tasks')).toHaveTextContent('人工消息任务');
+  expect(screen.getByTestId('nav-/automation')).toHaveTextContent('事件通知规则');
+  expect(screen.getByTestId('nav-/triggers')).toHaveTextContent('触发记录');
   expect(screen.getByText('审核中心')).toBeInTheDocument();
   expect(screen.getByText('演示环境')).toBeInTheDocument();
   expect(screen.getByRole('button', { name: '用户消息中心' })).toBeInTheDocument();

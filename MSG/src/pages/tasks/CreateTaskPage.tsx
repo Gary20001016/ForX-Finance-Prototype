@@ -36,6 +36,7 @@ import type {
   RiskLevel,
   TaskTriggerType,
 } from "../../domain/types";
+import { canEditManualTask, isManualTaskStatus } from "./taskLifecycle";
 import {
   createTranslationBatch,
   saveTemplate,
@@ -49,6 +50,15 @@ import TaskSummary from "./TaskSummary";
 import EventTriggerFields, {
   createDefaultEventConfig,
 } from "./EventTriggerFields";
+import UidAudienceImporter, {
+  createEmptyUidAudienceValue,
+  type UidAudienceValue,
+} from "./UidAudienceImporter";
+import {
+  maskUid,
+  mergeUidAudience,
+  parseManualUids,
+} from "./uidAudience";
 
 const FormItem = Form.Item;
 const categoryOptions = [
@@ -152,7 +162,9 @@ export default function CreateTaskPage() {
   const editingTask = Boolean(
     routeState?.resume &&
       copiedTask &&
-      !["发送中", "已完成"].includes(copiedTask.status),
+      (copiedTask.triggerType === "event" ||
+        (isManualTaskStatus(copiedTask.status) &&
+          canEditManualTask(copiedTask.status))),
   );
   const approvedTemplates = store.templates.filter(
     (template) => template.translationReadiness === "全部审核通过",
@@ -215,6 +227,22 @@ export default function CreateTaskPage() {
   const [audienceType, setAudienceType] = useState(
     copiedTask?.audienceType || "all",
   );
+  const [uidAudienceValue, setUidAudienceValue] = useState<UidAudienceValue>(
+    () => {
+      const saved = copiedTask?.uidAudience;
+      return saved
+        ? {
+            manualText: saved.manualUids.join("\n"),
+            csvFileName: saved.csvFileName,
+            csvTotalRows: saved.csvTotalRows,
+            csvValidUids: saved.csvValidUids,
+            csvInvalidRows: saved.csvInvalidRows,
+            duplicateCount: saved.duplicateCount,
+            csvConfirmed: saved.csvConfirmed,
+          }
+        : createEmptyUidAudienceValue("100001\n100002\n100003");
+    },
+  );
   const [snapshot, setSnapshot] = useState<Record<string, unknown>>({});
   const selectedTemplate =
     store.templates.find((template) => template.id === templateId) ||
@@ -226,6 +254,33 @@ export default function CreateTaskPage() {
     contentMode === "template"
       ? selectedTemplate?.content || emptyContent
       : { ...temporary, locales: ["zh-CN", ...targetLocales] };
+  const manualUids = useMemo(
+    () => parseManualUids(uidAudienceValue.manualText),
+    [uidAudienceValue.manualText],
+  );
+  const mergedUidAudience = useMemo(
+    () =>
+      mergeUidAudience(
+        manualUids,
+        uidAudienceValue.csvValidUids,
+        uidAudienceValue.csvConfirmed,
+      ),
+    [
+      manualUids,
+      uidAudienceValue.csvConfirmed,
+      uidAudienceValue.csvValidUids,
+    ],
+  );
+  const specifiedUidAudience = useMemo(
+    () => ({
+      label: "指定 UID 名单",
+      count: mergedUidAudience.finalUids.length,
+      samples: mergedUidAudience.finalUids
+        .slice(0, 3)
+        .map((uid) => `UID ${maskUid(uid)}`),
+    }),
+    [mergedUidAudience.finalUids],
+  );
   const audience =
     triggerType === "event"
       ? {
@@ -233,7 +288,9 @@ export default function CreateTaskPage() {
           count: 1,
           samples: ["UID TEST-001 · 由事件 user_id 确定"],
         }
-      : audienceMap[audienceType];
+      : audienceType === "uid"
+        ? specifiedUidAudience
+        : audienceMap[audienceType];
   const translationReady =
     contentMode === "template"
       ? selectedTemplate?.translationReadiness === "全部审核通过"
@@ -298,6 +355,16 @@ export default function CreateTaskPage() {
         return;
       }
     }
+    if (current === 1 && triggerType === "manual" && audienceType === "uid") {
+      if (uidAudienceValue.csvFileName && !uidAudienceValue.csvConfirmed) {
+        Message.warning("请先确认 UID CSV 导入结果");
+        return;
+      }
+      if (!mergedUidAudience.finalUids.length) {
+        Message.warning("请至少输入或导入一个有效 UID");
+        return;
+      }
+    }
     updateSnapshot();
     setCurrent((value) => Math.min(value + 1, 3));
   };
@@ -330,6 +397,19 @@ export default function CreateTaskPage() {
         ? undefined
         : (audienceType as "all" | "uid" | "vip" | "agent" | "campaign"),
     sampleUsers: audience.samples,
+    uidAudience:
+      triggerType === "manual" && audienceType === "uid"
+        ? {
+            manualUids,
+            csvFileName: uidAudienceValue.csvFileName,
+            csvTotalRows: uidAudienceValue.csvTotalRows,
+            csvValidUids: uidAudienceValue.csvValidUids,
+            csvInvalidRows: uidAudienceValue.csvInvalidRows,
+            duplicateCount: uidAudienceValue.duplicateCount,
+            csvConfirmed: uidAudienceValue.csvConfirmed,
+            finalUids: mergedUidAudience.finalUids,
+          }
+        : undefined,
     translationBatchId:
       contentMode === "template"
         ? selectedTemplate?.translationBatchId
@@ -351,6 +431,16 @@ export default function CreateTaskPage() {
     if (!channels.length) {
       Message.warning("请至少选择站内信或 App Push");
       return;
+    }
+    if (triggerType === "manual" && audienceType === "uid") {
+      if (uidAudienceValue.csvFileName && !uidAudienceValue.csvConfirmed) {
+        Message.warning("请先确认 UID CSV 导入结果");
+        return;
+      }
+      if (!mergedUidAudience.finalUids.length) {
+        Message.warning("请至少输入或导入一个有效 UID");
+        return;
+      }
     }
     if (triggerType === "event" && !eventValidation.valid) {
       Message.warning(eventValidation.reason || "系统事件配置不完整");
@@ -463,7 +553,7 @@ export default function CreateTaskPage() {
   return (
     <section className="page-stack create-task-page">
       <PageHeader
-        title="新建消息任务"
+        title="新建人工消息任务"
         description="支持审核通过的模板和临时消息；提交后锁定内容、受众、渠道、时间与有效期。"
         actions={
           <>
@@ -578,33 +668,11 @@ export default function CreateTaskPage() {
                 </Grid.Col>
               </Grid.Row>
               <div className="section-divider" />
-              <h3>触发方式</h3>
-              <Radio.Group
-                type="button"
-                value={triggerType}
-                onChange={(value) => {
-                  setTriggerType(value);
-                  if (value === "event") {
-                    setContentMode("template");
-                    const nextEvent =
-                      store.events.find((item) => item.id === eventId) ||
-                      store.events[0];
-                    const nextTemplate =
-                      eventTemplates.find((item) => item.id === templateId) ||
-                      eventTemplates[0];
-                    if (nextEvent) {
-                      setEventId(nextEvent.id);
-                      setEventConfig(
-                        createDefaultEventConfig(nextEvent, nextTemplate),
-                      );
-                    }
-                    if (nextTemplate) setTemplateId(nextTemplate.id);
-                  }
-                }}
-              >
-                <Radio value="manual">人工发送</Radio>
-                <Radio value="event">系统事件触发</Radio>
-              </Radio.Group>
+              <h3>发送方式</h3>
+              <Alert
+                type="info"
+                content="当前创建人工发送任务。系统事件自动通知请前往“事件通知规则”配置。"
+              />
               {triggerType === "event" ? (
                 <EventTriggerFields
                   events={store.events}
@@ -854,14 +922,12 @@ export default function CreateTaskPage() {
                     </Radio.Group>
                   </FormItem>
                   <Grid.Row gutter={20}>
-                    <Grid.Col span={12}>
+                    <Grid.Col span={audienceType === "uid" ? 16 : 12}>
                       {audienceType === "uid" ? (
-                        <FormItem label="用户 UID" required>
-                          <Input.TextArea
-                            defaultValue={"100001\n100002\n100003"}
-                            placeholder="每行一个 UID"
-                          />
-                        </FormItem>
+                        <UidAudienceImporter
+                          value={uidAudienceValue}
+                          onChange={setUidAudienceValue}
+                        />
                       ) : audienceType === "vip" ? (
                         <FormItem label="VIP 等级" required>
                           <Select
@@ -901,7 +967,7 @@ export default function CreateTaskPage() {
                         </FormItem>
                       )}
                     </Grid.Col>
-                    <Grid.Col span={12}>
+                    <Grid.Col span={audienceType === "uid" ? 8 : 12}>
                       <FormItem label="排除分群">
                         <Select
                           mode="multiple"

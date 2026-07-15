@@ -19,12 +19,14 @@ export interface NavigationItem {
 
 export const navigationItems: NavigationItem[] = [
   { key: '/dashboard', label: '工作台', icon: <IconDashboard /> },
-  { key: '/tasks', label: '消息任务', icon: <IconEmail /> },
+  { key: '/tasks', label: '人工消息任务', icon: <IconEmail /> },
+  { key: '/automation', label: '事件通知规则', icon: <IconExperiment /> },
   { key: '/templates', label: '消息模板', icon: <IconBook /> },
-  { key: '/events', label: '系统事件', icon: <IconExperiment /> },
+  { key: '/events', label: '事件目录', icon: <IconExperiment /> },
+  { key: '/triggers', label: '触发记录', icon: <IconArchive /> },
   { key: '/segments', label: '用户与受众', icon: <IconUserGroup /> },
   { key: '/approvals', label: '审核中心', icon: <IconCheckCircle /> },
-  { key: '/deliveries', label: '发送记录', icon: <IconArchive /> },
+  { key: '/deliveries', label: '渠道发送记录', icon: <IconArchive /> },
   { key: '/analytics', label: '数据分析', icon: <IconArrowRise /> },
   { key: '/settings', label: '系统配置', icon: <IconSettings /> },
 ];

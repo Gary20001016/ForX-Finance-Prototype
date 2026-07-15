@@ -64,8 +64,10 @@ export default function ApprovalDrawer({
       next === "approve"
         ? item.triggerType === "event"
           ? "审批已通过，事件任务已启用"
-          : "审批已通过，任务进入待发送状态"
-        : "已驳回，任务退回创建人",
+          : item.schedule === "立即"
+            ? "审核已通过，任务开始发送"
+            : "审核已通过，任务进入待发送状态"
+        : "审核已驳回，任务进入待修改状态",
     );
     onClose();
   };
@@ -84,14 +86,14 @@ export default function ApprovalDrawer({
               disabled={isSelf}
               onClick={() => submit("reject")}
             >
-              确认驳回
+              驳回审核
             </Button>
             <Button
               type="primary"
               disabled={isSelf}
               onClick={() => submit("approve")}
             >
-              确认通过
+              通过审核
             </Button>
           </div>
         )
@@ -233,8 +235,8 @@ export default function ApprovalDrawer({
           <Form layout="vertical">
             <Form.Item label="审批结论">
               <Radio.Group value={decision} onChange={setDecision}>
-                <Radio value="approve">通过</Radio>
-                <Radio value="reject">驳回</Radio>
+                <Radio value="approve">通过审核</Radio>
+                <Radio value="reject">驳回审核</Radio>
               </Radio.Group>
             </Form.Item>
             {highRisk && (

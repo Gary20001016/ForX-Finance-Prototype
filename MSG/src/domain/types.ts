@@ -46,6 +46,166 @@ export interface EventTriggerConfig {
   retryBackoffSeconds: number;
 }
 
+export type EventRuleStatus =
+  | "草稿"
+  | "待审核"
+  | "待修改"
+  | "已启用"
+  | "已停用"
+  | "已取消"
+  | "已过期";
+
+export type EventRuleOperation =
+  | "查看详情"
+  | "编辑规则"
+  | "提交审核"
+  | "撤回审核"
+  | "启用规则"
+  | "停用规则"
+  | "取消规则"
+  | "创建内容版本";
+
+export type RuleContentVersionStatus =
+  | "草稿"
+  | "机翻处理中"
+  | "待人工审核"
+  | "待审核"
+  | "待生效"
+  | "当前生效"
+  | "已替换"
+  | "已取消"
+  | "已回滚";
+
+export type RuleContentVersionOperation =
+  | "提交机翻"
+  | "机翻完成"
+  | "人工审核通过"
+  | "通过审核"
+  | "取消版本";
+
+export interface EventNotificationRule {
+  id: string;
+  name: string;
+  eventId: string;
+  eventVersion: string;
+  conditionExpression: string;
+  subjectMapping: string;
+  status: EventRuleStatus;
+  currentVersionId?: string;
+  channels: Channel[];
+  dedupeKey: string;
+  frequencyCap: string;
+  eventTtlSeconds: number;
+  maxRetries: number;
+  retryBackoffSeconds: number;
+  owner: string;
+  createdAt: string;
+  updatedAt: string;
+  triggerCount24h: number;
+  successRate: number;
+}
+
+export interface RuleContentVersion {
+  id: string;
+  ruleId: string;
+  version: string;
+  templateId: string;
+  templateVersion: string;
+  status: RuleContentVersionStatus;
+  sourceLocale: string;
+  targetLocales: string[];
+  title: string;
+  body: string;
+  createdBy: string;
+  createdAt: string;
+  activatedAt?: string;
+}
+
+export type TriggerRecordStatus =
+  | "已接收"
+  | "已过滤"
+  | "重复抑制"
+  | "处理中"
+  | "已完成"
+  | "部分失败"
+  | "失败"
+  | "已过期";
+
+export interface TriggerRecord {
+  id: string;
+  eventInstanceId: string;
+  eventId: string;
+  ruleId: string;
+  ruleVersion: string;
+  contentVersionId: string;
+  templateVersion: string;
+  idempotencyKey: string;
+  user: string;
+  status: TriggerRecordStatus;
+  receivedAt: string;
+  completedAt?: string;
+  channelTotal: number;
+  successCount: number;
+  failureCount: number;
+  reason?: string;
+}
+
+export interface UidAudienceSnapshot {
+  manualUids: string[];
+  csvFileName?: string;
+  csvTotalRows: number;
+  csvValidUids: string[];
+  csvInvalidRows: Array<{ row: number; uid: string; reason: string }>;
+  duplicateCount: number;
+  csvConfirmed: boolean;
+  finalUids: string[];
+}
+
+export type ManualTaskStatus =
+  | "草稿"
+  | "待审核"
+  | "待修改"
+  | "待发送"
+  | "发送中"
+  | "已暂停"
+  | "已完成"
+  | "已取消"
+  | "已过期";
+
+export type ManualTaskApprovalStatus =
+  | "未提交"
+  | "审核中"
+  | "通过"
+  | "驳回"
+  | "已撤回"
+  | "已终止";
+
+export type ManualTaskDeliveryResult =
+  | "未开始"
+  | "处理中"
+  | "成功"
+  | "部分失败"
+  | "失败";
+
+export type ManualTaskOperation =
+  | "查看详情"
+  | "编辑任务"
+  | "复制任务"
+  | "提交审核"
+  | "撤回审核"
+  | "通过审核"
+  | "驳回审核"
+  | "取消任务"
+  | "暂停发送"
+  | "恢复发送"
+  | "重试失败项";
+
+export type ManualTaskSystemAction =
+  | "系统启动发送"
+  | "系统完成发送"
+  | "系统终止发送"
+  | "系统标记过期";
+
 export interface MessageTask {
   id: string;
   name: string;
@@ -60,6 +220,8 @@ export interface MessageTask {
   schedule: string;
   status: string;
   approval: string;
+  approvalStatus?: ManualTaskApprovalStatus;
+  deliveryResult?: ManualTaskDeliveryResult;
   progress: number;
   successRate: number;
   creator: string;
@@ -76,6 +238,7 @@ export interface MessageTask {
   templateId?: string;
   templateVersion?: string;
   eventConfig?: EventTriggerConfig;
+  uidAudience?: UidAudienceSnapshot;
 }
 
 export interface MessageTemplate {
@@ -224,6 +387,7 @@ export interface DeliveryRecord {
   errorCode?: string;
   retryable?: boolean;
   tokenStatus?: "有效" | "已失效" | "不适用";
+  triggerId?: string;
 }
 
 export interface LinkAllowlistEntry {
@@ -266,7 +430,8 @@ export interface EventTestResult {
   ok: boolean;
   reason?: string;
   deliveryId?: string;
-  taskId?: string;
+  triggerId?: string;
+  ruleId?: string;
 }
 
 export interface ChannelProvider {

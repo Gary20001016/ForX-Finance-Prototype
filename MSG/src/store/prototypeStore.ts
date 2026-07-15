@@ -2,14 +2,23 @@ import { useSyncExternalStore } from "react";
 import type {
   ApprovalItem,
   DeliveryRecord,
+  EventNotificationRule,
+  EventRuleOperation,
   EventTaskValidationResult,
   EventTestResult,
   EventTriggerConfig,
   LinkAllowlistEntry,
   LocalizedMessageContent,
+  ManualTaskApprovalStatus,
+  ManualTaskDeliveryResult,
+  ManualTaskOperation,
+  ManualTaskStatus,
   MessageTask,
   MessageTemplate,
+  RuleContentVersion,
+  RuleContentVersionOperation,
   SystemEventDefinition,
+  TriggerRecord,
   TranslationBatch,
   UserMessage,
 } from "../domain/types";
@@ -21,6 +30,16 @@ import {
   translationBatches,
   userMessages,
 } from "../mocks/data";
+import {
+  getManualTaskOperations,
+  isManualTaskStatus,
+  transitionManualTask,
+} from "../pages/tasks/taskLifecycle";
+import {
+  nextEventRuleStatus,
+  nextRuleVersionStatus,
+  ruleEventIdempotencyKey,
+} from "../pages/automation/automationLifecycle";
 
 export interface PrototypeState {
   messages: UserMessage[];
@@ -31,6 +50,9 @@ export interface PrototypeState {
   deliveries: DeliveryRecord[];
   allowlist: LinkAllowlistEntry[];
   events: SystemEventDefinition[];
+  rules: EventNotificationRule[];
+  ruleVersions: RuleContentVersion[];
+  triggerRecords: TriggerRecord[];
 }
 
 const STORAGE_KEY = "forx-finance-message-center-prototype-v1";
@@ -125,6 +147,148 @@ const eventSeed: SystemEventDefinition[] = [
   description: `${name}业务事件，由 ${caller} 推送。`,
 }));
 
+const createAutomationSeed = (seededTemplates: MessageTemplate[]) => {
+  const definitions = [
+    {
+      id: "RULE-001",
+      name: "提现成功自动通知",
+      eventId: "withdrawal.succeeded",
+      templateCode: "withdraw_success",
+      conditionExpression: "事件到达即触发",
+      status: "已启用" as const,
+      channels: ["站内信", "Push"] as EventNotificationRule["channels"],
+      owner: "资产运营",
+      count: 18420,
+      successRate: 99.96,
+    },
+    {
+      id: "RULE-002",
+      name: "合约强平风险预警",
+      eventId: "liquidation.warning",
+      templateCode: "liquidation_warning",
+      conditionExpression: "margin_rate < 0.2",
+      status: "已启用" as const,
+      channels: ["站内信", "Push"] as EventNotificationRule["channels"],
+      owner: "合约风控",
+      count: 7620,
+      successRate: 96.4,
+    },
+    {
+      id: "RULE-003",
+      name: "订单成交站内通知",
+      eventId: "order.filled",
+      templateCode: "order_filled",
+      conditionExpression: "filled_amount > 0",
+      status: "已停用" as const,
+      channels: ["站内信"] as EventNotificationRule["channels"],
+      owner: "交易运营",
+      count: 1280000,
+      successRate: 99.8,
+    },
+  ];
+  const rules: EventNotificationRule[] = [];
+  const versions: RuleContentVersion[] = [];
+  for (const [index, item] of definitions.entries()) {
+    const event = eventSeed.find((candidate) => candidate.id === item.eventId)!;
+    const template =
+      seededTemplates.find((candidate) => candidate.code === item.templateCode) ||
+      seededTemplates[index];
+    const versionId = `RV-${String(index + 1).padStart(3, "0")}`;
+    rules.push({
+      id: item.id,
+      name: item.name,
+      eventId: item.eventId,
+      eventVersion: event.version,
+      conditionExpression: item.conditionExpression,
+      subjectMapping: "payload.user_id → UID",
+      status: item.status,
+      currentVersionId: versionId,
+      channels: item.channels,
+      dedupeKey: "{{ rule_id }}:{{ event_instance_id }}",
+      frequencyCap: "同一事件实例仅一次",
+      eventTtlSeconds: 300,
+      maxRetries: 3,
+      retryBackoffSeconds: 30,
+      owner: item.owner,
+      createdAt: "2026-06-18 10:30",
+      updatedAt: "07-14 18:06",
+      triggerCount24h: item.count,
+      successRate: item.successRate,
+    });
+    versions.push({
+      id: versionId,
+      ruleId: item.id,
+      version: `V${index + 4}`,
+      templateId: template?.id || `TPL-AUTO-${index + 1}`,
+      templateVersion: template?.version || "v1",
+      status: "当前生效",
+      sourceLocale: "zh-CN",
+      targetLocales: template?.locales || ["zh-CN", "en-US"],
+      title: template?.content?.web.title || item.name,
+      body: template?.content?.web.body || `${item.name}，请查看消息详情。`,
+      createdBy: item.owner,
+      createdAt: "2026-07-12 14:20",
+      activatedAt: "2026-07-13 09:00",
+    });
+  }
+  const triggerRecords: TriggerRecord[] = [
+    {
+      id: "TRG-260714-001",
+      eventInstanceId: "EVT-WD-884201",
+      eventId: "withdrawal.succeeded",
+      ruleId: "RULE-001",
+      ruleVersion: "R12",
+      contentVersionId: "RV-001",
+      templateVersion: versions[0]?.templateVersion || "v1",
+      idempotencyKey: ruleEventIdempotencyKey("RULE-001", "EVT-WD-884201"),
+      user: "UID 82***19",
+      status: "已完成",
+      receivedAt: "18:05:31.102",
+      completedAt: "18:05:31.408",
+      channelTotal: 2,
+      successCount: 2,
+      failureCount: 0,
+    },
+    {
+      id: "TRG-260714-002",
+      eventInstanceId: "EVT-LQ-302188",
+      eventId: "liquidation.warning",
+      ruleId: "RULE-002",
+      ruleVersion: "R21",
+      contentVersionId: "RV-002",
+      templateVersion: versions[1]?.templateVersion || "v1",
+      idempotencyKey: ruleEventIdempotencyKey("RULE-002", "EVT-LQ-302188"),
+      user: "UID 51***02",
+      status: "部分失败",
+      receivedAt: "18:04:18.541",
+      completedAt: "18:04:19.226",
+      channelTotal: 2,
+      successCount: 1,
+      failureCount: 1,
+      reason: "FCM_TEMP_UNAVAILABLE，Push 已进入退避重试",
+    },
+    {
+      id: "TRG-260714-003",
+      eventInstanceId: "EVT-LQ-302187",
+      eventId: "liquidation.warning",
+      ruleId: "RULE-002",
+      ruleVersion: "R21",
+      contentVersionId: "RV-002",
+      templateVersion: versions[1]?.templateVersion || "v1",
+      idempotencyKey: ruleEventIdempotencyKey("RULE-002", "EVT-LQ-302187"),
+      user: "UID 18***87",
+      status: "重复抑制",
+      receivedAt: "18:03:50.030",
+      completedAt: "18:03:50.041",
+      channelTotal: 0,
+      successCount: 0,
+      failureCount: 0,
+      reason: "相同事件实例已由当前规则处理",
+    },
+  ];
+  return { rules, versions, triggerRecords };
+};
+
 const normalizeCategory = (name: string, category: string) => {
   if (name.includes("强平") || name.includes("风险")) return "风控通知";
   if (
@@ -190,6 +354,31 @@ const enrichTasks = (seededTemplates: MessageTemplate[]): MessageTask[] =>
           : undefined;
       const event = eventSeed.find((item) => item.id === eventId);
       const isEvent = Boolean(event && template);
+      const manualStatus: ManualTaskStatus =
+        task.status === "已驳回"
+          ? "待修改"
+          : task.status === "部分完成" || task.status === "失败"
+            ? "已完成"
+            : (task.status as ManualTaskStatus);
+      const approvalStatus: ManualTaskApprovalStatus = task.approval.includes(
+        "通过",
+      )
+        ? "通过"
+        : task.status === "已驳回"
+          ? "驳回"
+          : task.approval.includes("未提交")
+            ? "未提交"
+            : "审核中";
+      const deliveryResult: ManualTaskDeliveryResult =
+        task.status === "发送中" || task.status === "已暂停"
+          ? "处理中"
+          : task.status === "部分完成"
+            ? "部分失败"
+            : task.status === "失败"
+              ? "失败"
+              : task.status === "已完成"
+                ? "成功"
+                : "未开始";
       return {
         ...task,
         channels: task.channels.filter(
@@ -215,12 +404,16 @@ const enrichTasks = (seededTemplates: MessageTemplate[]): MessageTask[] =>
         audience: isEvent ? "事件主体用户" : task.audience,
         audienceCount: isEvent ? 1 : task.audienceCount,
         schedule: isEvent ? "事件到达时" : task.schedule,
-        status:
-          isEvent &&
-          template?.status === "已发布" &&
-          template.translationReadiness === "全部审核通过"
+        status: isEvent
+          ? template?.status === "已发布" &&
+            template.translationReadiness === "全部审核通过"
             ? "已启用"
-            : task.status,
+            : task.status === "草稿" || task.status === "待审核"
+              ? task.status
+              : "已停用"
+          : manualStatus,
+        approvalStatus: isEvent ? undefined : approvalStatus,
+        deliveryResult: isEvent ? undefined : deliveryResult,
       };
     })
     .filter((task) => task.channels.length > 0 && task.type !== "自动化");
@@ -228,6 +421,7 @@ const enrichTasks = (seededTemplates: MessageTemplate[]): MessageTask[] =>
 const createSeed = (): PrototypeState => {
   const seededTemplates = enrichTemplates();
   const seededTasks = enrichTasks(seededTemplates);
+  const automation = createAutomationSeed(seededTemplates);
   const firstPhaseApprovals: ApprovalItem[] = [
     ...approvals.filter(
       (item) =>
@@ -309,9 +503,16 @@ const createSeed = (): PrototypeState => {
           : record.channel === "Push"
             ? "有效"
             : "不适用",
+        triggerId:
+          index < automation.triggerRecords.length
+            ? automation.triggerRecords[index].id
+            : undefined,
       })),
     allowlist: allowlistSeed,
     events: eventSeed,
+    rules: automation.rules,
+    ruleVersions: automation.versions,
+    triggerRecords: automation.triggerRecords,
   };
 };
 
@@ -364,6 +565,9 @@ const migrateSavedState = (saved: PrototypeState): PrototypeState => {
     tasks: mergedTasks,
     events: mergedEvents,
     approvals: mergedApprovals,
+    rules: saved.rules || fresh.rules,
+    ruleVersions: saved.ruleVersions || fresh.ruleVersions,
+    triggerRecords: saved.triggerRecords || fresh.triggerRecords,
   };
 };
 
@@ -631,6 +835,7 @@ export type TaskSubmission = Pick<
       | "templateId"
       | "templateVersion"
       | "eventConfig"
+      | "uidAudience"
     >
   >;
 
@@ -688,6 +893,8 @@ export const saveTaskDraft = (
     type: triggerType === "event" ? "事件触发" : "人工群发",
     status: "草稿",
     approval: "未提交",
+    approvalStatus: "未提交",
+    deliveryResult: "未开始",
     progress: 0,
     successRate: 0,
     createdAt: "刚刚",
@@ -734,6 +941,8 @@ export const submitTask = (input: TaskSubmission, existingTaskId?: string) => {
       input.risk === "高" || input.risk === "关键"
         ? "业务 + 风控双审"
         : "一级审核",
+    approvalStatus: "审核中",
+    deliveryResult: "未开始",
     progress: 0,
     successRate: 0,
     createdAt: "刚刚",
@@ -810,6 +1019,64 @@ export const updateTaskStatus = (taskId: string, status: string) =>
     ),
   }));
 
+export const performManualTaskOperation = (
+  taskId: string,
+  operation: ManualTaskOperation,
+) =>
+  update((current) => ({
+    ...current,
+    tasks: current.tasks.map((task) => {
+      if (
+        task.id !== taskId ||
+        task.triggerType === "event" ||
+        !isManualTaskStatus(task.status) ||
+        !getManualTaskOperations({
+          status: task.status,
+          deliveryResult: task.deliveryResult,
+        }).includes(operation)
+      )
+        return task;
+
+      const status = transitionManualTask(task.status, operation);
+      return {
+        ...task,
+        status,
+        approval:
+          operation === "撤回审核"
+            ? "已撤回"
+            : operation === "取消任务"
+              ? "已终止"
+              : task.approval,
+        approvalStatus:
+          operation === "撤回审核"
+            ? "已撤回"
+            : operation === "取消任务"
+              ? "已终止"
+              : operation === "编辑任务" && task.status === "待发送"
+                ? "未提交"
+                : task.approvalStatus,
+        deliveryResult:
+          operation === "暂停发送" || operation === "恢复发送"
+            ? "处理中"
+            : operation === "编辑任务"
+              ? "未开始"
+              : task.deliveryResult,
+      };
+    }),
+    approvals: current.approvals.map((approval) =>
+      approval.taskId === taskId &&
+      operation === "撤回审核" &&
+      ["待我审核", "待审核", "紧急"].includes(approval.status)
+        ? {
+            ...approval,
+            status: "已撤回",
+            reviewedAt: "刚刚",
+            opinion: "任务创建人撤回审核",
+          }
+        : approval,
+    ),
+  }));
+
 export const reviewApproval = (
   approvalId: string,
   result: { decision: "approve" | "reject"; reviewer: string; opinion: string },
@@ -832,16 +1099,29 @@ export const reviewApproval = (
       ),
       tasks: current.tasks.map((task) =>
         task.id === approval?.taskId || task.name === approval?.name
-          ? {
-              ...task,
-              status:
-                result.decision === "approve"
-                  ? task.triggerType === "event"
-                    ? "已启用"
-                    : "待发送"
-                  : "已驳回",
-              approval: status,
-            }
+          ? task.triggerType === "event"
+            ? {
+                ...task,
+                status:
+                  result.decision === "approve" ? "已启用" : "已驳回",
+                approval: status,
+              }
+            : {
+                ...task,
+                status:
+                  result.decision === "approve"
+                    ? task.schedule === "立即"
+                      ? "发送中"
+                      : "待发送"
+                    : "待修改",
+                approval: status,
+                approvalStatus:
+                  result.decision === "approve" ? "通过" : "驳回",
+                deliveryResult:
+                  result.decision === "approve" && task.schedule === "立即"
+                    ? "处理中"
+                    : "未开始",
+              }
           : task,
       ),
       templates: current.templates.map((template) =>
@@ -976,6 +1256,181 @@ export const updateAllowlistEntry = (
     ),
   }));
 
+export const createEventRule = (input: {
+  name: string;
+  eventId: string;
+  conditionExpression: string;
+  subjectMapping: string;
+  channels: EventNotificationRule["channels"];
+  templateId: string;
+  templateVersion: string;
+  title: string;
+  body: string;
+  targetLocales: string[];
+  owner: string;
+}) => {
+  const stamp = Date.now().toString().slice(-6);
+  const event = state.events.find((item) => item.id === input.eventId);
+  if (!event) throw new Error("事件定义不存在");
+  const ruleId = `RULE-${stamp}`;
+  const versionId = `RV-${stamp}`;
+  const rule: EventNotificationRule = {
+    id: ruleId,
+    name: input.name,
+    eventId: input.eventId,
+    eventVersion: event.version,
+    conditionExpression: input.conditionExpression || "事件到达即触发",
+    subjectMapping: input.subjectMapping || "payload.user_id → UID",
+    status: "草稿",
+    channels: input.channels,
+    dedupeKey: "{{ rule_id }}:{{ event_instance_id }}",
+    frequencyCap: "同一事件实例仅一次",
+    eventTtlSeconds: 300,
+    maxRetries: 3,
+    retryBackoffSeconds: 30,
+    owner: input.owner,
+    createdAt: "刚刚",
+    updatedAt: "刚刚",
+    triggerCount24h: 0,
+    successRate: 0,
+  };
+  const version: RuleContentVersion = {
+    id: versionId,
+    ruleId,
+    version: "V1",
+    templateId: input.templateId,
+    templateVersion: input.templateVersion,
+    status: "草稿",
+    sourceLocale: "zh-CN",
+    targetLocales: input.targetLocales,
+    title: input.title,
+    body: input.body,
+    createdBy: input.owner,
+    createdAt: "刚刚",
+  };
+  update((current) => ({
+    ...current,
+    rules: [rule, ...current.rules],
+    ruleVersions: [version, ...current.ruleVersions],
+  }));
+  return rule;
+};
+
+export const changeEventRuleStatus = (
+  ruleId: string,
+  operation: EventRuleOperation,
+) =>
+  update((current) => ({
+    ...current,
+    rules: current.rules.map((rule) =>
+      rule.id === ruleId
+        ? {
+            ...rule,
+            status: nextEventRuleStatus(rule.status, operation),
+            updatedAt: "刚刚",
+          }
+        : rule,
+    ),
+  }));
+
+export const reviewEventRule = (
+  ruleId: string,
+  decision: "approve" | "reject",
+) =>
+  update((current) => ({
+    ...current,
+    rules: current.rules.map((rule) =>
+      rule.id === ruleId
+        ? {
+            ...rule,
+            status: decision === "approve" ? "已启用" : "待修改",
+            updatedAt: "刚刚",
+          }
+        : rule,
+    ),
+  }));
+
+export const createRuleContentVersion = (ruleId: string) => {
+  const rule = state.rules.find((item) => item.id === ruleId);
+  if (!rule) throw new Error("事件通知规则不存在");
+  const current = state.ruleVersions.find(
+    (item) => item.id === rule.currentVersionId,
+  );
+  if (!current) throw new Error("当前内容版本不存在");
+  const versionNumber =
+    Math.max(
+      ...state.ruleVersions
+        .filter((item) => item.ruleId === ruleId)
+        .map((item) => Number(item.version.replace(/\D/g, "")) || 0),
+    ) + 1;
+  const version: RuleContentVersion = {
+    ...current,
+    id: `RV-${Date.now().toString().slice(-6)}`,
+    version: `V${versionNumber}`,
+    status: "草稿",
+    createdBy: "Gary Ma",
+    createdAt: "刚刚",
+    activatedAt: undefined,
+  };
+  update((snapshot) => ({
+    ...snapshot,
+    ruleVersions: [version, ...snapshot.ruleVersions],
+  }));
+  return version;
+};
+
+export const updateRuleContentVersion = (
+  versionId: string,
+  changes: Pick<RuleContentVersion, "title" | "body" | "targetLocales">,
+) =>
+  update((current) => ({
+    ...current,
+    ruleVersions: current.ruleVersions.map((version) =>
+      version.id === versionId && version.status === "草稿"
+        ? { ...version, ...changes }
+        : version,
+    ),
+  }));
+
+export const advanceRuleContentVersion = (
+  versionId: string,
+  operation: RuleContentVersionOperation,
+) =>
+  update((current) => ({
+    ...current,
+    ruleVersions: current.ruleVersions.map((version) =>
+      version.id === versionId
+        ? {
+            ...version,
+            status: nextRuleVersionStatus(version.status, operation),
+          }
+        : version,
+    ),
+  }));
+
+export const publishRuleContentVersion = (versionId: string) => {
+  const version = state.ruleVersions.find((item) => item.id === versionId);
+  if (!version) throw new Error("内容版本不存在");
+  if (version.status !== "待生效") throw new Error("只有待生效版本可以发布");
+  update((current) => ({
+    ...current,
+    rules: current.rules.map((rule) =>
+      rule.id === version.ruleId
+        ? { ...rule, currentVersionId: version.id, updatedAt: "刚刚" }
+        : rule,
+    ),
+    ruleVersions: current.ruleVersions.map((item) =>
+      item.ruleId !== version.ruleId
+        ? item
+        : item.id === version.id
+          ? { ...item, status: "当前生效", activatedAt: "刚刚" }
+          : item.status === "当前生效"
+            ? { ...item, status: "已替换" }
+            : item,
+    ),
+  }));
+};
+
 export const retryDelivery = (id: string) =>
   update((current) => ({
     ...current,
@@ -1001,48 +1456,84 @@ export const suppressDeliveryToken = (id: string) =>
     ),
   }));
 
-export const testSystemEvent = (eventId: string): EventTestResult => {
+export const testSystemEvent = (
+  eventId: string,
+  eventInstanceId = `EVT-TEST-${Date.now().toString().slice(-6)}`,
+): EventTestResult => {
   const event = state.events.find((item) => item.id === eventId);
   if (!event) return { ok: false, reason: "系统事件不存在" };
-  const task = state.tasks.find(
-    (item) =>
-      item.triggerType === "event" &&
-      item.eventConfig?.eventId === eventId &&
-      item.status === "已启用",
+  const rule = state.rules.find(
+    (item) => item.eventId === eventId && item.status === "已启用",
   );
-  if (!task) return { ok: false, reason: "没有已启用的事件触发任务" };
-  const template = state.templates.find((item) => item.id === task.templateId);
-  const validation = validateEventTaskConfig(task.eventConfig, event, template);
-  if (!validation.valid) return { ok: false, reason: validation.reason };
-  const channel = task.channels.includes("Push") ? "Push" : "站内信";
+  if (!rule) return { ok: false, reason: "没有已启用的事件通知规则" };
+  const version = state.ruleVersions.find(
+    (item) => item.id === rule.currentVersionId,
+  );
+  if (!version) return { ok: false, reason: "规则没有当前生效内容版本" };
   const stamp = Date.now().toString().slice(-5);
-  const record: DeliveryRecord = {
-    id: `DLV-TEST-${stamp}`,
-    task: `测试 · ${task.name}`,
+  const triggerId = `TRG-TEST-${stamp}`;
+  const newDeliveries: DeliveryRecord[] = rule.channels.map(
+    (channel, index) => ({
+      id: `DLV-TEST-${stamp}-${index + 1}`,
+      task: `测试 · ${rule.name}`,
+      user: "UID TEST-001",
+      destination: channel === "Push" ? "device ***test" : "站内账户",
+      channel,
+      provider: channel === "Push" ? "FCM Sandbox" : "ForX Finance Inbox",
+      status: "已送达",
+      submittedAt: "刚刚",
+      deliveredAt: "刚刚",
+      retryCount: 0,
+      cost: "—",
+      eventCode: event.id,
+      category: event.line === "风控" ? "风控通知" : "资产通知",
+      risk: event.line === "风控" ? "紧急" : "普通",
+      devicePlatform: channel === "Push" ? "Android" : "Web",
+      providerMessageId: `PM-TEST-${stamp}-${index + 1}`,
+      tokenStatus: channel === "Push" ? "有效" : "不适用",
+      triggerId,
+    }),
+  );
+  const trigger: TriggerRecord = {
+    id: triggerId,
+    eventInstanceId,
+    eventId,
+    ruleId: rule.id,
+    ruleVersion: `R-${rule.updatedAt}`,
+    contentVersionId: version.id,
+    templateVersion: version.templateVersion,
+    idempotencyKey: ruleEventIdempotencyKey(rule.id, eventInstanceId),
     user: "UID TEST-001",
-    destination: channel === "Push" ? "device ***test" : "站内账户",
-    channel,
-    provider: channel === "Push" ? "FCM Sandbox" : "ForX Finance Inbox",
-    status: "已送达",
-    submittedAt: "刚刚",
-    deliveredAt: "刚刚",
-    retryCount: 0,
-    cost: "—",
-    eventCode: event.id,
-    category: task.category,
-    risk: task.risk === "关键" ? "紧急" : "普通",
-    devicePlatform: channel === "Push" ? "Android" : "Web",
-    providerMessageId: `PM-TEST-${stamp}`,
-    tokenStatus: channel === "Push" ? "有效" : "不适用",
+    status: "已完成",
+    receivedAt: "刚刚",
+    completedAt: "刚刚",
+    channelTotal: newDeliveries.length,
+    successCount: newDeliveries.length,
+    failureCount: 0,
   };
   update((current) => ({
     ...current,
     events: current.events.map((item) =>
       item.id === eventId ? { ...item, lastTestAt: "刚刚" } : item,
     ),
-    deliveries: [record, ...current.deliveries],
+    rules: current.rules.map((item) =>
+      item.id === rule.id
+        ? {
+            ...item,
+            triggerCount24h: item.triggerCount24h + 1,
+            updatedAt: "刚刚",
+          }
+        : item,
+    ),
+    triggerRecords: [trigger, ...current.triggerRecords],
+    deliveries: [...newDeliveries, ...current.deliveries],
   }));
-  return { ok: true, deliveryId: record.id, taskId: task.id };
+  return {
+    ok: true,
+    deliveryId: newDeliveries[0]?.id,
+    triggerId,
+    ruleId: rule.id,
+  };
 };
 
 export const registerSystemEvent = (

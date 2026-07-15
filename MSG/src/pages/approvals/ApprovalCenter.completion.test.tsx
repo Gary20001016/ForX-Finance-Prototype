@@ -15,6 +15,8 @@ it("shows object-bound Web/App inbox and Push previews in approval", async () =>
   expect(screen.getByText("Web 站内信预览")).toBeVisible();
   expect(screen.getByText("App 站内信预览")).toBeVisible();
   expect(screen.getByText("App Push 预览")).toBeVisible();
+  expect(screen.getByRole("button", { name: "通过审核" })).toBeVisible();
+  expect(screen.getByRole("button", { name: "驳回审核" })).toBeVisible();
   await user.click(screen.getByRole("tab", { name: "受众与合规" }));
   expect(screen.getByText("受众样例")).toBeVisible();
 });
