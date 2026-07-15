@@ -39,10 +39,18 @@ export default function AdminLayout() {
     () => navigationContextForLocation(location.pathname, location.search),
     [location.pathname, location.search],
   );
-  const [openKeys, setOpenKeys] = useState<string[]>([]);
+  const [openKeys, setOpenKeys] = useState<string[]>(() => (
+    activeNavigation?.groupKey ? [activeNavigation.groupKey] : []
+  ));
 
   useEffect(() => {
-    setOpenKeys(activeNavigation?.groupKey ? [activeNavigation.groupKey] : []);
+    setOpenKeys((currentKeys) => {
+      const nextKeys = activeNavigation?.groupKey ? [activeNavigation.groupKey] : [];
+      return currentKeys.length === nextKeys.length
+        && currentKeys.every((key, index) => key === nextKeys[index])
+        ? currentKeys
+        : nextKeys;
+    });
   }, [activeNavigation?.groupKey]);
 
   useEffect(() => {

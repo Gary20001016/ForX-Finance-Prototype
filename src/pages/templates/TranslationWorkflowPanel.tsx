@@ -3,19 +3,24 @@ import { Alert, Button, Descriptions, Message, Progress, Select, Space, Steps, T
 import { useNavigate } from 'react-router-dom';
 import type { MessageTemplate, TranslationBatch, TranslationItemStatus } from '../../domain/types';
 import { createTranslationBatch, retryTranslation, submitTemplateForApproval } from '../../store/prototypeStore';
+import TranslationReviewDrawer from '../approvals/TranslationReviewDrawer';
+import { deriveMultilingualProgress } from '../multilingual/multilingualProgress';
 
 const statusColor: Record<TranslationItemStatus, string> = {
-  未提交:'gray', 排队中:'gray', 翻译中:'arcoblue', 待人工审核:'orange', 审核通过:'green', 翻译失败:'red', 审核驳回:'orangered', 已取消:'gray',
+  未提交:'gray', 排队中:'gray', 翻译中:'arcoblue', 待普通确认:'orange', 修改中:'orange', 待小语种专审:'purple', 专审中:'purple', 源文案已变更:'orangered', 已通过:'green', 待人工审核:'orange', 审核通过:'green', 翻译失败:'red', 审核驳回:'orangered', 已取消:'gray',
 };
 
-export default function TranslationWorkflowPanel({ template, batch, onEdit }: { template: MessageTemplate; batch?: TranslationBatch; onEdit?:()=>void }) {
+export default function TranslationWorkflowPanel({ template, batch, onEdit, context = 'template' }: { template: MessageTemplate; batch?: TranslationBatch; onEdit?:()=>void; context?: 'template' | 'temporary-task' }) {
   const navigate=useNavigate();
   const [targets,setTargets]=useState<string[]>(['en-US']);
+  const [ordinaryReviewId,setOrdinaryReviewId]=useState<string>();
   if (!batch) return <div className="translation-flow"><Alert type="warning" showIcon content="该模板尚未创建翻译批次。请选择目标语言并提交外部异步机翻任务。"/><Space direction="vertical" style={{width:'100%'}}><Select mode="multiple" value={targets} onChange={setTargets} options={['en-US','zh-TW','ja-JP','ko-KR','es-ES','tr-TR','ru-RU','fr-FR'].map((value)=>({label:value,value}))}/><Button type="primary" disabled={!targets.length} onClick={()=>{createTranslationBatch({templateId:template.id,targetLocales:targets,createdBy:'Gary Ma'});Message.success('外部机翻批次已创建');}}>创建外部机翻任务</Button></Space></div>;
 
-  const approved = batch.items.filter((item) => item.status === '审核通过').length;
-  const progress = Math.round((approved / Math.max(batch.items.length, 1)) * 100);
+  const summary = deriveMultilingualProgress(batch);
+  const approved = summary.approved;
+  const progress = summary.percent;
   const ready = batch.status === '全部审核通过';
+  const temporaryTask = context === 'temporary-task';
 
   return <div className="translation-flow">
     <Alert type="info" showIcon title="外部异步机翻" content="平台后台提交外部任务；完成回调为主，主动查询为超时兜底。浏览器不会直接调用翻译服务。" />
@@ -41,13 +46,14 @@ export default function TranslationWorkflowPanel({ template, batch, onEdit }: { 
         <div><span className="muted">外部任务 ID</span><strong className="mono">{item.externalTaskId}</strong></div>
         <div><span className="muted">尝试 / 更新时间</span><strong>第 {item.attemptNo} 次 · {item.translatedAt || batch.updatedAt}</strong></div>
         <Tag color={statusColor[item.status]}>{item.status}</Tag>
-        {item.status==='翻译失败'||item.status==='审核驳回'?<Button size="small" status="danger" onClick={()=>{retryTranslation(item.id);Message.success(`${item.targetLocale} 已重新提交外部机翻任务`);}}>重试该语言</Button>:item.status==='待人工审核'?<Button size="small" type="primary" onClick={()=>navigate('/approvals',{state:{tab:'translation',translationItemId:item.id}})}>进入人工审核</Button>:<Button size="small" disabled>{item.status==='审核通过'?'已由 '+item.reviewer+' 审核':'等待结果'}</Button>}
+        {item.status==='翻译失败'||item.status==='审核驳回'||item.status==='源文案已变更'?<Button size="small" status="danger" onClick={()=>{retryTranslation(item.id);Message.success(`${item.targetLocale} 已重新提交外部机翻任务`);}}>重试该语言</Button>:item.status==='待小语种专审'||item.status==='专审中'?<Button size="small" type="primary" onClick={()=>navigate(`/multilingual-review?item=${item.id}`)}>前往专项审核</Button>:item.status==='待普通确认'||item.status==='修改中'?<Button size="small" type="primary" onClick={()=>setOrdinaryReviewId(item.id)}>当场校对并确认</Button>:item.status==='待人工审核'?<Button size="small" type="primary" onClick={()=>setOrdinaryReviewId(item.id)}>进入人工审核</Button>:<Button size="small" disabled>{item.status==='审核通过'||item.status==='已通过'?'已由 '+item.reviewer+' 审核':'等待结果'}</Button>}
         {item.errorMessage && <div className="translation-error"><span className="mono">{item.errorCode || 'REVIEW_REJECTED'}</span> · {item.errorMessage}</div>}
       </div>)}
     </div>
     <div className={`translation-gate ${ready?'ready':'blocked'}`}>
-      <div><strong>发布门禁 · {ready?'已通过':'未通过'}</strong><p>{ready?'全部目标语言已完成人工审核，可以提交业务审核。':'仍有目标语言未人工审核通过，模板不可发布，也不可用于消息任务。'}</p></div>
-      <Space><Button onClick={onEdit}>编辑源文案</Button><Button type="primary" disabled={!ready} onClick={()=>{const approval=submitTemplateForApproval(template.id);Message.success(`已提交业务审核 ${approval.id}`);navigate('/approvals');}}>提交业务审核</Button></Space>
+      <div><strong>{temporaryTask?'任务提交门禁':'发布门禁'} · {ready?'已通过':'未通过'}</strong><p>{temporaryTask?(ready?'全部目标语言已完成人工审核，可以继续提交消息任务业务审核。':'仍有目标语言未人工审核通过，临时消息任务不可提交业务审核。'):(ready?'全部目标语言已完成人工审核，可以提交业务审核。':'仍有目标语言未人工审核通过，模板不可发布，也不可用于消息任务。')}</p></div>
+      {!temporaryTask && <Space><Button onClick={onEdit}>编辑源文案</Button><Button type="primary" disabled={!ready} onClick={()=>{const approval=submitTemplateForApproval(template.id);Message.success(`已提交业务审核 ${approval.id}`);navigate('/approvals');}}>提交业务审核</Button></Space>}
     </div>
+    <TranslationReviewDrawer item={batch.items.find((item)=>item.id===ordinaryReviewId)} visible={Boolean(ordinaryReviewId)} onClose={()=>setOrdinaryReviewId(undefined)} currentAdmin="Gary Ma" reviewMode="ordinary" />
   </div>;
 }

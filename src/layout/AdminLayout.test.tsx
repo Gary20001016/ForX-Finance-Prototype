@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import AdminLayout from './AdminLayout';
 
@@ -35,4 +35,17 @@ it('selects the event template entry and shows the complete breadcrumb', () => {
   );
   expect(screen.getAllByText('事件自动化').length).toBeGreaterThan(0);
   expect(screen.getAllByText('事件消息模板').length).toBeGreaterThan(0);
+});
+
+it('collapses grouped navigation into Arco popup mode on narrow screens', async () => {
+  Object.defineProperty(window, 'innerWidth', { value: 900, configurable: true });
+  const { container } = render(
+    <MemoryRouter initialEntries={['/tasks']}>
+      <AdminLayout />
+    </MemoryRouter>,
+  );
+
+  await waitFor(() => {
+    expect(container.querySelector('.admin-menu')).toHaveClass('arco-menu-collapse');
+  });
 });

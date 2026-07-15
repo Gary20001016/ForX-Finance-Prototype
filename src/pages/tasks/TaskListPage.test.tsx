@@ -57,6 +57,18 @@ it("separates task, approval and delivery-result columns", () => {
   expect(screen.getByText("失败")).toBeVisible();
 });
 
+it("shows multilingual production separately from send progress", () => {
+  render(
+    <MemoryRouter>
+      <TaskListPage />
+    </MemoryRouter>,
+  );
+
+  expect(screen.getByRole("columnheader", { name: "多语言流程" })).toBeVisible();
+  expect(screen.getByRole("columnheader", { name: "发送进度" })).toBeVisible();
+  expect(screen.getAllByText(/已通过/).length).toBeGreaterThan(0);
+});
+
 it("uses the nine standardized artificial states in the status filter", async () => {
   render(
     <MemoryRouter>

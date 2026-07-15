@@ -21,7 +21,7 @@ import PageHeader from "../../components/PageHeader";
 import FilterBar from "../../components/FilterBar";
 import ResourceTable from "../../components/ResourceTable";
 import StatusTag from "../../components/StatusTag";
-import type { ManualTaskOperation, MessageTask } from "../../domain/types";
+import type { ManualTaskOperation, MessageTask, TranslationBatch } from "../../domain/types";
 import MessagePreview from "../../components/MessagePreview";
 import {
   performManualTaskOperation,
@@ -33,6 +33,8 @@ import {
   getManualTaskOperations,
   isManualTaskStatus,
 } from "./taskLifecycle";
+import MultilingualProgressCell from "../multilingual/MultilingualProgressCell";
+import MultilingualProgressDrawer from "../multilingual/MultilingualProgressDrawer";
 
 const channelColors: Record<string, string> = {
   站内信: "arcoblue",
@@ -50,6 +52,7 @@ export default function TaskListPage() {
   const [nature, setNature] = useState<string>();
   const [channel, setChannel] = useState<string>();
   const [selected, setSelected] = useState<MessageTask>();
+  const [progressBatch, setProgressBatch] = useState<TranslationBatch>();
   const filtered = useMemo(
     () =>
       tasks.filter((task) => {
@@ -227,7 +230,22 @@ export default function TaskListPage() {
         <StatusTag status={row.deliveryResult || "未开始"} />,
     },
     {
-      title: "进度",
+      title: "多语言流程",
+      width: 250,
+      render: (_, row) => {
+        const batch = store.translationBatches.find(
+          (item) => item.id === row.translationBatchId,
+        );
+        return (
+          <MultilingualProgressCell
+            batch={batch}
+            onOpen={() => setProgressBatch(batch)}
+          />
+        );
+      },
+    },
+    {
+      title: "发送进度",
       width: 120,
       render: (_, row) =>
         row.progress ? (
@@ -464,6 +482,11 @@ export default function TaskListPage() {
           </Space>
         )}
       </Drawer>
+      <MultilingualProgressDrawer
+        batch={progressBatch}
+        visible={Boolean(progressBatch)}
+        onClose={() => setProgressBatch(undefined)}
+      />
     </section>
   );
 }
