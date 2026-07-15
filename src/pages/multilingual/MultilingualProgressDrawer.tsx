@@ -1,8 +1,11 @@
+import { useEffect, useState } from "react";
 import { Button, Drawer, Progress, Space, Steps, Tag } from "@arco-design/web-react";
 import { useNavigate } from "react-router-dom";
 import type { TranslationBatch, TranslationItemStatus } from "../../domain/types";
+import { usePrototypeStore } from "../../store/prototypeStore";
 import { deriveMultilingualProgress } from "./multilingualProgress";
 import { localeName } from "./MultilingualProgressCell";
+import MultilingualResultPanel from "./MultilingualResultPanel";
 
 const statusColor: Partial<Record<TranslationItemStatus, string>> = {
   已通过: "green",
@@ -25,7 +28,13 @@ export default function MultilingualProgressDrawer({
   onClose: () => void;
 }) {
   const navigate = useNavigate();
-  const progress = batch ? deriveMultilingualProgress(batch) : undefined;
+  const store = usePrototypeStore();
+  const liveBatch = batch
+    ? store.translationBatches.find((candidate) => candidate.id === batch.id) || batch
+    : undefined;
+  const [expandedItemId, setExpandedItemId] = useState<string>();
+  useEffect(() => setExpandedItemId(undefined), [batch?.id]);
+  const progress = liveBatch ? deriveMultilingualProgress(liveBatch) : undefined;
   const current = !progress
     ? 0
     : progress.stage === "全部语言通过"
@@ -38,13 +47,13 @@ export default function MultilingualProgressDrawer({
 
   return (
     <Drawer
-      width={900}
+      width={1180}
       visible={visible}
-      title={batch ? `${batch.subjectName || batch.templateId} · 多语言流程` : "多语言流程"}
+      title={liveBatch ? `${liveBatch.subjectName || liveBatch.templateId} · 多语言流程` : "多语言流程"}
       onCancel={onClose}
       footer={null}
     >
-      {batch && progress && (
+      {liveBatch && progress && (
         <div className="multilingual-progress-drawer">
           <div className="multilingual-drawer-summary">
             <div>
@@ -61,34 +70,37 @@ export default function MultilingualProgressDrawer({
             <Steps.Step title="全部语言通过" />
           </Steps>
           <div className="multilingual-drawer-list">
-            {batch.items.map((item) => (
-              <div className="multilingual-drawer-row" key={item.id}>
-                <div>
-                  <strong>{localeName[item.targetLocale] || item.targetLocale}</strong>
-                  <span>{item.targetLocale}</span>
+            {liveBatch.items.map((item) => (
+              <div className="multilingual-drawer-item" key={item.id}>
+                <div className="multilingual-drawer-row">
+                  <div>
+                    <strong>{localeName[item.targetLocale] || item.targetLocale}</strong>
+                    <span>{item.targetLocale}</span>
+                  </div>
+                  <Tag color={statusColor[item.status] || "gray"}>{item.status}</Tag>
+                  <span>{item.specialReviewRequired ? item.reviewGroup || "专项审核组" : "进度内校对"}</span>
+                  <span>{item.reviewSlaHours ? `SLA ${item.reviewSlaHours} 小时` : "—"}</span>
+                  <Space>
+                    <Button
+                      size="small"
+                      onClick={() => setExpandedItemId((current) => current === item.id ? undefined : item.id)}
+                    >
+                      {expandedItemId === item.id ? "收起译文" : "查看译文"}
+                    </Button>
+                    {(item.status === "待小语种专审" || item.status === "专审中") && (
+                      <Button
+                        size="small"
+                        type="primary"
+                        onClick={() => navigate(`/multilingual-review?item=${item.id}`)}
+                      >
+                        前往专审
+                      </Button>
+                    )}
+                  </Space>
                 </div>
-                <Tag color={statusColor[item.status] || "gray"}>{item.status}</Tag>
-                <span>{item.specialReviewRequired ? item.reviewGroup || "专项审核组" : "源页面确认"}</span>
-                <span>{item.reviewSlaHours ? `SLA ${item.reviewSlaHours} 小时` : "—"}</span>
-                <Space>
-                  {item.status === "待小语种专审" && (
-                    <Button
-                      size="small"
-                      type="primary"
-                      onClick={() => navigate(`/multilingual-review?item=${item.id}`)}
-                    >
-                      前往专审
-                    </Button>
-                  )}
-                  {item.status === "专审中" && (
-                    <Button
-                      size="small"
-                      onClick={() => navigate(`/multilingual-review?item=${item.id}`)}
-                    >
-                      查看专审
-                    </Button>
-                  )}
-                </Space>
+                {expandedItemId === item.id && (
+                  <MultilingualResultPanel batch={liveBatch} item={item} />
+                )}
               </div>
             ))}
           </div>
