@@ -207,6 +207,14 @@ export type ManualTaskSystemAction =
   | "系统终止发送"
   | "系统标记过期";
 
+export interface ManualFrequencyPolicy {
+  enabled: boolean;
+  maxCount?: number;
+  windowValue?: number;
+  windowUnit?: "hour" | "day";
+  scope: "同消息分类";
+}
+
 export interface MessageTask {
   id: string;
   name: string;
@@ -240,6 +248,7 @@ export interface MessageTask {
   templateVersion?: string;
   eventConfig?: EventTriggerConfig;
   uidAudience?: UidAudienceSnapshot;
+  frequencyPolicy?: ManualFrequencyPolicy;
 }
 
 export type TemplateUsageScope = "manual" | "event" | "shared";

@@ -1132,6 +1132,7 @@ export type TaskSubmission = Pick<
       | "templateVersion"
       | "eventConfig"
       | "uidAudience"
+      | "frequencyPolicy"
     >
   >;
 

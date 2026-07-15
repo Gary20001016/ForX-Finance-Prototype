@@ -32,6 +32,7 @@ import type {
   Channel,
   EventTriggerConfig,
   LocalizedMessageContent,
+  ManualFrequencyPolicy,
   MessageTask,
   RiskLevel,
   TaskTriggerType,
@@ -324,15 +325,39 @@ export default function CreateTaskPage() {
     : editingTask && copiedTask?.expiresAt
       ? copiedTask.expiresAt
       : "发送后 24 小时";
+  const frequencyPolicy: ManualFrequencyPolicy =
+    values.frequencyMode === "custom"
+      ? {
+          enabled: true,
+          maxCount: Number(values.frequencyCount || 0),
+          windowValue: Number(values.frequencyWindowValue || 0),
+          windowUnit: values.frequencyWindowUnit === "day" ? "day" : "hour",
+          scope: "同消息分类",
+        }
+      : { enabled: false, scope: "同消息分类" };
 
   const updateSnapshot = (changedValues?: Record<string, unknown>) => {
     if (changedValues?.scheduleMode === "now") {
       form.setFieldsValue({ scheduledAt: undefined });
     }
+    if (changedValues?.frequencyMode === "off") {
+      form.setFieldsValue({
+        frequencyCount: undefined,
+        frequencyWindowValue: undefined,
+        frequencyWindowUnit: undefined,
+      });
+    }
     setSnapshot({
       ...snapshot,
       ...form.getFieldsValue(),
       ...(changedValues?.scheduleMode === "now" ? { scheduledAt: undefined } : {}),
+      ...(changedValues?.frequencyMode === "off"
+        ? {
+            frequencyCount: undefined,
+            frequencyWindowValue: undefined,
+            frequencyWindowUnit: undefined,
+          }
+        : {}),
     });
   };
   const patchWeb = (changes: Partial<LocalizedMessageContent["web"]>) =>
@@ -389,6 +414,17 @@ export default function CreateTaskPage() {
       Message.warning("请选择计划发送时间");
       return;
     }
+    if (
+      current === 2 &&
+      triggerType === "manual" &&
+      form.getFieldValue("frequencyMode") === "custom" &&
+      (!Number(form.getFieldValue("frequencyCount")) ||
+        !Number(form.getFieldValue("frequencyWindowValue")) ||
+        !form.getFieldValue("frequencyWindowUnit"))
+    ) {
+      Message.warning("请完整填写频控次数和时间范围");
+      return;
+    }
     updateSnapshot();
     setCurrent((value) => Math.min(value + 1, 3));
   };
@@ -411,6 +447,7 @@ export default function CreateTaskPage() {
     audience: audience.label,
     audienceCount: audience.count,
     schedule,
+    frequencyPolicy,
     creator: "Gary Ma",
     team: (form.getFieldValue("business") || "消息运营") as string,
     content,
@@ -476,6 +513,16 @@ export default function CreateTaskPage() {
       !form.getFieldValue("scheduledAt")
     ) {
       Message.warning("请选择计划发送时间");
+      return;
+    }
+    if (
+      triggerType === "manual" &&
+      form.getFieldValue("frequencyMode") === "custom" &&
+      (!Number(form.getFieldValue("frequencyCount")) ||
+        !Number(form.getFieldValue("frequencyWindowValue")) ||
+        !form.getFieldValue("frequencyWindowUnit"))
+    ) {
+      Message.warning("请完整填写频控次数和时间范围");
       return;
     }
     if (!translationReady) {
@@ -573,6 +620,7 @@ export default function CreateTaskPage() {
       audienceLabel: audience.label,
       sampleUsers: audience.samples,
       schedule,
+      frequencyPolicy,
       expiresAt,
       translationReady: Boolean(translationReady),
       triggerType,
@@ -587,6 +635,7 @@ export default function CreateTaskPage() {
       content,
       audience,
       schedule,
+      frequencyPolicy,
       expiresAt,
       translationReady,
       triggerType,
@@ -651,6 +700,10 @@ export default function CreateTaskPage() {
               editingTask && copiedTask && !["立即", "立即发送"].includes(copiedTask.schedule)
                 ? "scheduled"
                 : "now",
+            frequencyMode: copiedTask?.frequencyPolicy?.enabled ? "custom" : "off",
+            frequencyCount: copiedTask?.frequencyPolicy?.maxCount,
+            frequencyWindowValue: copiedTask?.frequencyPolicy?.windowValue,
+            frequencyWindowUnit: copiedTask?.frequencyPolicy?.windowUnit,
             quiet: "遵守并延迟",
             dedupe: true,
             rate: 1200,
@@ -1141,17 +1194,58 @@ export default function CreateTaskPage() {
                     <DatePicker showTime style={{ width: "100%" }} />
                   </FormItem>
                 </Grid.Col>
-                <Grid.Col span={8}>
-                  <FormItem label="频控策略" field="frequency">
-                    <Select
-                      defaultValue="global"
-                      options={[
-                        { label: "全球营销 · 3次/24h", value: "global" },
-                        { label: "活动级 · 1次/7d", value: "campaign" },
-                      ]}
-                    />
-                  </FormItem>
-                </Grid.Col>
+                {triggerType === "manual" && (
+                  <Grid.Col span={8}>
+                    <FormItem label="用户频控策略" field="frequencyMode">
+                      <Select
+                        options={[
+                          { label: "不启用频控", value: "off" },
+                          { label: "自定义频控", value: "custom" },
+                        ]}
+                      />
+                    </FormItem>
+                  </Grid.Col>
+                )}
+                {triggerType === "manual" && values.frequencyMode === "custom" && (
+                  <>
+                    <Grid.Col span={8}>
+                      <FormItem
+                        label="最多接收次数"
+                        field="frequencyCount"
+                        required
+                        rules={[{ required: true, message: "请输入最大次数" }]}
+                      >
+                        <InputNumber min={1} precision={0} suffix="次" style={{ width: "100%" }} />
+                      </FormItem>
+                    </Grid.Col>
+                    <Grid.Col span={8}>
+                      <FormItem label="频控时间范围" required>
+                        <Input.Group compact>
+                          <FormItem
+                            noStyle
+                            field="frequencyWindowValue"
+                            rules={[{ required: true, message: "请输入时间范围" }]}
+                          >
+                            <InputNumber min={1} precision={0} style={{ width: "60%" }} />
+                          </FormItem>
+                          <FormItem
+                            noStyle
+                            field="frequencyWindowUnit"
+                            rules={[{ required: true, message: "请选择单位" }]}
+                          >
+                            <Select
+                              style={{ width: "40%" }}
+                              options={[
+                                { label: "小时", value: "hour" },
+                                { label: "天", value: "day" },
+                              ]}
+                            />
+                          </FormItem>
+                        </Input.Group>
+                      </FormItem>
+                    </Grid.Col>
+                  </>
+                )}
                 <Grid.Col span={8}>
                   <FormItem label="安静时段策略" field="quiet">
                     <Select
@@ -1177,6 +1271,18 @@ export default function CreateTaskPage() {
                   </FormItem>
                 </Grid.Col>
               </Grid.Row>
+              {triggerType === "manual" && (
+                <Alert
+                  type="info"
+                  showIcon
+                  title="本任务每个 UID 仅发送一次"
+                  content={
+                    values.frequencyMode === "custom"
+                      ? `同时排除在最近 ${values.frequencyWindowValue || "—"}${values.frequencyWindowUnit === "day" ? "天" : "小时"}内已接收 ${values.frequencyCount || "—"} 次同分类消息的用户；失败重试不计为新发送。`
+                      : "当前不启用跨任务用户频控；UID 去重和任务幂等仍然保证本任务单次发送。"
+                  }
+                />
+              )}
               <Alert
                 type="info"
                 title="App Push 正式发送检查"
