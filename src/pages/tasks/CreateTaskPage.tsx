@@ -18,7 +18,6 @@ import {
   Steps,
   Switch,
   Tag,
-  TimePicker,
 } from "@arco-design/web-react";
 import {
   IconArrowLeft,
@@ -315,23 +314,27 @@ export default function CreateTaskPage() {
   const schedule =
     triggerType === "event"
       ? "事件到达时"
-      : values.scheduleMode === "original" && copiedTask
-        ? copiedTask.schedule
-        : values.scheduleMode === "now"
-          ? "立即发送"
-          : values.scheduleMode === "local"
-            ? "用户本地时间发送"
-            : values.scheduledAt
-              ? String(values.scheduledAt)
-              : "指定时间待填写";
+      : values.scheduleMode === "now"
+        ? "立即"
+        : values.scheduledAt
+          ? String(values.scheduledAt)
+          : "指定时间待填写";
   const expiresAt = values.expireAt
     ? String(values.expireAt)
     : editingTask && copiedTask?.expiresAt
       ? copiedTask.expiresAt
       : "发送后 24 小时";
 
-  const updateSnapshot = () =>
-    setSnapshot({ ...snapshot, ...form.getFieldsValue() });
+  const updateSnapshot = (changedValues?: Record<string, unknown>) => {
+    if (changedValues?.scheduleMode === "now") {
+      form.setFieldsValue({ scheduledAt: undefined });
+    }
+    setSnapshot({
+      ...snapshot,
+      ...form.getFieldsValue(),
+      ...(changedValues?.scheduleMode === "now" ? { scheduledAt: undefined } : {}),
+    });
+  };
   const patchWeb = (changes: Partial<LocalizedMessageContent["web"]>) =>
     setTemporary((value) => ({ ...value, web: { ...value.web, ...changes } }));
   const patchPush = (changes: Partial<LocalizedMessageContent["push"]>) =>
@@ -376,6 +379,15 @@ export default function CreateTaskPage() {
         Message.warning("请至少输入或导入一个有效 UID");
         return;
       }
+    }
+    if (
+      current === 2 &&
+      triggerType === "manual" &&
+      form.getFieldValue("scheduleMode") === "scheduled" &&
+      !form.getFieldValue("scheduledAt")
+    ) {
+      Message.warning("请选择计划发送时间");
+      return;
     }
     updateSnapshot();
     setCurrent((value) => Math.min(value + 1, 3));
@@ -456,6 +468,14 @@ export default function CreateTaskPage() {
     }
     if (triggerType === "event" && !eventValidation.valid) {
       Message.warning(eventValidation.reason || "系统事件配置不完整");
+      return;
+    }
+    if (
+      triggerType === "manual" &&
+      form.getFieldValue("scheduleMode") === "scheduled" &&
+      !form.getFieldValue("scheduledAt")
+    ) {
+      Message.warning("请选择计划发送时间");
       return;
     }
     if (!translationReady) {
@@ -627,7 +647,10 @@ export default function CreateTaskPage() {
             audienceType: copiedTask?.audienceType || "all",
             timezone: "Asia/Shanghai",
             priority: "普通",
-            scheduleMode: editingTask ? "original" : "now",
+            scheduleMode:
+              editingTask && copiedTask && !["立即", "立即发送"].includes(copiedTask.schedule)
+                ? "scheduled"
+                : "now",
             quiet: "遵守并延迟",
             dedupe: true,
             rate: 1200,
@@ -1070,30 +1093,31 @@ export default function CreateTaskPage() {
                     <Checkbox.Group options={["站内信", "Push"]} />
                   </FormItem>
                 </Grid.Col>
-                <Grid.Col span={8}>
-                  <FormItem label="发送模式" field="scheduleMode">
-                    <Select
-                      options={[
-                        ...(editingTask && copiedTask
-                          ? [
-                              {
-                                label: `保留原计划 · ${copiedTask.schedule}`,
-                                value: "original",
-                              },
-                            ]
-                          : []),
-                        { label: "立即发送", value: "now" },
-                        { label: "指定时间", value: "scheduled" },
-                        { label: "用户本地时间", value: "local" },
-                      ]}
-                    />
-                  </FormItem>
-                </Grid.Col>
-                <Grid.Col span={8}>
-                  <FormItem label="计划发送时间" field="scheduledAt">
-                    <DatePicker showTime style={{ width: "100%" }} />
-                  </FormItem>
-                </Grid.Col>
+                {triggerType === "manual" && (
+                  <Grid.Col span={8}>
+                    <FormItem label="发送模式" field="scheduleMode">
+                      <Select
+                        options={[
+                          { label: "立即发送", value: "now" },
+                          { label: "指定时间发送", value: "scheduled" },
+                        ]}
+                      />
+                    </FormItem>
+                  </Grid.Col>
+                )}
+                {triggerType === "manual" && values.scheduleMode === "scheduled" && (
+                  <Grid.Col span={8}>
+                    <FormItem
+                      label="计划发送时间"
+                      field="scheduledAt"
+                      required
+                      rules={[{ required: true, message: "请选择计划发送时间" }]}
+                      extra={editingTask && copiedTask ? `原计划：${copiedTask.schedule}，请重新确认` : undefined}
+                    >
+                      <DatePicker showTime style={{ width: "100%" }} />
+                    </FormItem>
+                  </Grid.Col>
+                )}
                 <Grid.Col span={8}>
                   <FormItem label="任务时区" field="timezone">
                     <Select
@@ -1115,11 +1139,6 @@ export default function CreateTaskPage() {
                     }
                   >
                     <DatePicker showTime style={{ width: "100%" }} />
-                  </FormItem>
-                </Grid.Col>
-                <Grid.Col span={8}>
-                  <FormItem label="本地发送时间" field="localTime">
-                    <TimePicker style={{ width: "100%" }} />
                   </FormItem>
                 </Grid.Col>
                 <Grid.Col span={8}>
