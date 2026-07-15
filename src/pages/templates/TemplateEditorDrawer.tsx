@@ -16,6 +16,7 @@ import MessagePreview from "../../components/MessagePreview";
 import type {
   LocalizedMessageContent,
   MessageTemplate,
+  TemplateUsageScope,
 } from "../../domain/types";
 import {
   createTranslationBatch,
@@ -67,9 +68,11 @@ export default function TemplateEditorDrawer({
   template,
   onClose,
   onCreated,
+  entryScope,
 }: {
   visible: boolean;
   template?: MessageTemplate;
+  entryScope: Exclude<TemplateUsageScope, "shared">;
   onClose: () => void;
   onCreated?: (template: MessageTemplate) => void;
 }) {
@@ -95,6 +98,7 @@ export default function TemplateEditorDrawer({
       sourceLocale: template?.sourceLocale || "zh-CN",
       channels: template?.channels || ["站内信", "Push"],
       owner: template?.owner || "消息运营",
+      usageScope: template?.usageScope || entryScope,
       variables: (
         template?.variables || [
           "user_nickname",
@@ -105,7 +109,7 @@ export default function TemplateEditorDrawer({
         ]
       ).join(", "),
     });
-  }, [template, visible, form]);
+  }, [template, visible, form, entryScope]);
 
   const patchWeb = (changes: Partial<LocalizedMessageContent["web"]>) =>
     setContent((current) => ({
@@ -154,6 +158,7 @@ export default function TemplateEditorDrawer({
           .map((item: string) => item.trim())
           .filter(Boolean),
         owner: values.owner,
+        usageScope: values.usageScope,
       };
       const entity = template
         ? updateTemplate(template.id, payload)
@@ -203,7 +208,7 @@ export default function TemplateEditorDrawer({
       />
       <Form form={form} layout="vertical" className="template-editor-form">
         <Grid.Row gutter={16}>
-          <Grid.Col span={8}>
+          <Grid.Col span={6}>
             <Form.Item
               label="模板编码"
               field="code"
@@ -213,7 +218,7 @@ export default function TemplateEditorDrawer({
               <Input placeholder="snake_case，例如 risk_alert" />
             </Form.Item>
           </Grid.Col>
-          <Grid.Col span={8}>
+          <Grid.Col span={6}>
             <Form.Item
               label="模板名称"
               field="name"
@@ -223,12 +228,25 @@ export default function TemplateEditorDrawer({
               <Input placeholder="后台识别名称" />
             </Form.Item>
           </Grid.Col>
-          <Grid.Col span={8}>
+          <Grid.Col span={6}>
             <Form.Item label="所有者团队" field="owner" required>
               <Select
                 options={["消息运营", "增长运营", "安全中心", "资金平台"].map(
                   (value) => ({ label: value, value }),
                 )}
+              />
+            </Form.Item>
+          </Grid.Col>
+          <Grid.Col span={6}>
+            <Form.Item label="适用场景" field="usageScope" required>
+              <Select
+                options={[
+                  {
+                    label: entryScope === "event" ? "事件通知" : "人工消息",
+                    value: entryScope,
+                  },
+                  { label: "通用", value: "shared" },
+                ]}
               />
             </Form.Item>
           </Grid.Col>

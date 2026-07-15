@@ -14,15 +14,23 @@ import PageHeader from "../../components/PageHeader";
 import FilterBar from "../../components/FilterBar";
 import ResourceTable from "../../components/ResourceTable";
 import StatusTag from "../../components/StatusTag";
-import type { MessageTemplate } from "../../domain/types";
+import type { MessageTemplate, TranslationBatch } from "../../domain/types";
 import TranslationWorkflowPanel from "./TranslationWorkflowPanel";
 import TemplateEditorDrawer from "./TemplateEditorDrawer";
 import { usePrototypeStore } from "../../store/prototypeStore";
+import MultilingualProgressCell from "../multilingual/MultilingualProgressCell";
+import MultilingualProgressDrawer from "../multilingual/MultilingualProgressDrawer";
+import { useSearchParams } from "react-router-dom";
+import { templateSupportsScope } from "./templateScope";
 
 export default function TemplateListPage() {
+  const [searchParams] = useSearchParams();
+  const entryScope = searchParams.get("scope") === "event" ? "event" : "manual";
+  const pageTitle = entryScope === "event" ? "事件消息模板" : "人工消息模板";
   const [preview, setPreview] = useState<MessageTemplate>();
   const [usageTemplate, setUsageTemplate] = useState<MessageTemplate>();
   const [editing, setEditing] = useState<MessageTemplate | "new">();
+  const [progressBatch, setProgressBatch] = useState<TranslationBatch>();
   const [keyword, setKeyword] = useState("");
   const [status, setStatus] = useState<string>();
   const [nature, setNature] = useState<string>();
@@ -37,6 +45,7 @@ export default function TemplateListPage() {
   const data = store.templates.filter(
     (item) =>
       item.owner !== "临时任务" &&
+      templateSupportsScope(item, entryScope) &&
       `${item.id}${item.code}${item.name}`
         .toLowerCase()
         .includes(keyword.toLowerCase()) &&
@@ -90,16 +99,34 @@ export default function TemplateListPage() {
       ),
     },
     {
-      title: "翻译进度",
-      width: 150,
-      render: (_, r) => (
-        <div>
-          <StatusTag status={r.translationReadiness} />
-          <div className="mono muted">{r.translationBatchId}</div>
-        </div>
-      ),
+      title: "多语言流程",
+      width: 250,
+      render: (_, r) => {
+        const batch = store.translationBatches.find(
+          (item) => item.id === r.translationBatchId,
+        );
+        return (
+          <MultilingualProgressCell
+            batch={batch}
+            onOpen={() => setProgressBatch(batch)}
+          />
+        );
+      },
     },
     { title: "版本", dataIndex: "version", width: 70 },
+    {
+      title: "适用场景",
+      width: 100,
+      render: (_, template) => (
+        <Tag color={template.usageScope === "shared" ? "green" : "arcoblue"}>
+          {template.usageScope === "manual"
+            ? "人工消息"
+            : template.usageScope === "event"
+              ? "事件通知"
+              : "通用"}
+        </Tag>
+      ),
+    },
     {
       title: "使用任务",
       width: 160,
@@ -140,15 +167,19 @@ export default function TemplateListPage() {
   return (
     <section className="page-stack">
       <PageHeader
-        title="消息模板"
-        description="维护多语言、多渠道内容、变量和不可变发布版本。"
+        title={pageTitle}
+        description={
+          entryScope === "event"
+            ? "维护事件通知专用与通用模板，共享版本、多语言、预览和审核能力。"
+            : "维护人工消息专用与通用模板，共享版本、多语言、预览和审核能力。"
+        }
         actions={
           <Button
             type="primary"
             icon={<IconPlus />}
             onClick={() => setEditing("new")}
           >
-            新建模板
+            新建{pageTitle}
           </Button>
         }
       />
@@ -273,8 +304,14 @@ export default function TemplateListPage() {
       <TemplateEditorDrawer
         visible={Boolean(editing)}
         template={editing === "new" ? undefined : editing}
+        entryScope={entryScope}
         onClose={() => setEditing(undefined)}
         onCreated={(item) => setPreview(item)}
+      />
+      <MultilingualProgressDrawer
+        batch={progressBatch}
+        visible={Boolean(progressBatch)}
+        onClose={() => setProgressBatch(undefined)}
       />
     </section>
   );

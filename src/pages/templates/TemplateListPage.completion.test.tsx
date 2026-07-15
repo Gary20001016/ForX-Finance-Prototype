@@ -10,7 +10,9 @@ it("opens a complete template content editor", async () => {
       <TemplateListPage />
     </MemoryRouter>,
   );
-  await user.click(screen.getByRole("button", { name: "新建模板" }));
+  await user.click(
+    screen.getByRole("button", { name: "新建人工消息模板" }),
+  );
   expect(screen.getByLabelText("站内信标题")).toBeVisible();
   expect(screen.getByLabelText("Push Deep Link")).toBeVisible();
   expect(screen.getByText("提交外部机翻")).toBeVisible();
