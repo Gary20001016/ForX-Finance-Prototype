@@ -1,10 +1,13 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import {
   approveTranslation,
+  advanceRuleContentVersion,
+  createRuleContentVersion,
   createTranslationBatch,
   getPrototypeState,
   markMessageRead,
   performManualTaskOperation,
+  publishRuleContentVersion,
   resetPrototypeStore,
   submitTask,
   reviewApproval,
@@ -316,10 +319,44 @@ describe("prototype store workflow transitions", () => {
     ).toBe("withdrawal.succeeded");
   });
 
-  it("generates a delivery through an enabled event task", () => {
-    const result = testSystemEvent("withdrawal.succeeded");
+  it("publishes a new rule content version atomically while the rule stays enabled", () => {
+    const rule = getPrototypeState().rules.find(
+      (item) => item.eventId === "withdrawal.succeeded",
+    )!;
+    const oldVersionId = rule.currentVersionId;
+    const version = createRuleContentVersion(rule.id);
+
+    advanceRuleContentVersion(version.id, "提交机翻");
+    advanceRuleContentVersion(version.id, "机翻完成");
+    advanceRuleContentVersion(version.id, "人工审核通过");
+    advanceRuleContentVersion(version.id, "通过审核");
+    publishRuleContentVersion(version.id);
+
+    const current = getPrototypeState();
+    expect(current.rules.find((item) => item.id === rule.id)).toMatchObject({
+      status: "已启用",
+      currentVersionId: version.id,
+    });
+    expect(
+      current.ruleVersions.find((item) => item.id === oldVersionId)?.status,
+    ).toBe("已替换");
+    expect(
+      current.ruleVersions.find((item) => item.id === version.id)?.status,
+    ).toBe("当前生效");
+  });
+
+  it("generates a trigger and linked deliveries through an enabled rule", () => {
+    const result = testSystemEvent("withdrawal.succeeded", "EVT-TEST-001");
     expect(result.ok).toBe(true);
-    expect(result.taskId).toBeTruthy();
+    expect(result.ruleId).toBeTruthy();
+    expect(result.triggerId).toBeTruthy();
+    expect(getPrototypeState().triggerRecords[0]).toMatchObject({
+      id: result.triggerId,
+      eventId: "withdrawal.succeeded",
+      eventInstanceId: "EVT-TEST-001",
+      status: "已完成",
+    });
+    expect(getPrototypeState().deliveries[0].triggerId).toBe(result.triggerId);
     expect(getPrototypeState().deliveries[0].eventCode).toBe(
       "withdrawal.succeeded",
     );
@@ -328,7 +365,7 @@ describe("prototype store workflow transitions", () => {
   it("blocks a test event without an enabled task", () => {
     expect(testSystemEvent("trial_fund.credited")).toEqual({
       ok: false,
-      reason: "没有已启用的事件触发任务",
+      reason: "没有已启用的事件通知规则",
     });
   });
 });

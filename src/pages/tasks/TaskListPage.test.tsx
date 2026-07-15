@@ -12,10 +12,10 @@ it("filters task rows by keyword", async () => {
   );
   await userEvent.type(
     screen.getByPlaceholderText("搜索任务 ID、名称或创建人"),
-    "提现",
+    "交易赛",
   );
-  expect(screen.getByText("提现安全通知")).toBeVisible();
-  expect(screen.queryByText("夏季交易赛召回")).not.toBeInTheDocument();
+  expect(screen.getByText("夏季交易赛召回")).toBeVisible();
+  expect(screen.queryByText("提现安全通知")).not.toBeInTheDocument();
 });
 
 it("only allows editing the three mutable artificial task states", () => {
@@ -30,20 +30,16 @@ it("only allows editing the three mutable artificial task states", () => {
   expect(canEditTask("已过期")).toBe(false);
 });
 
-it("shows the system event code for an event-triggered task", () => {
+it("shows only artificial tasks", () => {
   render(
     <MemoryRouter>
       <TaskListPage />
     </MemoryRouter>,
   );
-  expect(screen.getAllByText("系统事件触发").length).toBeGreaterThan(0);
-  expect(screen.getByText("withdrawal.succeeded")).toBeVisible();
-  expect(screen.getByText("liquidation.warning").closest("tr")).toHaveTextContent(
-    "已停用",
-  );
-  expect(screen.getByText("liquidation.warning").closest("tr")).not.toHaveTextContent(
-    "部分完成",
-  );
+  expect(screen.getByRole("heading", { name: "人工消息任务" })).toBeVisible();
+  expect(screen.queryByText("系统事件触发")).not.toBeInTheDocument();
+  expect(screen.queryByText("withdrawal.succeeded")).not.toBeInTheDocument();
+  expect(screen.queryByText("liquidation.warning")).not.toBeInTheDocument();
 });
 
 it("separates task, approval and delivery-result columns", () => {

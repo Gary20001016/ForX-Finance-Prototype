@@ -22,7 +22,10 @@ import PageHeader from "../../components/PageHeader";
 import FilterBar from "../../components/FilterBar";
 import ResourceTable from "../../components/ResourceTable";
 import StatusTag from "../../components/StatusTag";
-import type { MessageTask, SystemEventDefinition } from "../../domain/types";
+import type {
+  EventNotificationRule,
+  SystemEventDefinition,
+} from "../../domain/types";
 import {
   registerSystemEvent,
   testSystemEvent,
@@ -39,11 +42,8 @@ export default function EventListPage() {
   const [creating, setCreating] = useState(false);
   const [form] = Form.useForm();
   const selected = store.events.find((event) => event.id === selectedId);
-  const relatedTasks = (eventId: string) =>
-    store.tasks.filter(
-      (task) =>
-        task.triggerType === "event" && task.eventConfig?.eventId === eventId,
-    );
+  const relatedRules = (eventId: string) =>
+    store.rules.filter((rule) => rule.eventId === eventId);
   const data = useMemo(
     () =>
       store.events.filter(
@@ -83,36 +83,39 @@ export default function EventListPage() {
     const result = testSystemEvent(selected.id);
     if (result.ok)
       Message.success(
-        `测试事件已通过任务 ${result.taskId} 生成发送记录 ${result.deliveryId}`,
+        `测试事件已通过规则 ${result.ruleId} 生成触发记录 ${result.triggerId}`,
       );
     else Message.error(result.reason || "测试事件执行失败");
   };
-  const taskColumns = [
+  const ruleColumns = [
     {
-      title: "触发任务",
-      render: (_: unknown, task: MessageTask) => (
+      title: "通知规则",
+      render: (_: unknown, rule: EventNotificationRule) => (
         <div>
-          <Typography.Text className="strong">{task.name}</Typography.Text>
-          <div className="mono muted">{task.id}</div>
+          <Typography.Text className="strong">{rule.name}</Typography.Text>
+          <div className="mono muted">{rule.id}</div>
         </div>
       ),
     },
     {
-      title: "模板版本",
-      render: (_: unknown, task: MessageTask) => (
-        <span className="mono">{task.template}</span>
-      ),
+      title: "当前内容版本",
+      render: (_: unknown, rule: EventNotificationRule) => {
+        const version = store.ruleVersions.find(
+          (item) => item.id === rule.currentVersionId,
+        );
+        return <span className="mono">{version?.version || "—"}</span>;
+      },
     },
     {
       title: "触发条件",
-      render: (_: unknown, task: MessageTask) =>
-        task.eventConfig?.conditionExpression || "事件到达即触发",
+      render: (_: unknown, rule: EventNotificationRule) =>
+        rule.conditionExpression,
     },
     {
       title: "渠道",
-      render: (_: unknown, task: MessageTask) => (
+      render: (_: unknown, rule: EventNotificationRule) => (
         <Space>
-          {task.channels.map((channel) => (
+          {rule.channels.map((channel) => (
             <Tag key={channel}>{channel}</Tag>
           ))}
         </Space>
@@ -120,8 +123,8 @@ export default function EventListPage() {
     },
     {
       title: "状态",
-      render: (_: unknown, task: MessageTask) => (
-        <StatusTag status={task.status} />
+      render: (_: unknown, rule: EventNotificationRule) => (
+        <StatusTag status={rule.status} />
       ),
     },
   ];
@@ -129,8 +132,8 @@ export default function EventListPage() {
   return (
     <section className="page-stack">
       <PageHeader
-        title="系统事件"
-        description="维护事件定义和字段结构；模板、条件、映射、去重与重试由关联触发任务配置。"
+        title="事件目录"
+        description="只维护上游业务事件的编码、版本与字段 Schema；通知内容和发送策略由事件通知规则管理。"
         actions={
           <Button
             type="primary"
@@ -196,16 +199,16 @@ export default function EventListPage() {
           { title: "业务线", dataIndex: "line", width: 90 },
           { title: "版本", dataIndex: "version", width: 90 },
           {
-            title: "关联触发任务",
+            title: "关联通知规则",
             width: 150,
             render: (_: unknown, record: SystemEventDefinition) => {
-              const tasks = relatedTasks(record.id);
-              const enabled = tasks.filter(
-                (task) => task.status === "已启用",
+              const rules = relatedRules(record.id);
+              const enabled = rules.filter(
+                (rule) => rule.status === "已启用",
               ).length;
               return (
                 <div>
-                  <strong>{tasks.length}</strong> 个
+                  <strong>{rules.length}</strong> 个
                   <div className="muted">已启用 {enabled}</div>
                 </div>
               );
@@ -256,10 +259,10 @@ export default function EventListPage() {
               </Button>
               <Button
                 onClick={() =>
-                  navigate("/tasks/create", { state: { eventId: selected.id } })
+                  navigate("/automation", { state: { eventId: selected.id } })
                 }
               >
-                创建触发任务
+                创建通知规则
               </Button>
               <Button type="primary" onClick={sendTest}>
                 发送测试事件
@@ -291,23 +294,23 @@ export default function EventListPage() {
                 .join(" · ")}
             />
             <div className="drawer-section-title">
-              <strong>关联触发任务</strong>
+              <strong>关联通知规则</strong>
               <span className="muted">
-                模板通过任务关联，不在事件定义中直接绑定
+                规则负责条件、用户映射、渠道和内容版本
               </span>
             </div>
-            {relatedTasks(selected.id).length ? (
+            {relatedRules(selected.id).length ? (
               <Table
                 rowKey="id"
                 pagination={false}
-                data={relatedTasks(selected.id)}
-                columns={taskColumns}
+                data={relatedRules(selected.id)}
+                columns={ruleColumns}
               />
             ) : (
               <Alert
                 type="warning"
-                title="尚无触发任务"
-                content="该事件当前无法生成消息。请创建触发任务、完成审批并启用后再发送测试事件。"
+                title="尚无通知规则"
+                content="该事件当前不会生成通知。请创建通知规则、发布首个内容版本并启用后再发送测试事件。"
               />
             )}
           </>
@@ -388,7 +391,7 @@ export default function EventListPage() {
           <Form.Item
             label="事件字段"
             field="variables"
-            extra="逗号分隔；触发任务会将这些事件字段映射到模板变量"
+            extra="逗号分隔；通知规则会将这些事件字段映射到模板变量"
           >
             <Input />
           </Form.Item>

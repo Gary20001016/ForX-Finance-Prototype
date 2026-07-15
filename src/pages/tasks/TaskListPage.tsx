@@ -44,7 +44,7 @@ export const canEditTask = (status: string) =>
 export default function TaskListPage() {
   const navigate = useNavigate();
   const store = usePrototypeStore();
-  const tasks = store.tasks;
+  const tasks = store.tasks.filter((task) => task.triggerType !== "event");
   const [keyword, setKeyword] = useState("");
   const [status, setStatus] = useState<string>();
   const [nature, setNature] = useState<string>();
@@ -69,8 +69,8 @@ export default function TaskListPage() {
   );
 
   const operationsFor = (row: MessageTask): ManualTaskOperation[] =>
-    row.triggerType === "event" || !isManualTaskStatus(row.status)
-      ? ["查看详情", "编辑任务", "复制任务"]
+    !isManualTaskStatus(row.status)
+      ? ["查看详情", "复制任务"]
       : getManualTaskOperations({
           status: row.status,
           deliveryResult: row.deliveryResult,
@@ -84,7 +84,7 @@ export default function TaskListPage() {
     }
     if (
       operation === "编辑任务" &&
-      (row.triggerType === "event" || canEditTask(row.status))
+      canEditTask(row.status)
     ) {
       const openEditor = () =>
         navigate("/tasks/create", { state: { copyTask: row, resume: true } });
@@ -155,13 +155,10 @@ export default function TaskListPage() {
       width: 190,
       render: (_, row) => (
         <div>
-          {row.triggerType === "event" ? "系统事件触发" : "人工发送"}
+          人工发送
           <div className="muted">
             {row.category} · {row.nature}
           </div>
-          {row.eventConfig && (
-            <div className="mono muted">{row.eventConfig.eventId}</div>
-          )}
         </div>
       ),
     },
@@ -227,11 +224,7 @@ export default function TaskListPage() {
       title: "发送结果",
       width: 104,
       render: (_, row) =>
-        row.triggerType === "event" ? (
-          <span className="muted">查看发送记录</span>
-        ) : (
-          <StatusTag status={row.deliveryResult || "未开始"} />
-        ),
+        <StatusTag status={row.deliveryResult || "未开始"} />,
     },
     {
       title: "进度",
@@ -281,15 +274,15 @@ export default function TaskListPage() {
   return (
     <section className="page-stack">
       <PageHeader
-        title="消息任务"
-        description="统一创建、审核和追踪人工群发与系统事件消息。"
+        title="人工消息任务"
+        description="创建、审核和追踪一次性人工发送任务；事件自动通知在事件通知规则中管理。"
         actions={
           <Button
             type="primary"
             icon={<IconPlus />}
             onClick={() => navigate("/tasks/create")}
           >
-            新建消息任务
+            新建人工消息任务
           </Button>
         }
       />
@@ -315,7 +308,7 @@ export default function TaskListPage() {
           allowClear
           style={{ width: 150 }}
         >
-          {[...MANUAL_TASK_STATUSES, "已启用", "已停用"].map((item) => (
+          {MANUAL_TASK_STATUSES.map((item) => (
             <Select.Option key={item} value={item}>
               {item}
             </Select.Option>

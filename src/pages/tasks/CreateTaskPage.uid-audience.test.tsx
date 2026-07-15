@@ -53,20 +53,16 @@ it("blocks the next step while a parsed CSV is not confirmed", async () => {
   expect(screen.getByRole("heading", { name: "目标用户" })).toBeVisible();
 });
 
-it("does not show UID CSV import for system event tasks", async () => {
-  const user = userEvent.setup();
+it("keeps system event automation out of the artificial task creator", () => {
   render(
     <MemoryRouter>
       <CreateTaskPage />
     </MemoryRouter>,
   );
-  await user.type(
-    screen.getByPlaceholderText("例如：夏季交易赛召回"),
-    "事件通知",
-  );
-  await user.click(screen.getByRole("radio", { name: "系统事件触发" }));
-  await user.click(screen.getByRole("button", { name: "下一步" }));
-
-  expect(screen.getAllByText("事件主体用户").length).toBeGreaterThan(0);
-  expect(screen.queryByLabelText("上传 UID CSV")).not.toBeInTheDocument();
+  expect(
+    screen.queryByRole("radio", { name: "系统事件触发" }),
+  ).not.toBeInTheDocument();
+  expect(
+    screen.getByText(/系统事件自动通知请前往“事件通知规则”配置/),
+  ).toBeVisible();
 });

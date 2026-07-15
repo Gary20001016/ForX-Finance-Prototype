@@ -553,7 +553,7 @@ export default function CreateTaskPage() {
   return (
     <section className="page-stack create-task-page">
       <PageHeader
-        title="新建消息任务"
+        title="新建人工消息任务"
         description="支持审核通过的模板和临时消息；提交后锁定内容、受众、渠道、时间与有效期。"
         actions={
           <>
@@ -668,33 +668,11 @@ export default function CreateTaskPage() {
                 </Grid.Col>
               </Grid.Row>
               <div className="section-divider" />
-              <h3>触发方式</h3>
-              <Radio.Group
-                type="button"
-                value={triggerType}
-                onChange={(value) => {
-                  setTriggerType(value);
-                  if (value === "event") {
-                    setContentMode("template");
-                    const nextEvent =
-                      store.events.find((item) => item.id === eventId) ||
-                      store.events[0];
-                    const nextTemplate =
-                      eventTemplates.find((item) => item.id === templateId) ||
-                      eventTemplates[0];
-                    if (nextEvent) {
-                      setEventId(nextEvent.id);
-                      setEventConfig(
-                        createDefaultEventConfig(nextEvent, nextTemplate),
-                      );
-                    }
-                    if (nextTemplate) setTemplateId(nextTemplate.id);
-                  }
-                }}
-              >
-                <Radio value="manual">人工发送</Radio>
-                <Radio value="event">系统事件触发</Radio>
-              </Radio.Group>
+              <h3>发送方式</h3>
+              <Alert
+                type="info"
+                content="当前创建人工发送任务。系统事件自动通知请前往“事件通知规则”配置。"
+              />
               {triggerType === "event" ? (
                 <EventTriggerFields
                   events={store.events}
