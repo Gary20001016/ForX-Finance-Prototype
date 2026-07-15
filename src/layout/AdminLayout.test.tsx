@@ -18,3 +18,21 @@ it('shows primary navigation and current product context', () => {
   expect(screen.getByText('App Push 正常')).toBeInTheDocument();
   expect(screen.queryByText('Push 已预留')).not.toBeInTheDocument();
 });
+
+it('selects the event template entry and shows the complete breadcrumb', () => {
+  Object.defineProperty(window, 'innerWidth', { value: 1440, configurable: true });
+  render(
+    <MemoryRouter initialEntries={['/templates?scope=event']}>
+      <AdminLayout />
+    </MemoryRouter>,
+  );
+
+  expect(screen.getByTestId('nav-/templates?scope=event')).toHaveTextContent(
+    '事件消息模板',
+  );
+  expect(screen.getByTestId('nav-/templates?scope=event')).toHaveClass(
+    'arco-menu-selected',
+  );
+  expect(screen.getAllByText('事件自动化').length).toBeGreaterThan(0);
+  expect(screen.getAllByText('事件消息模板').length).toBeGreaterThan(0);
+});

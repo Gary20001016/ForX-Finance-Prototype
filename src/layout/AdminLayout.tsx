@@ -21,7 +21,12 @@ import {
   IconSearch,
 } from '@arco-design/web-react/icon';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { labelForPath, navigationItems } from '../app/navigation';
+import {
+  dashboardNavigationItem,
+  navigationContextForLocation,
+  navigationGroups,
+  settingsNavigationItem,
+} from '../app/navigation';
 import { openPrototypeDialog } from '../utils/prototypeActions';
 
 const { Sider, Header, Content } = Layout;
@@ -30,10 +35,15 @@ export default function AdminLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
-  const activePath = useMemo(
-    () => navigationItems.find((item) => location.pathname.startsWith(item.key))?.key ?? '/dashboard',
-    [location.pathname],
+  const activeNavigation = useMemo(
+    () => navigationContextForLocation(location.pathname, location.search),
+    [location.pathname, location.search],
   );
+  const [openKeys, setOpenKeys] = useState<string[]>([]);
+
+  useEffect(() => {
+    setOpenKeys(activeNavigation?.groupKey ? [activeNavigation.groupKey] : []);
+  }, [activeNavigation?.groupKey]);
 
   useEffect(() => {
     const handleResize = () => setCollapsed(window.innerWidth < 1100);
@@ -51,15 +61,30 @@ export default function AdminLayout() {
         </div>
         <Menu
           theme="dark"
-          selectedKeys={[activePath]}
+          selectedKeys={[activeNavigation?.key ?? '/dashboard']}
+          openKeys={openKeys}
           onClickMenuItem={(key) => navigate(key)}
+          onClickSubMenu={(_, keys) => setOpenKeys(keys)}
           className="admin-menu"
         >
-          {navigationItems.map((item) => (
-            <Menu.Item key={item.key} data-testid={`nav-${item.key}`}>
-              {item.icon}{item.label}
-            </Menu.Item>
+          <Menu.Item key={dashboardNavigationItem.key} data-testid={`nav-${dashboardNavigationItem.key}`}>
+            {dashboardNavigationItem.icon}{dashboardNavigationItem.label}
+          </Menu.Item>
+          {navigationGroups.map((group) => (
+            <Menu.SubMenu
+              key={group.key}
+              title={<>{group.icon}{group.label}</>}
+            >
+              {group.children.map((item) => (
+                <Menu.Item key={item.key} data-testid={`nav-${item.key}`}>
+                  {item.icon}{item.label}
+                </Menu.Item>
+              ))}
+            </Menu.SubMenu>
           ))}
+          <Menu.Item key={settingsNavigationItem.key} data-testid={`nav-${settingsNavigationItem.key}`}>
+            {settingsNavigationItem.icon}{settingsNavigationItem.label}
+          </Menu.Item>
         </Menu>
         {!collapsed && (
           <div className="sider-health">
@@ -79,7 +104,10 @@ export default function AdminLayout() {
             />
             <Breadcrumb>
               <Breadcrumb.Item key="root">消息中心</Breadcrumb.Item>
-              <Breadcrumb.Item key={location.pathname}>{labelForPath(location.pathname)}</Breadcrumb.Item>
+              {activeNavigation?.groupLabel && (
+                <Breadcrumb.Item key={activeNavigation.groupKey}>{activeNavigation.groupLabel}</Breadcrumb.Item>
+              )}
+              <Breadcrumb.Item key={activeNavigation?.key ?? location.pathname}>{activeNavigation?.label ?? '工作台'}</Breadcrumb.Item>
             </Breadcrumb>
           </Space>
           <div className="header-actions">
