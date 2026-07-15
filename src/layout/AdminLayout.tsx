@@ -22,6 +22,7 @@ import {
 } from '@arco-design/web-react/icon';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
+  audienceNavigationItem,
   dashboardNavigationItem,
   navigationContextForLocation,
   navigationGroups,
@@ -77,6 +78,9 @@ export default function AdminLayout() {
         >
           <Menu.Item key={dashboardNavigationItem.key} data-testid={`nav-${dashboardNavigationItem.key}`}>
             {dashboardNavigationItem.icon}{dashboardNavigationItem.label}
+          </Menu.Item>
+          <Menu.Item key={audienceNavigationItem.key} data-testid={`nav-${audienceNavigationItem.key}`}>
+            {audienceNavigationItem.icon}{audienceNavigationItem.label}
           </Menu.Item>
           {navigationGroups.map((group) => (
             <Menu.SubMenu

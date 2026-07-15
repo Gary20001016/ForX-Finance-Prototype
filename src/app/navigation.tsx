@@ -40,6 +40,13 @@ export const dashboardNavigationItem: NavigationItem = {
   icon: <IconDashboard />,
 };
 
+export const audienceNavigationItem: NavigationItem = {
+  key: '/segments',
+  path: '/segments',
+  label: '用户与受众',
+  icon: <IconUserGroup />,
+};
+
 export const settingsNavigationItem: NavigationItem = {
   key: '/settings',
   path: '/settings',
@@ -64,12 +71,6 @@ export const navigationGroups: NavigationGroup[] = [
         path: '/templates',
         label: '人工消息模板',
         icon: <IconBook />,
-      }),
-      groupedItem('manual-messaging', '人工消息', {
-        key: '/segments',
-        path: '/segments',
-        label: '用户与受众',
-        icon: <IconUserGroup />,
       }),
     ],
   },
@@ -139,6 +140,7 @@ export const navigationGroups: NavigationGroup[] = [
 
 export const navigationItems: NavigationItem[] = [
   dashboardNavigationItem,
+  audienceNavigationItem,
   ...navigationGroups.flatMap((group) => group.children),
   settingsNavigationItem,
 ];

@@ -1,4 +1,5 @@
 import {
+  audienceNavigationItem,
   navigationContextForLocation,
   navigationGroups,
   navigationItems,
@@ -11,11 +12,27 @@ it('groups navigation by manual, event and governance workflows', () => {
     '运营与治理',
   ]);
   expect(navigationGroups.map((group) => group.children.map((item) => item.label))).toEqual([
-    ['人工消息任务', '人工消息模板', '用户与受众'],
+    ['人工消息任务', '人工消息模板'],
     ['事件通知规则', '事件消息模板', '事件目录', '触发记录'],
     ['多语言审核', '审核中心', '发送记录', '数据分析'],
   ]);
+  expect(audienceNavigationItem).toMatchObject({
+    key: '/segments',
+    path: '/segments',
+    label: '用户与受众',
+  });
+  expect(audienceNavigationItem).not.toHaveProperty('groupKey');
   expect(navigationItems.map((item) => item.label)).toContain('系统配置');
+});
+
+it('resolves audience management as a standalone navigation item', () => {
+  const audienceContext = navigationContextForLocation('/segments');
+  expect(audienceContext).toMatchObject({
+    key: '/segments',
+    label: '用户与受众',
+  });
+  expect(audienceContext).not.toHaveProperty('groupKey');
+  expect(audienceContext).not.toHaveProperty('groupLabel');
 });
 
 it('resolves both template entries from one route', () => {

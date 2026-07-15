@@ -49,3 +49,18 @@ it('collapses grouped navigation into Arco popup mode on narrow screens', async 
     expect(container.querySelector('.admin-menu')).toHaveClass('arco-menu-collapse');
   });
 });
+
+it('shows audience management as a selected top-level item with a flat breadcrumb', () => {
+  Object.defineProperty(window, 'innerWidth', { value: 1440, configurable: true });
+  render(
+    <MemoryRouter initialEntries={['/segments']}>
+      <AdminLayout />
+    </MemoryRouter>,
+  );
+
+  expect(screen.getByTestId('nav-/segments')).toHaveClass('arco-menu-selected');
+  expect(screen.getAllByText('用户与受众')).toHaveLength(2);
+  expect(
+    screen.queryByText('人工消息', { selector: '.arco-breadcrumb-item' }),
+  ).not.toBeInTheDocument();
+});
