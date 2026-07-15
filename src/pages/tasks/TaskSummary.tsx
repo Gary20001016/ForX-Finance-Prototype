@@ -13,7 +13,6 @@ import type {
   Channel,
   EventTriggerConfig,
   LocalizedMessageContent,
-  ManualFrequencyPolicy,
   RiskLevel,
   TaskTriggerType,
 } from "../../domain/types";
@@ -28,7 +27,6 @@ export interface TaskSummaryData {
   audienceLabel: string;
   sampleUsers: string[];
   schedule: string;
-  frequencyPolicy: ManualFrequencyPolicy;
   expiresAt: string;
   translationReady: boolean;
   triggerType?: TaskTriggerType;
@@ -125,12 +123,6 @@ export default function TaskSummary({ data }: { data: TaskSummaryData }) {
               { label: "消息性质", value: `${data.nature} · ${data.risk}风险` },
               { label: "受众", value: data.audienceLabel },
               { label: "发送时间", value: data.schedule },
-              {
-                label: "用户频控",
-                value: data.frequencyPolicy.enabled
-                  ? `同消息分类 ${data.frequencyPolicy.windowValue} ${data.frequencyPolicy.windowUnit === "day" ? "天" : "小时"}内最多 ${data.frequencyPolicy.maxCount} 次`
-                  : "不启用 · 本任务每个 UID 仅发送一次",
-              },
               { label: "正式渠道", value: data.channels.join(" + ") },
               { label: "预计成本", value: "Web ¥0 · Push ¥0" },
               { label: "有效期", value: data.expiresAt || "未设置" },
