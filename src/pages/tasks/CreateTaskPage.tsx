@@ -28,6 +28,7 @@ import {
 import { useLocation, useNavigate } from "react-router-dom";
 import PageHeader from "../../components/PageHeader";
 import MessagePreview from "../../components/MessagePreview";
+import TranslationWorkflowPanel from "../templates/TranslationWorkflowPanel";
 import type {
   Channel,
   EventTriggerConfig,
@@ -59,6 +60,7 @@ import {
   mergeUidAudience,
   parseManualUids,
 } from "./uidAudience";
+import { templateSupportsScope } from "../templates/templateScope";
 
 const FormItem = Form.Item;
 const categoryOptions = [
@@ -167,10 +169,15 @@ export default function CreateTaskPage() {
           canEditManualTask(copiedTask.status))),
   );
   const approvedTemplates = store.templates.filter(
-    (template) => template.translationReadiness === "全部审核通过",
+    (template) =>
+      template.translationReadiness === "全部审核通过" &&
+      templateSupportsScope(template, "manual"),
   );
-  const eventTemplates = approvedTemplates.filter(
-    (template) => template.status === "已发布",
+  const eventTemplates = store.templates.filter(
+    (template) =>
+      template.translationReadiness === "全部审核通过" &&
+      template.status === "已发布" &&
+      templateSupportsScope(template, "event"),
   );
   const initialEvent = store.events.find(
     (event) =>
@@ -249,6 +256,11 @@ export default function CreateTaskPage() {
     (triggerType === "event" ? eventTemplates[0] : approvedTemplates[0]);
   const currentBatch = temporaryBatchId
     ? store.translationBatches.find((batch) => batch.id === temporaryBatchId)
+    : undefined;
+  const temporaryTranslationTemplate = currentBatch
+    ? store.templates.find(
+        (template) => template.id === currentBatch.templateId,
+      )
     : undefined;
   const content =
     contentMode === "template"
@@ -499,9 +511,22 @@ export default function CreateTaskPage() {
         "occurred_at",
       ],
       owner: "临时任务",
+      usageScope: "manual",
     });
     const batch = createTranslationBatch({
-      templateId: draft.id,
+      subject: {
+        type: "manual_task_content",
+        id: draft.id,
+        name: draft.name,
+        version: draft.version,
+        returnPath: "/tasks/create",
+      },
+      sourceLocale: "zh-CN",
+      sourceContent: {
+        title: temporary.web.title,
+        summary: temporary.web.summary,
+        body: temporary.web.body,
+      },
       targetLocales,
       createdBy: "Gary Ma",
     });
@@ -879,6 +904,13 @@ export default function CreateTaskPage() {
                           </Tag>
                         )}
                       </div>
+                      {currentBatch && temporaryTranslationTemplate && (
+                        <TranslationWorkflowPanel
+                          template={temporaryTranslationTemplate}
+                          batch={currentBatch}
+                          context="temporary-task"
+                        />
+                      )}
                       <MessagePreview content={content} />
                     </div>
                   )}

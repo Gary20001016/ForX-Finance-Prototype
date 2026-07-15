@@ -332,7 +332,7 @@ export const templates: MessageTemplate[] = [
     version: "v16",
     status: "已发布",
     updatedAt: "07-12 17:20",
-    usageScope: "event",
+    usageScope: "shared",
   },
   {
     id: "TPL-1003",

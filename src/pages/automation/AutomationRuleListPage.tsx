@@ -32,12 +32,16 @@ import {
   changeEventRuleStatus,
   createEventRule,
   createRuleContentVersion,
+  createRuleTranslationBatch,
   publishRuleContentVersion,
   reviewEventRule,
   updateRuleContentVersion,
   usePrototypeStore,
 } from "../../store/prototypeStore";
 import { getEventRuleOperations } from "./automationLifecycle";
+import MultilingualProgressCell from "../multilingual/MultilingualProgressCell";
+import MultilingualProgressDrawer from "../multilingual/MultilingualProgressDrawer";
+import { templateSupportsScope } from "../templates/templateScope";
 
 const localeOptions = ["en-US", "ja-JP", "ko-KR", "fr-FR", "es-ES"];
 
@@ -56,12 +60,16 @@ export default function AutomationRuleListPage() {
   const location = useLocation();
   const routeEventId = (location.state as { eventId?: string } | null)?.eventId;
   const store = usePrototypeStore();
+  const eventTemplates = store.templates.filter((template) =>
+    templateSupportsScope(template, "event"),
+  );
   const [keyword, setKeyword] = useState("");
   const [status, setStatus] = useState<string>();
   const [eventId, setEventId] = useState<string>();
   const [selectedId, setSelectedId] = useState<string>();
   const [creating, setCreating] = useState(Boolean(routeEventId));
   const [versionEditor, setVersionEditor] = useState(false);
+  const [progressBatchId, setProgressBatchId] = useState<string>();
   const [versionDraft, setVersionDraft] = useState({
     title: "",
     body: "",
@@ -170,6 +178,12 @@ export default function AutomationRuleListPage() {
     version: RuleContentVersion,
     operation: RuleContentVersionOperation | "发布版本",
   ) => {
+    if (operation === "提交机翻") {
+      const batch = createRuleTranslationBatch(version.id);
+      setProgressBatchId(batch.id);
+      Message.success(`${version.version} 已创建外部机翻任务`);
+      return;
+    }
     if (operation === "发布版本") {
       Modal.confirm({
         title: `发布 ${version.version}`,
@@ -397,6 +411,21 @@ export default function AutomationRuleListPage() {
                       `${item.sourceLocale} + ${item.targetLocales.length}`,
                   },
                   {
+                    title: "多语言流程",
+                    width: 250,
+                    render: (_: unknown, item: RuleContentVersion) => {
+                      const batch = store.translationBatches.find(
+                        (candidate) => candidate.id === item.translationBatchId,
+                      );
+                      return (
+                        <MultilingualProgressCell
+                          batch={batch}
+                          onOpen={() => setProgressBatchId(batch?.id)}
+                        />
+                      );
+                    },
+                  },
+                  {
                     title: "状态",
                     width: 120,
                     render: (_: unknown, item: RuleContentVersion) => (
@@ -493,6 +522,11 @@ export default function AutomationRuleListPage() {
           </Form.Item>
         </Form>
       </Modal>
+      <MultilingualProgressDrawer
+        batch={store.translationBatches.find((batch) => batch.id === progressBatchId)}
+        visible={Boolean(progressBatchId)}
+        onClose={() => setProgressBatchId(undefined)}
+      />
 
       <Modal
         visible={creating}
@@ -546,7 +580,7 @@ export default function AutomationRuleListPage() {
             <Grid.Col span={12}>
               <Form.Item label="消息模板" field="templateId" required rules={[{ required: true }]}>
                 <Select
-                  options={store.templates.map((template) => ({
+                  options={eventTemplates.map((template) => ({
                     label: `${template.name} · ${template.version}`,
                     value: template.id,
                   }))}
@@ -566,7 +600,7 @@ export default function AutomationRuleListPage() {
             <Input />
           </Form.Item>
           <Form.Item label="中文正文" field="body" required rules={[{ required: true }]}>
-            <Input.TextArea autoSize={{ minRows: 4, maxRows: 8 }} />
+            <Input.TextArea rows={4} />
           </Form.Item>
           <Grid.Row gutter={16}>
             <Grid.Col span={12}>
