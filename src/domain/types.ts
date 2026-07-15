@@ -114,6 +114,7 @@ export interface RuleContentVersion {
   status: RuleContentVersionStatus;
   sourceLocale: string;
   targetLocales: string[];
+  translationBatchId?: string;
   title: string;
   body: string;
   createdBy: string;
@@ -241,6 +242,8 @@ export interface MessageTask {
   uidAudience?: UidAudienceSnapshot;
 }
 
+export type TemplateUsageScope = "manual" | "event" | "shared";
+
 export interface MessageTemplate {
   id: string;
   code: string;
@@ -259,12 +262,19 @@ export interface MessageTemplate {
   content?: LocalizedMessageContent;
   variables?: string[];
   owner?: string;
+  usageScope: TemplateUsageScope;
 }
 
 export type TranslationItemStatus =
   | "未提交"
   | "排队中"
   | "翻译中"
+  | "待普通确认"
+  | "修改中"
+  | "待小语种专审"
+  | "专审中"
+  | "源文案已变更"
+  | "已通过"
   | "待人工审核"
   | "审核通过"
   | "翻译失败"
@@ -279,11 +289,37 @@ export type TranslationBatchStatus =
   | "审核被驳回"
   | "已取消";
 
+export type TranslationSubjectType =
+  | "template_version"
+  | "manual_task_content"
+  | "rule_content_version";
+
+export interface LanguageReviewPolicy {
+  localeCode: string;
+  localeName: string;
+  specialReviewRequired: boolean;
+  reviewGroup?: string;
+  reviewerCount: 1 | 2;
+  allowSubmitterReview: boolean;
+  reviewSlaHours?: number;
+  timeoutAction: "提醒" | "升级" | "阻断发布";
+  enabled: boolean;
+}
+
+export interface TranslationContentLayer {
+  title?: string;
+  summary?: string;
+  body?: string;
+}
+
 export interface TranslationItem {
   id: string;
   batchId: string;
   templateId: string;
   templateName: string;
+  subjectType?: TranslationSubjectType;
+  subjectId?: string;
+  subjectName?: string;
   sourceLocale: string;
   targetLocale: string;
   externalTaskId: string;
@@ -293,6 +329,9 @@ export interface TranslationItem {
   machineTitle?: string;
   machineSummary?: string;
   machineBody?: string;
+  machineOutput?: TranslationContentLayer;
+  humanDraft?: TranslationContentLayer;
+  approvedOutput?: TranslationContentLayer;
   reviewedTitle?: string;
   reviewedSummary?: string;
   reviewedBody?: string;
@@ -304,10 +343,19 @@ export interface TranslationItem {
   reviewer?: string;
   submitter: string;
   variablesValid: boolean;
+  specialReviewRequired?: boolean;
+  reviewGroup?: string;
+  reviewSlaHours?: number;
+  changedFields?: Array<"title" | "summary" | "body">;
 }
 
 export interface TranslationBatch {
   id: string;
+  subjectType?: TranslationSubjectType;
+  subjectId?: string;
+  subjectName?: string;
+  contentVersion?: string;
+  returnPath?: string;
   templateId: string;
   templateVersion: string;
   sourceLocale: string;
@@ -316,6 +364,7 @@ export interface TranslationBatch {
   createdBy: string;
   createdAt: string;
   updatedAt: string;
+  sourceContent?: TranslationContentLayer;
   items: TranslationItem[];
 }
 

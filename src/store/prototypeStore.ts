@@ -7,6 +7,7 @@ import type {
   EventTaskValidationResult,
   EventTestResult,
   EventTriggerConfig,
+  LanguageReviewPolicy,
   LinkAllowlistEntry,
   LocalizedMessageContent,
   ManualTaskApprovalStatus,
@@ -20,6 +21,8 @@ import type {
   SystemEventDefinition,
   TriggerRecord,
   TranslationBatch,
+  TranslationContentLayer,
+  TranslationSubjectType,
   UserMessage,
 } from "../domain/types";
 import {
@@ -40,12 +43,14 @@ import {
   nextRuleVersionStatus,
   ruleEventIdempotencyKey,
 } from "../pages/automation/automationLifecycle";
+import { normalizeTemplateUsageScopes } from "../pages/templates/templateScope";
 
 export interface PrototypeState {
   messages: UserMessage[];
   tasks: MessageTask[];
   templates: MessageTemplate[];
   translationBatches: TranslationBatch[];
+  languageReviewPolicies: LanguageReviewPolicy[];
   approvals: ApprovalItem[];
   deliveries: DeliveryRecord[];
   allowlist: LinkAllowlistEntry[];
@@ -54,6 +59,90 @@ export interface PrototypeState {
   ruleVersions: RuleContentVersion[];
   triggerRecords: TriggerRecord[];
 }
+
+const languageReviewPolicySeed: LanguageReviewPolicy[] = [
+  ["en-US", "英语", false, undefined, 1, true, 8, "提醒"],
+  ["zh-TW", "繁体中文", false, undefined, 1, true, 8, "提醒"],
+  ["fr-FR", "法语", false, undefined, 1, true, 12, "提醒"],
+  ["es-ES", "西班牙语", false, undefined, 1, true, 12, "提醒"],
+  ["ja-JP", "日语", true, "日韩专项审核组", 2, false, 8, "阻断发布"],
+  ["ko-KR", "韩语", true, "日韩专项审核组", 2, false, 8, "阻断发布"],
+  ["tr-TR", "土耳其语", true, "小语种专项审核组", 1, false, 12, "升级"],
+  ["ru-RU", "俄语", true, "小语种专项审核组", 1, false, 12, "升级"],
+].map(
+  ([localeCode, localeName, specialReviewRequired, reviewGroup, reviewerCount, allowSubmitterReview, reviewSlaHours, timeoutAction]) => ({
+    localeCode: localeCode as string,
+    localeName: localeName as string,
+    specialReviewRequired: specialReviewRequired as boolean,
+    reviewGroup: reviewGroup as string | undefined,
+    reviewerCount: reviewerCount as 1 | 2,
+    allowSubmitterReview: allowSubmitterReview as boolean,
+    reviewSlaHours: reviewSlaHours as number,
+    timeoutAction: timeoutAction as LanguageReviewPolicy["timeoutAction"],
+    enabled: true,
+  }),
+);
+
+export const normalizeTranslationBatches = (
+  batches: TranslationBatch[],
+  policies: LanguageReviewPolicy[],
+  availableTemplates: MessageTemplate[],
+): TranslationBatch[] =>
+  JSON.parse(JSON.stringify(batches)).map((batch: TranslationBatch) => {
+    const subjectTemplate = availableTemplates.find(
+      (template) => template.id === batch.templateId,
+    );
+    const subjectType: TranslationSubjectType =
+      batch.subjectType ||
+      (subjectTemplate?.owner === "临时任务"
+        ? "manual_task_content"
+        : "template_version");
+
+    return {
+      ...batch,
+      subjectType,
+      subjectId: batch.subjectId || batch.templateId,
+      subjectName: batch.subjectName || subjectTemplate?.name || batch.templateId,
+      contentVersion: batch.contentVersion || batch.templateVersion,
+      returnPath:
+        batch.returnPath ||
+        (subjectType === "manual_task_content" ? "/tasks/create" : "/templates"),
+      items: batch.items.map((item) => {
+      const policy = policies.find(
+        (candidate) => candidate.localeCode === item.targetLocale,
+      );
+      return {
+        ...item,
+        status:
+          item.status === "审核通过"
+            ? "已通过"
+            : item.status === "待人工审核"
+              ? policy?.specialReviewRequired
+                ? "待小语种专审"
+                : "待普通确认"
+              : item.status,
+        subjectType: item.subjectType || batch.subjectType || subjectType,
+        subjectId: item.subjectId || batch.subjectId || batch.templateId,
+        subjectName: item.subjectName || batch.subjectName || item.templateName,
+        specialReviewRequired: policy?.specialReviewRequired || false,
+        reviewGroup: policy?.reviewGroup,
+        reviewSlaHours: policy?.reviewSlaHours,
+      };
+      }),
+    };
+  });
+
+export const normalizeRuleContentVersions = (
+  versions: RuleContentVersion[],
+  availableTemplates: MessageTemplate[],
+): RuleContentVersion[] =>
+  versions.map((version) => ({
+    ...version,
+    translationBatchId:
+      version.translationBatchId ||
+      availableTemplates.find((template) => template.id === version.templateId)
+        ?.translationBatchId,
+  }));
 
 const STORAGE_KEY = "forx-finance-message-center-prototype-v1";
 const listeners = new Set<() => void>();
@@ -224,6 +313,7 @@ const createAutomationSeed = (seededTemplates: MessageTemplate[]) => {
       status: "当前生效",
       sourceLocale: "zh-CN",
       targetLocales: template?.locales || ["zh-CN", "en-US"],
+      translationBatchId: template?.translationBatchId,
       title: template?.content?.web.title || item.name,
       body: template?.content?.web.body || `${item.name}，请查看消息详情。`,
       createdBy: item.owner,
@@ -400,6 +490,7 @@ const enrichTasks = (seededTemplates: MessageTemplate[]): MessageTask[] =>
         type: isEvent ? "事件触发" : task.type,
         templateId: template?.id,
         templateVersion: template?.version,
+        translationBatchId: template?.translationBatchId,
         eventConfig: event ? makeEventConfig(event) : undefined,
         audience: isEvent ? "事件主体用户" : task.audience,
         audienceCount: isEvent ? 1 : task.audienceCount,
@@ -419,9 +510,14 @@ const enrichTasks = (seededTemplates: MessageTemplate[]): MessageTask[] =>
     .filter((task) => task.channels.length > 0 && task.type !== "自动化");
 
 const createSeed = (): PrototypeState => {
-  const seededTemplates = enrichTemplates();
-  const seededTasks = enrichTasks(seededTemplates);
-  const automation = createAutomationSeed(seededTemplates);
+  const templateCandidates = enrichTemplates();
+  const seededTasks = enrichTasks(templateCandidates);
+  const automation = createAutomationSeed(templateCandidates);
+  const seededTemplates = normalizeTemplateUsageScopes(
+    templateCandidates,
+    seededTasks,
+    automation.versions,
+  );
   const firstPhaseApprovals: ApprovalItem[] = [
     ...approvals.filter(
       (item) =>
@@ -449,7 +545,12 @@ const createSeed = (): PrototypeState => {
     messages: JSON.parse(JSON.stringify(userMessages)),
     tasks: seededTasks,
     templates: seededTemplates,
-    translationBatches: JSON.parse(JSON.stringify(translationBatches)),
+    translationBatches: normalizeTranslationBatches(
+      translationBatches,
+      languageReviewPolicySeed,
+      seededTemplates,
+    ),
+    languageReviewPolicies: JSON.parse(JSON.stringify(languageReviewPolicySeed)),
     approvals: firstPhaseApprovals.map((item) => {
       const task = seededTasks.find(
         (candidate) => candidate.name === item.name,
@@ -518,7 +619,7 @@ const createSeed = (): PrototypeState => {
 
 const migrateSavedState = (saved: PrototypeState): PrototypeState => {
   const fresh = createSeed();
-  const mergedTemplates = (saved.templates || fresh.templates).map((template) => ({
+  const mergedTemplateCandidates = (saved.templates || fresh.templates).map((template) => ({
     ...fresh.templates.find((item) => item.id === template.id),
     ...template,
   }));
@@ -536,6 +637,15 @@ const migrateSavedState = (saved: PrototypeState): PrototypeState => {
       status: baseline?.triggerType === "event" ? baseline.status : task.status,
     };
   });
+  const mergedRuleVersions = normalizeRuleContentVersions(
+    saved.ruleVersions || fresh.ruleVersions,
+    mergedTemplateCandidates,
+  );
+  const mergedTemplates = normalizeTemplateUsageScopes(
+    mergedTemplateCandidates,
+    mergedTasks,
+    mergedRuleVersions,
+  );
   const mergedEvents = fresh.events.map((event) => {
     const persisted = saved.events?.find((item) => item.id === event.id);
     if (!persisted) return event;
@@ -565,8 +675,15 @@ const migrateSavedState = (saved: PrototypeState): PrototypeState => {
     tasks: mergedTasks,
     events: mergedEvents,
     approvals: mergedApprovals,
+    translationBatches: normalizeTranslationBatches(
+      saved.translationBatches || fresh.translationBatches,
+      saved.languageReviewPolicies || fresh.languageReviewPolicies,
+      mergedTemplates,
+    ),
+    languageReviewPolicies:
+      saved.languageReviewPolicies || fresh.languageReviewPolicies,
     rules: saved.rules || fresh.rules,
-    ruleVersions: saved.ruleVersions || fresh.ruleVersions,
+    ruleVersions: mergedRuleVersions,
     triggerRecords: saved.triggerRecords || fresh.triggerRecords,
   };
 };
@@ -643,53 +760,118 @@ export const acknowledgeRiskMessage = (id: string) =>
     ),
   }));
 
-export const createTranslationBatch = ({
-  templateId,
-  targetLocales,
-  createdBy,
-}: {
+type LegacyTranslationBatchInput = {
   templateId: string;
   targetLocales: string[];
   createdBy: string;
-}) => {
-  const template = state.templates.find((item) => item.id === templateId);
-  if (!template) throw new Error("模板不存在");
+};
+
+type GeneralTranslationBatchInput = {
+  subject: {
+    type: TranslationSubjectType;
+    id: string;
+    name: string;
+    version: string;
+    returnPath: string;
+  };
+  sourceLocale: string;
+  sourceContent: TranslationContentLayer;
+  targetLocales: string[];
+  createdBy: string;
+};
+
+export const createTranslationBatch = (
+  input: LegacyTranslationBatchInput | GeneralTranslationBatchInput,
+) => {
+  const generalized = "subject" in input;
+  const template = generalized
+    ? undefined
+    : state.templates.find((item) => item.id === input.templateId);
+  if (!generalized && !template) throw new Error("模板不存在");
+  const subject = generalized
+    ? input.subject
+    : {
+        type: "template_version" as const,
+        id: template!.id,
+        name: template!.name,
+        version: template!.version,
+        returnPath: "/templates",
+      };
+  const sourceLocale = generalized ? input.sourceLocale : template!.sourceLocale;
+  const sourceContent: TranslationContentLayer = generalized
+    ? input.sourceContent
+    : {
+        title: template!.content?.web.title,
+        summary: template!.content?.web.summary,
+        body: template!.content?.web.body,
+      };
+  const templateId = generalized ? subject.id : template!.id;
+  const targetLocales = input.targetLocales;
+  const createdBy = input.createdBy;
   const stamp = Date.now().toString().slice(-7);
   const batch: TranslationBatch = {
     id: `MT-${stamp}`,
+    subjectType: subject.type,
+    subjectId: subject.id,
+    subjectName: subject.name,
+    contentVersion: subject.version,
+    returnPath: subject.returnPath,
     templateId,
-    templateVersion: template.version,
-    sourceLocale: template.sourceLocale,
+    templateVersion: subject.version,
+    sourceLocale,
     targetLocales,
     status: "待人工审核",
     createdBy,
     createdAt: "刚刚",
     updatedAt: "刚刚",
-    items: targetLocales.map((locale, index) => ({
-      id: `MTI-${stamp}${index}`,
-      batchId: `MT-${stamp}`,
-      templateId,
-      templateName: template.name,
-      sourceLocale: template.sourceLocale,
-      targetLocale: locale,
-      externalTaskId: `EXT-MT-${stamp}${index}`,
-      attemptNo: 1,
-      status: "待人工审核",
-      sourceContentHash: `sha256:${stamp}${index}`,
-      machineTitle: `${template.content?.web.title || template.name} · ${locale}`,
-      machineSummary: template.content?.web.summary || "",
-      machineBody: template.content?.web.body || "",
-      submittedAt: "刚刚",
-      translatedAt: "刚刚",
-      submitter: createdBy,
-      variablesValid: true,
-    })),
+    sourceContent,
+    items: targetLocales.map((locale, index) => {
+      const policy = state.languageReviewPolicies.find(
+        (candidate) => candidate.localeCode === locale && candidate.enabled,
+      );
+      const machineOutput = {
+        title: `${sourceContent.title || subject.name} · ${locale}`,
+        summary: sourceContent.summary || "",
+        body: sourceContent.body || "",
+      };
+      return {
+        id: `MTI-${stamp}${index}`,
+        batchId: `MT-${stamp}`,
+        templateId,
+        templateName: subject.name,
+        subjectType: subject.type,
+        subjectId: subject.id,
+        subjectName: subject.name,
+        sourceLocale,
+        targetLocale: locale,
+        externalTaskId: `EXT-MT-${stamp}${index}`,
+        attemptNo: 1,
+        status: generalized
+          ? policy?.specialReviewRequired
+            ? "待小语种专审" as const
+            : "待普通确认" as const
+          : "待人工审核" as const,
+        sourceContentHash: `sha256:${stamp}${index}`,
+        machineTitle: machineOutput.title,
+        machineSummary: machineOutput.summary,
+        machineBody: machineOutput.body,
+        machineOutput,
+        humanDraft: { ...machineOutput },
+        submittedAt: "刚刚",
+        translatedAt: "刚刚",
+        submitter: createdBy,
+        variablesValid: true,
+        specialReviewRequired: policy?.specialReviewRequired || false,
+        reviewGroup: policy?.reviewGroup,
+        reviewSlaHours: policy?.reviewSlaHours,
+      };
+    }),
   };
   update((current) => ({
     ...current,
     translationBatches: [batch, ...current.translationBatches],
     templates: current.templates.map((item) =>
-      item.id === templateId
+      subject.type === "template_version" && item.id === templateId
         ? {
             ...item,
             translationBatchId: batch.id,
@@ -711,7 +893,9 @@ export const createTranslationBatch = ({
 };
 
 const recomputeBatch = (batch: TranslationBatch): TranslationBatch => {
-  const approved = batch.items.every((item) => item.status === "审核通过");
+  const approved = batch.items.every(
+    (item) => item.status === "审核通过" || item.status === "已通过",
+  );
   const failed = batch.items.some(
     (item) => item.status === "翻译失败" || item.status === "审核驳回",
   );
@@ -722,11 +906,28 @@ const recomputeBatch = (batch: TranslationBatch): TranslationBatch => {
   };
 };
 
-export const approveTranslation = (
+type TranslationApprovalValues = {
+  title: string;
+  summary: string;
+  body: string;
+  reviewer: string;
+};
+
+const approveTranslationWithMode = (
   itemId: string,
-  values: { title: string; summary: string; body: string; reviewer: string },
-) =>
-  update((current) => {
+  values: TranslationApprovalValues,
+  mode: "ordinary" | "special" | "legacy",
+) => {
+  const currentItem = state.translationBatches
+    .flatMap((batch) => batch.items)
+    .find((item) => item.id === itemId);
+  if (!currentItem) throw new Error("翻译任务不存在");
+  if (mode === "ordinary" && currentItem.specialReviewRequired)
+    throw new Error("该语言必须进入小语种专审");
+  if (mode === "special" && !currentItem.specialReviewRequired)
+    throw new Error("该语言无需小语种专审");
+
+  return update((current) => {
     const batches = current.translationBatches.map((batch) =>
       recomputeBatch({
         ...batch,
@@ -734,10 +935,20 @@ export const approveTranslation = (
           item.id === itemId
             ? {
                 ...item,
-                status: "审核通过",
+                status: mode === "legacy" ? "审核通过" : "已通过",
                 reviewedTitle: values.title,
                 reviewedSummary: values.summary,
                 reviewedBody: values.body,
+                humanDraft: {
+                  title: values.title,
+                  summary: values.summary,
+                  body: values.body,
+                },
+                approvedOutput: {
+                  title: values.title,
+                  summary: values.summary,
+                  body: values.body,
+                },
                 reviewer: values.reviewer,
                 reviewedAt: "刚刚",
               }
@@ -750,20 +961,90 @@ export const approveTranslation = (
         .filter((batch) => batch.status === "全部审核通过")
         .map((batch) => batch.templateId),
     );
+    const readyRuleVersionIds = new Set(
+      batches
+        .filter(
+          (batch) =>
+            batch.status === "全部审核通过" &&
+            batch.subjectType === "rule_content_version",
+        )
+        .map((batch) => batch.subjectId),
+    );
     return {
       ...current,
       translationBatches: batches,
-      templates: current.templates.map((template) =>
-        readyIds.has(template.id)
+      templates: current.templates.map((candidate) =>
+        readyIds.has(candidate.id)
           ? {
-              ...template,
+              ...candidate,
               translationReadiness: "全部审核通过",
               status: "待业务审核",
             }
-          : template,
+          : candidate,
+      ),
+      ruleVersions: current.ruleVersions.map((version) =>
+        readyRuleVersionIds.has(version.id)
+          ? { ...version, status: "待审核" }
+          : version,
       ),
     };
   });
+};
+
+export const approveTranslation = (
+  itemId: string,
+  values: TranslationApprovalValues,
+) => approveTranslationWithMode(itemId, values, "legacy");
+
+export const approveOrdinaryTranslation = (
+  itemId: string,
+  values: TranslationApprovalValues,
+) => approveTranslationWithMode(itemId, values, "ordinary");
+
+export const approveSpecialReview = (
+  itemId: string,
+  values: TranslationApprovalValues,
+) => approveTranslationWithMode(itemId, values, "special");
+
+export const saveTranslationDraft = (
+  itemId: string,
+  values: Omit<TranslationApprovalValues, "reviewer">,
+) =>
+  update((current) => ({
+    ...current,
+    translationBatches: current.translationBatches.map((batch) =>
+      recomputeBatch({
+        ...batch,
+        items: batch.items.map((item) =>
+          item.id === itemId
+            ? {
+                ...item,
+                status: item.specialReviewRequired ? "专审中" : "修改中",
+                humanDraft: values,
+                reviewedTitle: values.title,
+                reviewedSummary: values.summary,
+                reviewedBody: values.body,
+              }
+            : item,
+        ),
+      }),
+    ),
+  }));
+
+export const startSpecialReview = (itemId: string) =>
+  update((current) => ({
+    ...current,
+    translationBatches: current.translationBatches.map((batch) =>
+      recomputeBatch({
+        ...batch,
+        items: batch.items.map((item) =>
+          item.id === itemId && item.specialReviewRequired
+            ? { ...item, status: "专审中" }
+            : item,
+        ),
+      }),
+    ),
+  }));
 
 export const rejectTranslation = (itemId: string, reason: string) =>
   update((current) => ({
@@ -794,7 +1075,11 @@ export const retryTranslation = (itemId: string) =>
           item.id === itemId
             ? {
                 ...item,
-                status: "待人工审核",
+                status: item.specialReviewRequired
+                  ? "待小语种专审"
+                  : item.subjectType
+                    ? "待普通确认"
+                    : "待人工审核",
                 attemptNo: item.attemptNo + 1,
                 externalTaskId: `EXT-MT-${Date.now().toString().slice(-8)}`,
                 errorCode: undefined,
@@ -804,6 +1089,17 @@ export const retryTranslation = (itemId: string) =>
             : item,
         ),
       }),
+    ),
+  }));
+
+export const updateLanguageReviewPolicy = (
+  localeCode: string,
+  values: Partial<LanguageReviewPolicy>,
+) =>
+  update((current) => ({
+    ...current,
+    languageReviewPolicies: current.languageReviewPolicies.map((policy) =>
+      policy.localeCode === localeCode ? { ...policy, ...values } : policy,
     ),
   }));
 
@@ -1391,6 +1687,38 @@ export const updateRuleContentVersion = (
         : version,
     ),
   }));
+
+export const createRuleTranslationBatch = (versionId: string) => {
+  const version = state.ruleVersions.find((item) => item.id === versionId);
+  const rule = version
+    ? state.rules.find((item) => item.id === version.ruleId)
+    : undefined;
+  if (!version || !rule) throw new Error("规则内容版本不存在");
+  const batch = createTranslationBatch({
+    subject: {
+      type: "rule_content_version",
+      id: version.id,
+      name: `${rule.name} · ${version.version}`,
+      version: version.version,
+      returnPath: "/automation",
+    },
+    sourceLocale: version.sourceLocale,
+    sourceContent: { title: version.title, body: version.body },
+    targetLocales: version.targetLocales.filter(
+      (locale) => locale !== version.sourceLocale,
+    ),
+    createdBy: version.createdBy,
+  });
+  update((current) => ({
+    ...current,
+    ruleVersions: current.ruleVersions.map((item) =>
+      item.id === versionId
+        ? { ...item, translationBatchId: batch.id, status: "待人工审核" }
+        : item,
+    ),
+  }));
+  return batch;
+};
 
 export const advanceRuleContentVersion = (
   versionId: string,

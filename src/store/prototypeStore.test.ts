@@ -1,11 +1,15 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import {
   approveTranslation,
+  approveOrdinaryTranslation,
+  approveSpecialReview,
   advanceRuleContentVersion,
   createRuleContentVersion,
   createTranslationBatch,
   getPrototypeState,
   markMessageRead,
+  normalizeTranslationBatches,
+  normalizeRuleContentVersions,
   performManualTaskOperation,
   publishRuleContentVersion,
   resetPrototypeStore,
@@ -14,7 +18,9 @@ import {
   saveTaskDraft,
   submitTemplateForApproval,
   testSystemEvent,
+  updateLanguageReviewPolicy,
 } from "./prototypeStore";
+import { translationBatches as legacyTranslationBatches } from "../mocks/data";
 
 describe("prototype store workflow transitions", () => {
   beforeEach(() => resetPrototypeStore());
@@ -53,6 +59,176 @@ describe("prototype store workflow transitions", () => {
         (item) => item.id === batch.id,
       )?.status,
     ).toBe("全部审核通过");
+  });
+
+  it("routes generalized translation items by language review policy", () => {
+    const batch = createTranslationBatch({
+      subject: {
+        type: "manual_task_content",
+        id: "TASK-DRAFT-1",
+        name: "临时风险消息",
+        version: "draft-1",
+        returnPath: "/tasks/create",
+      },
+      sourceLocale: "zh-CN",
+      sourceContent: {
+        title: "风险提示",
+        summary: "请及时查看",
+        body: "请核对账户状态。",
+      },
+      targetLocales: ["en-US", "ja-JP"],
+      createdBy: "Gary Ma",
+    });
+
+    expect(batch.items.find((item) => item.targetLocale === "en-US")?.status)
+      .toBe("待普通确认");
+    expect(batch.items.find((item) => item.targetLocale === "ja-JP")?.status)
+      .toBe("待小语种专审");
+    expect(batch.subjectType).toBe("manual_task_content");
+  });
+
+  it("keeps ordinary confirmation and special review as separate operations", () => {
+    const batch = createTranslationBatch({
+      subject: {
+        type: "rule_content_version",
+        id: "RV-TEST",
+        name: "提现成功自动通知",
+        version: "v2",
+        returnPath: "/automation",
+      },
+      sourceLocale: "zh-CN",
+      sourceContent: { title: "提现成功", body: "您的提现已到账。" },
+      targetLocales: ["en-US", "ja-JP"],
+      createdBy: "operator-01",
+    });
+    const english = batch.items.find((item) => item.targetLocale === "en-US")!;
+    const japanese = batch.items.find((item) => item.targetLocale === "ja-JP")!;
+
+    expect(() =>
+      approveOrdinaryTranslation(japanese.id, {
+        title: "出金完了",
+        summary: "",
+        body: "出金が完了しました。",
+        reviewer: "reviewer-02",
+      }),
+    ).toThrow("该语言必须进入小语种专审");
+
+    approveOrdinaryTranslation(english.id, {
+      title: "Withdrawal completed",
+      summary: "",
+      body: "Your withdrawal is complete.",
+      reviewer: "operator-01",
+    });
+    approveSpecialReview(japanese.id, {
+      title: "出金完了",
+      summary: "",
+      body: "出金が完了しました。",
+      reviewer: "jp-reviewer-02",
+    });
+
+    expect(
+      getPrototypeState().translationBatches.find((item) => item.id === batch.id),
+    ).toMatchObject({ status: "全部审核通过" });
+  });
+
+  it("updates the special-language review policy", () => {
+    updateLanguageReviewPolicy("fr-FR", {
+      specialReviewRequired: true,
+      reviewGroup: "法语专项审核组",
+      reviewSlaHours: 8,
+    });
+
+    expect(
+      getPrototypeState().languageReviewPolicies.find(
+        (policy) => policy.localeCode === "fr-FR",
+      ),
+    ).toMatchObject({
+      specialReviewRequired: true,
+      reviewGroup: "法语专项审核组",
+      reviewSlaHours: 8,
+    });
+  });
+
+  it("hydrates template workflow scopes for current and legacy data", () => {
+    const scopes = Object.fromEntries(
+      getPrototypeState().templates.map((template) => [
+        template.id,
+        template.usageScope,
+      ]),
+    );
+
+    expect(scopes).toMatchObject({
+      "TPL-1001": "event",
+      "TPL-1003": "shared",
+      "TPL-1004": "manual",
+    });
+    expect(Object.values(scopes).every(Boolean)).toBe(true);
+  });
+
+  it("hydrates special-review routing when migrating legacy translation batches", () => {
+    const migrated = normalizeTranslationBatches(
+      legacyTranslationBatches,
+      getPrototypeState().languageReviewPolicies,
+      getPrototypeState().templates,
+    );
+
+    expect(
+      migrated
+        .flatMap((batch) => batch.items)
+        .find((item) => item.targetLocale === "tr-TR"),
+    ).toMatchObject({
+      specialReviewRequired: true,
+      reviewGroup: "小语种专项审核组",
+      status: "待小语种专审",
+    });
+  });
+
+  it("infers legacy temporary-message batches from hidden temporary templates", () => {
+    const current = getPrototypeState();
+    const temporaryTemplate = {
+      ...current.templates[0],
+      id: "TPL-TEMP-LEGACY",
+      name: "临时消息 · 旧任务",
+      owner: "临时任务",
+    };
+    const legacyBatch = {
+      ...legacyTranslationBatches[0],
+      templateId: temporaryTemplate.id,
+      items: legacyTranslationBatches[0].items.map((item) => ({
+        ...item,
+        templateId: temporaryTemplate.id,
+        templateName: temporaryTemplate.name,
+      })),
+    };
+
+    const migrated = normalizeTranslationBatches(
+      [legacyBatch],
+      current.languageReviewPolicies,
+      [...current.templates, temporaryTemplate],
+    )[0];
+
+    expect(migrated).toMatchObject({
+      subjectType: "manual_task_content",
+      returnPath: "/tasks/create",
+    });
+    expect(
+      migrated.items.every(
+        (item) => item.subjectType === "manual_task_content",
+      ),
+    ).toBe(true);
+  });
+
+  it("restores translation batch links on legacy rule content versions", () => {
+    const current = getPrototypeState();
+    const legacyVersions = current.ruleVersions.map((version) => ({
+      ...version,
+      translationBatchId: undefined,
+    }));
+
+    expect(
+      normalizeRuleContentVersions(legacyVersions, current.templates)[0]
+        .translationBatchId,
+    ).toMatch(/^MT-/);
   });
 
   it("submits a task and creates a linked approval object", () => {

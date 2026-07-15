@@ -315,6 +315,7 @@ export const templates: MessageTemplate[] = [
     version: "v12",
     status: "已发布",
     updatedAt: "07-12 18:42",
+    usageScope: "event",
   },
   {
     id: "TPL-1002",
@@ -331,6 +332,7 @@ export const templates: MessageTemplate[] = [
     version: "v16",
     status: "已发布",
     updatedAt: "07-12 17:20",
+    usageScope: "event",
   },
   {
     id: "TPL-1003",
@@ -347,6 +349,7 @@ export const templates: MessageTemplate[] = [
     version: "v4",
     status: "审核中",
     updatedAt: "07-13 11:48",
+    usageScope: "shared",
   },
   {
     id: "TPL-1004",
@@ -363,6 +366,7 @@ export const templates: MessageTemplate[] = [
     version: "v8",
     status: "草稿",
     updatedAt: "07-13 11:42",
+    usageScope: "manual",
   },
   {
     id: "TPL-1005",
@@ -379,6 +383,7 @@ export const templates: MessageTemplate[] = [
     version: "v21",
     status: "草稿",
     updatedAt: "07-13 11:26",
+    usageScope: "event",
   },
   {
     id: "TPL-1006",
@@ -395,6 +400,7 @@ export const templates: MessageTemplate[] = [
     version: "v3",
     status: "已停用",
     updatedAt: "07-11 20:10",
+    usageScope: "manual",
   },
 ];
 
