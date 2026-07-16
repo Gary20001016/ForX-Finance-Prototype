@@ -25,13 +25,13 @@
 - Modify: `package.json`
 - Modify: `package-lock.json`
 
-- [ ] **Step 1: Install dependencies**
+- [x] **Step 1: Install dependencies**
 
 Run: `npm install react-markdown remark-gfm`
 
 Expected: both packages appear in `dependencies` and the lockfile is updated.
 
-- [ ] **Step 2: Commit dependencies**
+- [x] **Step 2: Commit dependencies**
 
 Commit: `build: add markdown rendering dependencies`
 
@@ -46,19 +46,19 @@ Commit: `build: add markdown rendering dependencies`
 - Produces: `MarkdownContent({ value, emptyText?, compact? })`
 - Produces: `MarkdownEditor({ value, onChange, placeholder?, minRows?, readOnly? })`
 
-- [ ] **Step 1: Implement safe Markdown rendering**
+- [x] **Step 1: Implement safe Markdown rendering**
 
 Use `ReactMarkdown` with `remarkGfm`, `skipHtml`, a URL transform that only returns allowed protocols, disabled remote image rendering, safe external link attributes, scoped class names, and an error boundary that falls back to plain text.
 
-- [ ] **Step 2: Implement controlled Markdown editing**
+- [x] **Step 2: Implement controlled Markdown editing**
 
 Use Arco `Input.TextArea` with `RefTextAreaType` to insert or wrap selected text. Provide toolbar actions for H2, bold, italic, unordered list, ordered list, quote, link, inline code, and fenced code; provide “编辑 / 分屏预览” modes and a character count.
 
-- [ ] **Step 3: Add scoped editor and renderer styles**
+- [x] **Step 3: Add scoped editor and renderer styles**
 
 Style toolbars, split panes, tables, quotes, lists, links, code, source blocks, compact phone rendering, and responsive single-column fallback under the existing global stylesheet.
 
-- [ ] **Step 4: Run static whitespace check and commit**
+- [x] **Step 4: Run static whitespace check and commit**
 
 Run: `git diff --check`
 
@@ -77,19 +77,19 @@ Commit: `feat: add shared inbox markdown components`
 - Consumes: `MarkdownEditor` from Task 2.
 - Consumes: `MarkdownContent` from Task 2.
 
-- [ ] **Step 1: Replace template station-body textarea**
+- [x] **Step 1: Replace template station-body textarea**
 
 Use `MarkdownEditor` for `content.web.body`. Because manual, event, and shared templates use the same drawer, this covers every template scope without branching.
 
-- [ ] **Step 2: Replace temporary task station-body textarea**
+- [x] **Step 2: Replace temporary task station-body textarea**
 
 Use `MarkdownEditor` for `temporary.web.body` while preserving the channel-first conditional display added previously.
 
-- [ ] **Step 3: Render station-message previews as Markdown**
+- [x] **Step 3: Render station-message previews as Markdown**
 
 Replace the Web and App station-message body `<p>` elements in `MessagePreview` with `MarkdownContent`; leave Push rendering untouched.
 
-- [ ] **Step 4: Run static whitespace check and commit**
+- [x] **Step 4: Run static whitespace check and commit**
 
 Run: `git diff --check`
 
@@ -106,15 +106,15 @@ Commit: `feat: author station messages in markdown`
 **Interfaces:**
 - Consumes: `MarkdownEditor` and `MarkdownContent` from Task 2.
 
-- [ ] **Step 1: Add Markdown translation comparison**
+- [x] **Step 1: Add Markdown translation comparison**
 
 Show source Markdown in a read-only source block plus rendered `MarkdownContent`, and replace the target-language body textarea with `MarkdownEditor`. Keep title, summary, reason, variables, and approval actions unchanged.
 
-- [ ] **Step 2: Add published Markdown source disclosure**
+- [x] **Step 2: Add published Markdown source disclosure**
 
 Below the existing rendered template preview, add a native disclosure containing the stored Markdown source. Keep approved templates read-only.
 
-- [ ] **Step 3: Run static whitespace check and commit**
+- [x] **Step 3: Run static whitespace check and commit**
 
 Run: `git diff --check`
 
@@ -128,14 +128,14 @@ Commit: `feat: review and inspect markdown source`
 - Modify: `docs/prd/message-center/03-消息模板与多语言.md`
 - Modify: `docs/superpowers/plans/2026-07-16-inbox-markdown-authoring.md`
 
-- [ ] **Step 1: Document Markdown authoring rules**
+- [x] **Step 1: Document Markdown authoring rules**
 
 Document supported scopes, stored source, safe rendering, translation structure preservation, Push exclusion, and read-only source access.
 
-- [ ] **Step 2: Mark the plan complete and run allowed static checks**
+- [x] **Step 2: Mark the plan complete and run allowed static checks**
 
 Mark all checkboxes complete and run `git diff --check`. Do not run tests or `npm run build`.
 
-- [ ] **Step 3: Commit documentation**
+- [x] **Step 3: Commit documentation**
 
 Commit: `docs: define station message markdown rules`
