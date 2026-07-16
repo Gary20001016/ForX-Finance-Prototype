@@ -402,6 +402,44 @@ export const templates: MessageTemplate[] = [
     updatedAt: "07-11 20:10",
     usageScope: "manual",
   },
+  {
+    id: "TPL-1007",
+    code: "vip_benefit_update",
+    name: "VIP 等级权益调整通知",
+    category: "奖励通知",
+    nature: "服务",
+    risk: "中",
+    channels: ["站内信", "Push"],
+    locales: ["zh-CN", "en-US"],
+    sourceLocale: "zh-CN",
+    translationBatchId: "MT-260716-007",
+    translationReadiness: "全部审核通过",
+    version: "v5",
+    status: "已发布",
+    updatedAt: "07-16 10:30",
+    owner: "VIP 运营",
+    usageScope: "manual",
+    variables: ["user_nickname", "vip_level", "effective_at"],
+    content: {
+      sourceLocale: "zh-CN",
+      locales: ["zh-CN", "en-US"],
+      web: {
+        title: "VIP 等级权益调整通知",
+        summary: "您的 VIP 等级权益将在指定时间更新，请查看最新权益说明。",
+        body: "尊敬的 {{ user_nickname }}，您的 VIP {{ vip_level }} 等级权益将于 {{ effective_at }} 起调整。请进入 VIP 中心查看最新费率、额度与专属服务说明。",
+        actionText: "查看 VIP 权益",
+        targetUrl: "forxfinance://vip/benefits",
+      },
+      push: {
+        title: "VIP 权益即将更新",
+        body: "您的 VIP 等级权益已调整，点击查看最新说明。",
+        deepLink: "forxfinance://vip/benefits",
+        platform: "全部设备",
+        priority: "高",
+        collapseKey: "vip-benefit-update",
+      },
+    },
+  },
 ];
 
 const translationItem = (
@@ -594,6 +632,67 @@ export const translationBatches: TranslationBatch[] = [
         "审核驳回",
         "110060",
         { errorMessage: "奖励有效期措辞不准确，需重新翻译" },
+      ),
+    ],
+  },
+  {
+    id: "MT-260716-007",
+    templateId: "TPL-1007",
+    templateVersion: "v5",
+    sourceLocale: "zh-CN",
+    targetLocales: ["en-US"],
+    status: "全部审核通过",
+    createdBy: "林夏",
+    createdAt: "07-16 09:42",
+    updatedAt: "07-16 10:28",
+    sourceContent: {
+      title: "VIP 等级权益调整通知",
+      summary: "您的 VIP 等级权益将在指定时间更新，请查看最新权益说明。",
+      body: "尊敬的 {{ user_nickname }}，您的 VIP {{ vip_level }} 等级权益将于 {{ effective_at }} 起调整。请进入 VIP 中心查看最新费率、额度与专属服务说明。",
+    },
+    items: [
+      translationItem(
+        "MT-260716-007",
+        "TPL-1007",
+        "VIP 等级权益调整通知",
+        "en-US",
+        "已通过",
+        "160070",
+        {
+          machineTitle: "VIP Tier Benefit Update",
+          machineSummary:
+            "Your VIP tier benefits will be updated at the specified time. Review the latest benefit details.",
+          machineBody:
+            "Dear {{ user_nickname }}, the benefits for VIP {{ vip_level }} will be updated from {{ effective_at }}. Visit the VIP Center for the latest fee rates, limits, and exclusive services.",
+          machineOutput: {
+            title: "VIP Tier Benefit Update",
+            summary:
+              "Your VIP tier benefits will be updated at the specified time. Review the latest benefit details.",
+            body: "Dear {{ user_nickname }}, the benefits for VIP {{ vip_level }} will be updated from {{ effective_at }}. Visit the VIP Center for the latest fee rates, limits, and exclusive services.",
+          },
+          humanDraft: {
+            title: "Update to Your VIP Tier Benefits",
+            summary:
+              "Your VIP tier benefits will change on the effective date. Review the latest benefit details.",
+            body: "Dear {{ user_nickname }}, your VIP {{ vip_level }} benefits will change on {{ effective_at }}. Visit the VIP Center to review the latest fee rates, limits, and exclusive services.",
+          },
+          approvedOutput: {
+            title: "Update to Your VIP Tier Benefits",
+            summary:
+              "Your VIP tier benefits will change on the effective date. Review the latest benefit details.",
+            body: "Dear {{ user_nickname }}, your VIP {{ vip_level }} benefits will change on {{ effective_at }}. Visit the VIP Center to review the latest fee rates, limits, and exclusive services.",
+          },
+          reviewedTitle: "Update to Your VIP Tier Benefits",
+          reviewedSummary:
+            "Your VIP tier benefits will change on the effective date. Review the latest benefit details.",
+          reviewedBody:
+            "Dear {{ user_nickname }}, your VIP {{ vip_level }} benefits will change on {{ effective_at }}. Visit the VIP Center to review the latest fee rates, limits, and exclusive services.",
+          reviewer: "王岚",
+          reviewedAt: "07-16 10:28",
+          submittedAt: "07-16 09:42",
+          translatedAt: "07-16 09:45",
+          variablesValid: true,
+        },
       ),
     ],
   },

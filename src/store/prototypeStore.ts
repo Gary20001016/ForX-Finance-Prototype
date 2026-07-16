@@ -623,10 +623,24 @@ const createSeed = (): PrototypeState => {
 
 const migrateSavedState = (saved: PrototypeState): PrototypeState => {
   const fresh = createSeed();
-  const mergedTemplateCandidates = (saved.templates || fresh.templates).map((template) => ({
-    ...fresh.templates.find((item) => item.id === template.id),
-    ...template,
-  }));
+  const savedTemplates = saved.templates || [];
+  const mergedTemplateCandidates = [
+    ...savedTemplates.map((template) => ({
+      ...fresh.templates.find((item) => item.id === template.id),
+      ...template,
+    })),
+    ...fresh.templates.filter(
+      (template) => !savedTemplates.some((item) => item.id === template.id),
+    ),
+  ];
+  const savedTranslationBatches = saved.translationBatches || [];
+  const mergedTranslationBatches = [
+    ...savedTranslationBatches,
+    ...fresh.translationBatches.filter(
+      (batch) =>
+        !savedTranslationBatches.some((item) => item.id === batch.id),
+    ),
+  ];
   const mergedTasks = (saved.tasks || fresh.tasks).map((task) => {
     const baseline = fresh.tasks.find((item) => item.id === task.id);
     const triggerType = task.triggerType || baseline?.triggerType || (task.type === "事件触发" ? "event" : "manual");
@@ -680,7 +694,7 @@ const migrateSavedState = (saved: PrototypeState): PrototypeState => {
     events: mergedEvents,
     approvals: mergedApprovals,
     translationBatches: normalizeTranslationBatches(
-      saved.translationBatches || fresh.translationBatches,
+      mergedTranslationBatches,
       saved.languageReviewPolicies || fresh.languageReviewPolicies,
       mergedTemplates,
     ),
