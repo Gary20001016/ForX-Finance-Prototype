@@ -461,7 +461,7 @@ export default function CreateTaskPage() {
     name: (form.getFieldValue("name") || "未命名任务") as string,
     category: (form.getFieldValue("category") || "系统公告") as string,
     nature: resolvedNature,
-    risk: (form.getFieldValue("risk") || "中") as RiskLevel,
+    risk: (form.getFieldValue("risk") || "低") as RiskLevel,
     triggerType,
     contentMode,
     template:
@@ -612,7 +612,7 @@ export default function CreateTaskPage() {
       name: `临时消息 · ${form.getFieldValue("name") || "未命名"}`,
       category: form.getFieldValue("category") || "系统公告",
       nature: resolvedNature,
-      risk: form.getFieldValue("risk") || "中",
+      risk: form.getFieldValue("risk") || "低",
       channels,
       locales: ["zh-CN", ...targetLocales],
       sourceLocale: "zh-CN",
@@ -673,7 +673,7 @@ export default function CreateTaskPage() {
     () => ({
       name: String(values.name || "未命名任务"),
       nature: resolvedNature,
-      risk: (values.risk || "中") as RiskLevel,
+      risk: (values.risk || "低") as RiskLevel,
       channels,
       content,
       audienceCount: audience.count,
@@ -747,7 +747,7 @@ export default function CreateTaskPage() {
               : undefined,
             business: copiedTask?.team || "消息运营",
             category: copiedTask?.category || "系统公告",
-            risk: copiedTask?.risk || "中",
+            risk: copiedTask?.risk || "低",
             template: approvedTemplates[0]?.id,
             audienceType: copiedTask?.audienceType || "all",
             priority: "普通",
@@ -834,12 +834,6 @@ export default function CreateTaskPage() {
                   <Checkbox value="Push">App Push</Checkbox>
                 </Checkbox.Group>
               </FormItem>
-              <div className="section-divider" />
-              <h3>发送方式</h3>
-              <Alert
-                type="info"
-                content="当前创建人工发送任务。系统事件自动通知请前往“事件通知规则”配置。"
-              />
               {triggerType === "event" ? (
                 <EventTriggerFields
                   events={store.events}
