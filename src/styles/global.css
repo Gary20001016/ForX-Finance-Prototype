@@ -1557,6 +1557,191 @@ select {
   border-radius: 9px;
   background: #f4f3ff;
 }
+.markdown-editor {
+  overflow: hidden;
+  border: 1px solid var(--mc-border);
+  border-radius: 9px;
+  background: #fff;
+}
+.markdown-editor-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--mc-border);
+  background: #f8fafc;
+}
+.markdown-toolbar .arco-btn {
+  min-width: 28px;
+  color: #344054;
+  font-weight: 600;
+}
+.markdown-editor-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+}
+.markdown-editor-body.is-split {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.markdown-editor-input .arco-textarea {
+  border: 0;
+  border-radius: 0;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  line-height: 1.65;
+}
+.markdown-editor-input .arco-textarea:focus {
+  box-shadow: none;
+}
+.markdown-editor-preview {
+  min-width: 0;
+  padding: 14px 16px;
+  border-left: 1px solid var(--mc-border);
+  background: #fcfcfd;
+}
+.markdown-preview-label {
+  margin-bottom: 10px;
+  color: var(--mc-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+.markdown-editor-help {
+  padding: 7px 11px;
+  border-top: 1px solid var(--mc-border);
+  color: var(--mc-muted);
+  font-size: 11px;
+}
+.markdown-content {
+  color: #344054;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+.markdown-content > :first-child {
+  margin-top: 0;
+}
+.markdown-content > :last-child {
+  margin-bottom: 0;
+}
+.markdown-content h1,
+.markdown-content h2,
+.markdown-content h3,
+.markdown-content h4 {
+  margin: 1em 0 0.45em;
+  color: #101828;
+  line-height: 1.35;
+}
+.markdown-content h1 {
+  font-size: 1.45em;
+}
+.markdown-content h2 {
+  font-size: 1.28em;
+}
+.markdown-content h3,
+.markdown-content h4 {
+  font-size: 1.12em;
+}
+.markdown-content p {
+  margin: 0.55em 0;
+}
+.markdown-content ul,
+.markdown-content ol {
+  margin: 0.55em 0;
+  padding-left: 1.5em;
+}
+.markdown-content blockquote {
+  margin: 0.75em 0;
+  padding: 0.35em 0.8em;
+  border-left: 3px solid var(--mc-primary);
+  background: #f5f8ff;
+  color: #475467;
+}
+.markdown-content a {
+  color: var(--mc-primary);
+  text-decoration: underline;
+}
+.markdown-content code {
+  padding: 0.12em 0.35em;
+  border-radius: 4px;
+  background: #f2f4f7;
+  color: #b42318;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 0.9em;
+}
+.markdown-content pre {
+  overflow-x: auto;
+  padding: 12px;
+  border-radius: 7px;
+  background: #101828;
+  color: #f2f4f7;
+}
+.markdown-content pre code {
+  padding: 0;
+  background: transparent;
+  color: inherit;
+}
+.markdown-content table {
+  display: block;
+  width: 100%;
+  overflow-x: auto;
+  border-spacing: 0;
+  border-collapse: collapse;
+}
+.markdown-content th,
+.markdown-content td {
+  padding: 6px 9px;
+  border: 1px solid #d0d5dd;
+  text-align: left;
+  white-space: nowrap;
+}
+.markdown-content th {
+  background: #f2f4f7;
+}
+.markdown-content hr {
+  margin: 1em 0;
+  border: 0;
+  border-top: 1px solid var(--mc-border);
+}
+.markdown-content.compact {
+  font-size: 12px;
+  line-height: 1.55;
+}
+.markdown-image-disabled {
+  color: var(--mc-muted);
+  font-style: italic;
+}
+.markdown-render-fallback {
+  color: #475467;
+  white-space: pre-wrap;
+}
+.markdown-render-fallback > span {
+  color: #b54708;
+  font-size: 11px;
+}
+.markdown-source-disclosure {
+  margin-top: 16px;
+  padding: 10px 12px;
+  border: 1px solid var(--mc-border);
+  border-radius: 8px;
+  background: #f8fafc;
+}
+.markdown-source-disclosure summary {
+  cursor: pointer;
+  color: #344054;
+  font-weight: 600;
+}
+.markdown-source {
+  overflow-x: auto;
+  margin: 10px 0 0;
+  padding: 12px;
+  border-radius: 6px;
+  background: #101828;
+  color: #f2f4f7;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
 .dual-message-preview {
   display: grid;
   grid-template-columns: minmax(320px, 1.15fr) repeat(2, minmax(250px, 0.85fr));
@@ -1915,6 +2100,17 @@ select {
   }
   .translation-compare {
     grid-template-columns: 1fr;
+  }
+  .markdown-editor-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .markdown-editor-body.is-split {
+    grid-template-columns: 1fr;
+  }
+  .markdown-editor-preview {
+    border-top: 1px solid var(--mc-border);
+    border-left: 0;
   }
   .dual-message-preview {
     grid-template-columns: 1fr;
