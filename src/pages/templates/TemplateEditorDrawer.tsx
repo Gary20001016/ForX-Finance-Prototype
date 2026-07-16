@@ -13,6 +13,7 @@ import {
   Tabs,
 } from "@arco-design/web-react";
 import MessagePreview from "../../components/MessagePreview";
+import MarkdownEditor from "../../components/MarkdownEditor";
 import type {
   LocalizedMessageContent,
   MessageTemplate,
@@ -358,9 +359,7 @@ export default function TemplateEditorDrawer({
                   />
                 </Form.Item>
                 <Form.Item label="站内信正文">
-                  <Input.TextArea
-                    aria-label="站内信正文"
-                    rows={5}
+                  <MarkdownEditor
                     value={content.web.body}
                     onChange={(value) => patchWeb({ body: value })}
                   />

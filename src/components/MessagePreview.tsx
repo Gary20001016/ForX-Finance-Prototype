@@ -1,5 +1,6 @@
 import { Button, Space, Tag } from "@arco-design/web-react";
 import type { Channel, LocalizedMessageContent } from "../domain/types";
+import MarkdownContent from "./MarkdownContent";
 
 export default function MessagePreview({
   content,
@@ -24,7 +25,7 @@ export default function MessagePreview({
             <p className="preview-summary">
               {content.web.summary || "请输入消息摘要"}
             </p>
-            <p>{content.web.body || "请输入消息正文"}</p>
+            <MarkdownContent value={content.web.body} />
             {content.web.riskCopy && (
               <div className="preview-risk-copy">{content.web.riskCopy}</div>
             )}
@@ -58,7 +59,7 @@ export default function MessagePreview({
               <p className="preview-summary">
                 {content.web.summary || "请输入消息摘要"}
               </p>
-              <p>{content.web.body || "请输入消息正文"}</p>
+              <MarkdownContent value={content.web.body} compact />
               {content.web.riskCopy && (
                 <div className="preview-risk-copy">{content.web.riskCopy}</div>
               )}

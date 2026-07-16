@@ -26,6 +26,7 @@ import {
 import { useLocation, useNavigate } from "react-router-dom";
 import PageHeader from "../../components/PageHeader";
 import MessagePreview from "../../components/MessagePreview";
+import MarkdownEditor from "../../components/MarkdownEditor";
 import TranslationWorkflowPanel from "../templates/TranslationWorkflowPanel";
 import type {
   Channel,
@@ -923,8 +924,7 @@ export default function CreateTaskPage() {
                               />
                             </FormItem>
                             <FormItem label="站内信正文">
-                              <Input.TextArea
-                                rows={5}
+                              <MarkdownEditor
                                 value={temporary.web.body}
                                 onChange={(value) => patchWeb({ body: value })}
                               />
