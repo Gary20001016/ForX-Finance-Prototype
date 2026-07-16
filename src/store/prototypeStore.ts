@@ -44,6 +44,10 @@ import {
   ruleEventIdempotencyKey,
 } from "../pages/automation/automationLifecycle";
 import { normalizeTemplateUsageScopes } from "../pages/templates/templateScope";
+import {
+  APPROVED_MANUAL_TEMPLATE_LOCK_MESSAGE,
+  isApprovedManualTemplateLocked,
+} from "../domain/templatePolicy";
 
 export interface PrototypeState {
   messages: UserMessage[];
@@ -788,6 +792,8 @@ export const createTranslationBatch = (
     ? undefined
     : state.templates.find((item) => item.id === input.templateId);
   if (!generalized && !template) throw new Error("模板不存在");
+  if (template && isApprovedManualTemplateLocked(template))
+    throw new Error(APPROVED_MANUAL_TEMPLATE_LOCK_MESSAGE);
   const subject = generalized
     ? input.subject
     : {
@@ -1464,7 +1470,12 @@ export const updateTemplate = (
   id: string,
   changes: Partial<MessageTemplate>,
 ) => {
-  let result = state.templates.find((item) => item.id === id);
+  const existing = state.templates.find((item) => item.id === id);
+  if (!existing) throw new Error("模板不存在");
+  if (isApprovedManualTemplateLocked(existing))
+    throw new Error(APPROVED_MANUAL_TEMPLATE_LOCK_MESSAGE);
+
+  let result = existing;
   update((current) => ({
     ...current,
     templates: current.templates.map((item) => {
@@ -1481,13 +1492,14 @@ export const updateTemplate = (
       return result;
     }),
   }));
-  if (!result) throw new Error("模板不存在");
   return result;
 };
 
 export const submitTemplateForApproval = (templateId: string) => {
   const template = state.templates.find((item) => item.id === templateId);
   if (!template) throw new Error("模板不存在");
+  if (isApprovedManualTemplateLocked(template))
+    throw new Error(APPROVED_MANUAL_TEMPLATE_LOCK_MESSAGE);
   if (template.translationReadiness !== "全部审核通过")
     throw new Error("多语言人工审核尚未全部通过");
   const existing = state.approvals.find(

@@ -6,6 +6,7 @@ import {
   Select,
   Space,
   Tag,
+  Tooltip,
   Typography,
 } from "@arco-design/web-react";
 import { IconPlus } from "@arco-design/web-react/icon";
@@ -22,6 +23,10 @@ import MultilingualProgressCell from "../multilingual/MultilingualProgressCell";
 import MultilingualProgressDrawer from "../multilingual/MultilingualProgressDrawer";
 import { useSearchParams } from "react-router-dom";
 import { templateSupportsScope } from "./templateScope";
+import {
+  APPROVED_MANUAL_TEMPLATE_LOCK_MESSAGE,
+  isApprovedManualTemplateLocked,
+} from "../../domain/templatePolicy";
 
 export default function TemplateListPage() {
   const [searchParams] = useSearchParams();
@@ -152,16 +157,29 @@ export default function TemplateListPage() {
       title: "操作",
       fixed: "right",
       width: 180,
-      render: (_, r) => (
-        <Space>
-          <Button type="text" onClick={() => setEditing(r)}>
-            编辑
-          </Button>
-          <Button type="text" onClick={() => setPreview(r)}>
-            多语言流程
-          </Button>
-        </Space>
-      ),
+      render: (_, r) => {
+        const locked = isApprovedManualTemplateLocked(r);
+        return (
+          <Space>
+            {locked ? (
+              <Tooltip content={APPROVED_MANUAL_TEMPLATE_LOCK_MESSAGE}>
+                <span>
+                  <Button type="text" disabled>
+                    编辑
+                  </Button>
+                </span>
+              </Tooltip>
+            ) : (
+              <Button type="text" onClick={() => setEditing(r)}>
+                编辑
+              </Button>
+            )}
+            <Button type="text" onClick={() => setPreview(r)}>
+              多语言流程
+            </Button>
+          </Space>
+        );
+      },
     },
   ];
   return (

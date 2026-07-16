@@ -23,6 +23,10 @@ import {
   saveTemplate,
   updateTemplate,
 } from "../../store/prototypeStore";
+import {
+  APPROVED_MANUAL_TEMPLATE_LOCK_MESSAGE,
+  isApprovedManualTemplateLocked,
+} from "../../domain/templatePolicy";
 
 const categories = [
   "系统公告",
@@ -80,6 +84,9 @@ export default function TemplateEditorDrawer({
   const [content, setContent] = useState<LocalizedMessageContent>(emptyContent);
   const [targetLocales, setTargetLocales] = useState<string[]>(["en-US"]);
   const [submitting, setSubmitting] = useState(false);
+  const locked = Boolean(
+    template && isApprovedManualTemplateLocked(template),
+  );
   useEffect(() => {
     const next = template?.content || emptyContent;
     setContent(JSON.parse(JSON.stringify(next)));
@@ -174,12 +181,31 @@ export default function TemplateEditorDrawer({
       );
       onCreated?.(entity);
       onClose();
-    } catch {
-      /* Form displays validation */
+    } catch (error) {
+      if (error instanceof Error) Message.error(error.message);
     } finally {
       setSubmitting(false);
     }
   };
+
+  if (locked) {
+    return (
+      <Drawer
+        width={720}
+        visible={visible}
+        title={`查看模板 · ${template?.name || ""}`}
+        onCancel={onClose}
+        footer={<Button onClick={onClose}>关闭</Button>}
+      >
+        <Alert
+          type="warning"
+          showIcon
+          title="模板已锁定"
+          content={APPROVED_MANUAL_TEMPLATE_LOCK_MESSAGE}
+        />
+      </Drawer>
+    );
+  }
 
   return (
     <Drawer
