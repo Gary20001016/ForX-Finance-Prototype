@@ -59,17 +59,9 @@ import {
   parseManualUids,
 } from "./uidAudience";
 import { templateSupportsScope } from "../templates/templateScope";
+import { getMessageCategoryDefaultNature } from "../../domain/messageCategoryPolicy";
 
 const FormItem = Form.Item;
-const categoryOptions = [
-  "系统公告",
-  "交易通知",
-  "资产通知",
-  "安全通知",
-  "奖励通知",
-  "活动通知",
-  "风控通知",
-];
 const localeOptions = [
   "en-US",
   "zh-TW",
@@ -249,6 +241,7 @@ export default function CreateTaskPage() {
     },
   );
   const [snapshot, setSnapshot] = useState<Record<string, unknown>>({});
+  const [categoryChanged, setCategoryChanged] = useState(false);
   const selectedTemplate =
     store.templates.find((template) => template.id === templateId) ||
     (triggerType === "event" ? eventTemplates[0] : approvedTemplates[0]);
@@ -306,6 +299,17 @@ export default function CreateTaskPage() {
       ? selectedTemplate?.translationReadiness === "全部审核通过"
       : targetLocales.length === 0 || currentBatch?.status === "全部审核通过";
   const values = { ...snapshot, ...form.getFieldsValue() };
+  const selectedCategory = String(
+    values.category || copiedTask?.category || "系统公告",
+  );
+  const resolvedNature =
+    editingTask &&
+    copiedTask &&
+    !categoryChanged &&
+    selectedCategory === copiedTask.category
+      ? copiedTask.nature
+      : getMessageCategoryDefaultNature(store.categories, selectedCategory) ||
+        "事务";
   const channels = (values.channels as Channel[] | undefined) || [
     "站内信",
     "Push",
@@ -324,6 +328,12 @@ export default function CreateTaskPage() {
       ? copiedTask.expiresAt
       : "发送后 24 小时";
   const updateSnapshot = (changedValues?: Record<string, unknown>) => {
+    if (
+      changedValues &&
+      Object.prototype.hasOwnProperty.call(changedValues, "category")
+    ) {
+      setCategoryChanged(true);
+    }
     if (changedValues?.scheduleMode === "now") {
       form.setFieldsValue({ scheduledAt: undefined, timezone: undefined });
     }
@@ -401,7 +411,7 @@ export default function CreateTaskPage() {
   const submission = () => ({
     name: (form.getFieldValue("name") || "未命名任务") as string,
     category: (form.getFieldValue("category") || "系统公告") as string,
-    nature: (form.getFieldValue("nature") || "事务") as string,
+    nature: resolvedNature,
     risk: (form.getFieldValue("risk") || "中") as RiskLevel,
     triggerType,
     contentMode,
@@ -523,7 +533,7 @@ export default function CreateTaskPage() {
       code: `temporary_${Date.now().toString().slice(-6)}`,
       name: `临时消息 · ${form.getFieldValue("name") || "未命名"}`,
       category: form.getFieldValue("category") || "系统公告",
-      nature: form.getFieldValue("nature") || "事务",
+      nature: resolvedNature,
       risk: form.getFieldValue("risk") || "中",
       channels: ["站内信", "Push"],
       locales: ["zh-CN", ...targetLocales],
@@ -571,7 +581,7 @@ export default function CreateTaskPage() {
   const summary = useMemo(
     () => ({
       name: String(values.name || "未命名任务"),
-      nature: String(values.nature || "事务"),
+      nature: resolvedNature,
       risk: (values.risk || "中") as RiskLevel,
       channels,
       content,
@@ -587,7 +597,7 @@ export default function CreateTaskPage() {
     }),
     [
       values.name,
-      values.nature,
+      resolvedNature,
       values.risk,
       channels,
       content,
@@ -646,7 +656,6 @@ export default function CreateTaskPage() {
               : undefined,
             business: copiedTask?.team || "消息运营",
             category: copiedTask?.category || "系统公告",
-            nature: copiedTask?.nature || "事务",
             risk: copiedTask?.risk || "中",
             template: approvedTemplates[0]?.id,
             channels: copiedTask?.channels || ["站内信", "Push"],
@@ -689,22 +698,24 @@ export default function CreateTaskPage() {
                 <Grid.Col span={8}>
                   <FormItem label="消息分类" field="category" required>
                     <Select
-                      options={categoryOptions.map((value) => ({
-                        label: value,
-                        value,
-                      }))}
+                      options={store.categories
+                        .filter((category) => category.enabled)
+                        .map((category) => ({
+                          label: category.name,
+                          value: category.name,
+                        }))}
                     />
                   </FormItem>
                 </Grid.Col>
               </Grid.Row>
               <Grid.Row gutter={20}>
                 <Grid.Col span={8}>
-                  <FormItem label="消息性质" field="nature">
-                    <Radio.Group type="button">
-                      <Radio value="事务">事务</Radio>
-                      <Radio value="服务">服务</Radio>
-                      <Radio value="营销">营销</Radio>
-                    </Radio.Group>
+                  <FormItem label="消息性质">
+                    <Input
+                      value={resolvedNature}
+                      readOnly
+                      suffix={<span>由消息分类自动确定</span>}
+                    />
                   </FormItem>
                 </Grid.Col>
                 <Grid.Col span={8}>

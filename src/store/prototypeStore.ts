@@ -15,6 +15,7 @@ import type {
   ManualTaskDeliveryResult,
   ManualTaskOperation,
   ManualTaskStatus,
+  MessageCategory,
   MessageTask,
   MessageTemplate,
   OperatorTestAccount,
@@ -31,6 +32,7 @@ import type {
 import {
   approvals,
   deliveries,
+  messageCategories,
   operatorTestAccounts,
   tasks,
   templates,
@@ -55,6 +57,7 @@ import {
 
 export interface PrototypeState {
   messages: UserMessage[];
+  categories: MessageCategory[];
   tasks: MessageTask[];
   templates: MessageTemplate[];
   translationBatches: TranslationBatch[];
@@ -552,6 +555,7 @@ const createSeed = (): PrototypeState => {
   ];
   return {
     messages: JSON.parse(JSON.stringify(userMessages)),
+    categories: JSON.parse(JSON.stringify(messageCategories)),
     tasks: seededTasks,
     templates: seededTemplates,
     translationBatches: normalizeTranslationBatches(
@@ -699,6 +703,7 @@ const migrateSavedState = (saved: PrototypeState): PrototypeState => {
     tasks: mergedTasks,
     events: mergedEvents,
     approvals: mergedApprovals,
+    categories: saved.categories || fresh.categories,
     testAccounts: saved.testAccounts || fresh.testAccounts,
     translationBatches: normalizeTranslationBatches(
       mergedTranslationBatches,
@@ -1237,6 +1242,17 @@ export const updateLanguageReviewPolicy = (
     ...current,
     languageReviewPolicies: current.languageReviewPolicies.map((policy) =>
       policy.localeCode === localeCode ? { ...policy, ...values } : policy,
+    ),
+  }));
+
+export const updateMessageCategory = (
+  code: MessageCategory["code"],
+  changes: Partial<MessageCategory>,
+) =>
+  update((current) => ({
+    ...current,
+    categories: current.categories.map((category) =>
+      category.code === code ? { ...category, ...changes, code } : category,
     ),
   }));
 

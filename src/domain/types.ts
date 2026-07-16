@@ -536,12 +536,16 @@ export type MessageCategoryCode =
   | "campaign_notice"
   | "risk_notice";
 export type MessageRisk = "普通" | "重要" | "紧急";
+export type MessageNature = "事务" | "服务" | "营销";
 
 export interface MessageCategory {
   code: MessageCategoryCode;
   name: string;
   color: string;
   defaultRisk: MessageRisk;
+  defaultNature: MessageNature;
+  defaultRetentionDays: number;
+  enabled: boolean;
 }
 
 export interface UserMessage {

@@ -3,13 +3,12 @@ import { Button, Card, DatePicker, Form, Grid, Input, InputNumber, Message, Moda
 import { IconPlus } from '@arco-design/web-react/icon';
 import PageHeader from '../../components/PageHeader';
 import StatusTag from '../../components/StatusTag';
-import type { LinkAllowlistEntry } from '../../domain/types';
-import { addAllowlistEntry, updateAllowlistEntry, usePrototypeStore } from '../../store/prototypeStore';
+import type { LinkAllowlistEntry, MessageCategory, MessageNature, MessageRisk } from '../../domain/types';
+import { addAllowlistEntry, updateAllowlistEntry, updateMessageCategory, usePrototypeStore } from '../../store/prototypeStore';
 import LanguageReviewPolicyPanel from './LanguageReviewPolicyPanel';
 import TestAccountPanel from './TestAccountPanel';
 
-type CategoryConfig={name:string;nature:string;risk:string;retention:number;status:boolean};
-const categorySeed:CategoryConfig[]=[['系统公告','服务','普通',30],['交易通知','事务','普通',180],['资产通知','事务','重要',365],['安全通知','事务','重要',365],['奖励通知','事务','普通',90],['活动通知','营销','普通',60],['风控通知','事务','紧急',365]].map(([name,nature,risk,retention])=>({name:name as string,nature:nature as string,risk:risk as string,retention:retention as number,status:true}));
+type CategoryConfig={code:MessageCategory['code'];name:string;nature:MessageNature;risk:MessageRisk;retention:number;status:boolean};
 
 function AllowlistEditor({entry,visible,onClose}:{entry?:LinkAllowlistEntry;visible:boolean;onClose:()=>void}){
   const [form]=Form.useForm();
@@ -18,11 +17,11 @@ function AllowlistEditor({entry,visible,onClose}:{entry?:LinkAllowlistEntry;visi
 }
 
 export default function SettingsPage(){
-  const store=usePrototypeStore();const [categories,setCategories]=useState(categorySeed);const [editingCategory,setEditingCategory]=useState<CategoryConfig>();const [editingLink,setEditingLink]=useState<LinkAllowlistEntry|'new'>();const [keyword,setKeyword]=useState('');
+  const store=usePrototypeStore();const categories:CategoryConfig[]=store.categories.map((category)=>({code:category.code,name:category.name,nature:category.defaultNature,risk:category.defaultRisk,retention:category.defaultRetentionDays,status:category.enabled}));const [editingCategory,setEditingCategory]=useState<CategoryConfig>();const [editingLink,setEditingLink]=useState<LinkAllowlistEntry|'new'>();const [keyword,setKeyword]=useState('');
   const requestedTab=new URLSearchParams(window.location.search).get('tab');
   const initialTab=requestedTab==='test-accounts'?'test-accounts':'categories';
   const links=store.allowlist.filter((entry)=>`${entry.name}${entry.pattern}`.toLowerCase().includes(keyword.toLowerCase()));
-  const saveCategory=(values:CategoryConfig)=>{setCategories((items)=>items.map((item)=>item.name===editingCategory?.name?{...item,...values}:item));setEditingCategory(undefined);Message.success('分类默认风险、保留期与状态已更新');};
+  const saveCategory=(values:CategoryConfig)=>{if(!editingCategory)return;updateMessageCategory(editingCategory.code,{defaultNature:values.nature,defaultRisk:values.risk,defaultRetentionDays:values.retention,enabled:values.status});setEditingCategory(undefined);Message.success('分类默认性质、风险、保留期与状态已更新');};
   return <section className="page-stack"><PageHeader title="系统配置" description="维护消息分类、个人测试账号、跳转白名单、语言审核策略、角色权限和审计日志。"/><Tabs type="card" defaultActiveTab={initialTab}>
     <Tabs.TabPane key="categories" title="消息分类"><Card bordered={false} className="surface" title="分类字典"><div className="settings-list">{categories.map((item)=><div key={item.name}><strong>{item.name}</strong><Tag>{item.nature}</Tag><span>默认风险：{item.risk}</span><span>保留 {item.retention} 天</span><StatusTag status={item.status?'可用':'停用'}/><Button type="text" onClick={()=>setEditingCategory(item)}>编辑</Button></div>)}</div></Card></Tabs.TabPane>
     <Tabs.TabPane key="links" title="跳转白名单"><Card bordered={false} className="surface" title="Deep Link 与 Web URL 白名单" extra={<Button type="primary" icon={<IconPlus/>} onClick={()=>setEditingLink('new')}>新增白名单</Button>}><Input.Search value={keyword} onChange={setKeyword} allowClear placeholder="搜索路径或域名" style={{marginBottom:16}}/><div className="allowlist-table"><div className="allowlist-head"><strong>规则</strong><strong>类型 / 平台</strong><strong>参数规则</strong><strong>生效时间</strong><strong>失效时间</strong><strong>状态 / 操作</strong></div>{links.map((entry)=><div key={entry.id}><div><strong>{entry.name}</strong><code>{entry.pattern}</code></div><div><Tag>{entry.type}</Tag><span>{entry.platforms.join(' / ')}</span></div><span>{entry.parameterRule}</span><span>{entry.effectiveAt}</span><span>{entry.expiresAt}</span><Space><StatusTag status={entry.status}/><Button type="text" onClick={()=>setEditingLink(entry)}>编辑</Button><Button type="text" status={entry.status==='启用'?'danger':'success'} onClick={()=>updateAllowlistEntry(entry.id,{status:entry.status==='启用'?'停用':'启用'})}>{entry.status==='启用'?'停用':'启用'}</Button></Space></div>)}</div></Card></Tabs.TabPane>
