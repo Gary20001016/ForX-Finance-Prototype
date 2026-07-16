@@ -23,21 +23,21 @@
 **Files:**
 - Modify: `src/pages/tasks/CreateTaskPage.tsx`
 
-- [ ] **Step 1: Change all risk fallbacks**
+- [x] **Step 1: Change all risk fallbacks**
 
 Change the submission fallback, temporary-template fallback, summary fallback, and form initial value from `中` to `低`, while keeping `copiedTask?.risk || "低"` for edit and copy flows.
 
-- [ ] **Step 2: Remove the sending-method description**
+- [x] **Step 2: Remove the sending-method description**
 
 Delete the divider, `发送方式` heading, and informational alert between the channel selector and content source. Keep the existing content-source divider so the next section remains visually separated.
 
-- [ ] **Step 3: Run allowed static check**
+- [x] **Step 3: Run allowed static check**
 
 Run: `git diff --check`
 
 Expected: no output. Do not run tests or `npm run build`.
 
-- [ ] **Step 4: Commit implementation**
+- [x] **Step 4: Commit implementation**
 
 Commit: `fix: simplify manual task defaults`
 
@@ -47,14 +47,14 @@ Commit: `fix: simplify manual task defaults`
 - Modify: `docs/prd/message-center/02-消息任务.md`
 - Modify: `docs/superpowers/plans/2026-07-16-manual-task-risk-default-and-layout.md`
 
-- [ ] **Step 1: Document the new default**
+- [x] **Step 1: Document the new default**
 
 State that new manual tasks default to low risk, while edit and copy retain the existing risk level.
 
-- [ ] **Step 2: Mark plan complete and check whitespace**
+- [x] **Step 2: Mark plan complete and check whitespace**
 
 Mark every checkbox complete and run `git diff --check`.
 
-- [ ] **Step 3: Commit documentation**
+- [x] **Step 3: Commit documentation**
 
 Commit: `docs: align manual task risk default`
