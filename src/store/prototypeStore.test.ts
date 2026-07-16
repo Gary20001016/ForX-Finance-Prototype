@@ -3,22 +3,27 @@ import {
   approveTranslation,
   approveOrdinaryTranslation,
   approveSpecialReview,
+  addOperatorTestAccount,
   advanceRuleContentVersion,
   createRuleContentVersion,
   createTranslationBatch,
   getPrototypeState,
   markMessageRead,
+  getOperatorTestAccounts,
   normalizeTranslationBatches,
   normalizeRuleContentVersions,
   performManualTaskOperation,
   publishRuleContentVersion,
   resetPrototypeStore,
+  removeOperatorTestAccount,
+  sendTemplateTest,
   submitTask,
   reviewApproval,
   saveTaskDraft,
   submitTemplateForApproval,
   testSystemEvent,
   updateLanguageReviewPolicy,
+  updateOperatorTestAccount,
 } from "./prototypeStore";
 import { translationBatches as legacyTranslationBatches } from "../mocks/data";
 
@@ -30,6 +35,100 @@ describe("prototype store workflow transitions", () => {
     expect(
       getPrototypeState().messages.find((item) => item.id === "UM-1001")?.read,
     ).toBe(true);
+  });
+
+  it("limits each operator to four unique test accounts", () => {
+    for (let index = 1; index <= 4; index += 1) {
+      addOperatorTestAccount({
+        operatorId: "operator-limit",
+        uid: `UID-LIMIT-${index}`,
+        remark: `设备 ${index}`,
+      });
+    }
+
+    expect(getOperatorTestAccounts("operator-limit")).toHaveLength(4);
+    expect(() =>
+      addOperatorTestAccount({
+        operatorId: "operator-limit",
+        uid: "UID-LIMIT-5",
+        remark: "第 5 个设备",
+      }),
+    ).toThrow("每名操作者最多配置 4 个测试账号");
+  });
+
+  it("rejects duplicate test UIDs for the same operator", () => {
+    addOperatorTestAccount({
+      operatorId: "operator-duplicate",
+      uid: "UID-DUPLICATE",
+      remark: "主设备",
+    });
+
+    expect(() =>
+      addOperatorTestAccount({
+        operatorId: "operator-duplicate",
+        uid: " UID-DUPLICATE ",
+        remark: "重复设备",
+      }),
+    ).toThrow("该 UID 已在你的测试账号中");
+  });
+
+  it("prevents operators from changing another operator's test account", () => {
+    const account = addOperatorTestAccount({
+      operatorId: "operator-owner",
+      uid: "UID-OWNER",
+      remark: "本人设备",
+    });
+
+    expect(() =>
+      updateOperatorTestAccount(account.id, "operator-other", {
+        remark: "越权修改",
+      }),
+    ).toThrow("无权修改该测试账号");
+    expect(() =>
+      removeOperatorTestAccount(account.id, "operator-other"),
+    ).toThrow("无权删除该测试账号");
+  });
+
+  it("automatically sends to all test accounts owned by the operator", () => {
+    addOperatorTestAccount({
+      operatorId: "operator-send",
+      uid: "UID-SEND-1",
+      remark: "iPhone",
+    });
+    addOperatorTestAccount({
+      operatorId: "operator-send",
+      uid: "UID-SEND-2",
+      remark: "Android",
+    });
+    addOperatorTestAccount({
+      operatorId: "operator-other",
+      uid: "UID-OTHER",
+      remark: "其他人的设备",
+    });
+
+    const result = sendTemplateTest({
+      operatorId: "operator-send",
+      channels: ["站内信", "Push"],
+      variables: { user_nickname: "Test User" },
+      content: {
+        sourceLocale: "zh-CN",
+        locales: ["zh-CN"],
+        web: { title: "测试", summary: "摘要", body: "正文" },
+        push: {
+          title: "Push 测试",
+          body: "Push 正文",
+          platform: "全部设备",
+          priority: "高",
+        },
+      },
+    });
+
+    expect(result.recipientUids).toEqual(["UID-SEND-1", "UID-SEND-2"]);
+    expect(result).toMatchObject({
+      accountCount: 2,
+      channelCount: 2,
+      totalDeliveries: 4,
+    });
   });
 
   it("creates an external translation batch and opens human review", () => {

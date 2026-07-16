@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from "react";
 import type {
   ApprovalItem,
+  Channel,
   DeliveryRecord,
   EventNotificationRule,
   EventRuleOperation,
@@ -16,6 +17,7 @@ import type {
   ManualTaskStatus,
   MessageTask,
   MessageTemplate,
+  OperatorTestAccount,
   RuleContentVersion,
   RuleContentVersionOperation,
   SystemEventDefinition,
@@ -23,11 +25,13 @@ import type {
   TranslationBatch,
   TranslationContentLayer,
   TranslationSubjectType,
+  TemplateTestSendResult,
   UserMessage,
 } from "../domain/types";
 import {
   approvals,
   deliveries,
+  operatorTestAccounts,
   tasks,
   templates,
   translationBatches,
@@ -58,6 +62,7 @@ export interface PrototypeState {
   approvals: ApprovalItem[];
   deliveries: DeliveryRecord[];
   allowlist: LinkAllowlistEntry[];
+  testAccounts: OperatorTestAccount[];
   events: SystemEventDefinition[];
   rules: EventNotificationRule[];
   ruleVersions: RuleContentVersion[];
@@ -614,6 +619,7 @@ const createSeed = (): PrototypeState => {
             : undefined,
       })),
     allowlist: allowlistSeed,
+    testAccounts: JSON.parse(JSON.stringify(operatorTestAccounts)),
     events: eventSeed,
     rules: automation.rules,
     ruleVersions: automation.versions,
@@ -693,6 +699,7 @@ const migrateSavedState = (saved: PrototypeState): PrototypeState => {
     tasks: mergedTasks,
     events: mergedEvents,
     approvals: mergedApprovals,
+    testAccounts: saved.testAccounts || fresh.testAccounts,
     translationBatches: normalizeTranslationBatches(
       mergedTranslationBatches,
       saved.languageReviewPolicies || fresh.languageReviewPolicies,
@@ -748,6 +755,116 @@ export const usePrototypeStore = () =>
     getPrototypeState,
     getPrototypeState,
   );
+
+export const getOperatorTestAccounts = (operatorId: string) =>
+  state.testAccounts.filter((account) => account.operatorId === operatorId);
+
+export const addOperatorTestAccount = (input: {
+  operatorId: string;
+  uid: string;
+  remark?: string;
+}) => {
+  const uid = input.uid.trim();
+  if (!uid) throw new Error("请输入测试 UID");
+  const accounts = getOperatorTestAccounts(input.operatorId);
+  if (accounts.length >= 4)
+    throw new Error("每名操作者最多配置 4 个测试账号");
+  if (accounts.some((account) => account.uid === uid))
+    throw new Error("该 UID 已在你的测试账号中");
+
+  const account: OperatorTestAccount = {
+    id: `TEST-ACCOUNT-${Date.now().toString().slice(-7)}`,
+    operatorId: input.operatorId,
+    uid,
+    remark: input.remark?.trim() || "未备注",
+    verified: true,
+    createdAt: "刚刚",
+    updatedAt: "刚刚",
+  };
+  update((current) => ({
+    ...current,
+    testAccounts: [...current.testAccounts, account],
+  }));
+  return account;
+};
+
+export const updateOperatorTestAccount = (
+  id: string,
+  operatorId: string,
+  changes: Pick<OperatorTestAccount, "remark">,
+) => {
+  const account = state.testAccounts.find((item) => item.id === id);
+  if (!account) throw new Error("测试账号不存在");
+  if (account.operatorId !== operatorId)
+    throw new Error("无权修改该测试账号");
+
+  const result = {
+    ...account,
+    remark: changes.remark.trim() || "未备注",
+    updatedAt: "刚刚",
+  };
+  update((current) => ({
+    ...current,
+    testAccounts: current.testAccounts.map((item) =>
+      item.id === id ? result : item,
+    ),
+  }));
+  return result;
+};
+
+export const removeOperatorTestAccount = (
+  id: string,
+  operatorId: string,
+) => {
+  const account = state.testAccounts.find((item) => item.id === id);
+  if (!account) throw new Error("测试账号不存在");
+  if (account.operatorId !== operatorId)
+    throw new Error("无权删除该测试账号");
+  update((current) => ({
+    ...current,
+    testAccounts: current.testAccounts.filter((item) => item.id !== id),
+  }));
+};
+
+export const sendTemplateTest = (input: {
+  operatorId: string;
+  channels: Channel[];
+  variables: Record<string, string>;
+  content: LocalizedMessageContent;
+}): TemplateTestSendResult => {
+  const accounts = getOperatorTestAccounts(input.operatorId);
+  if (!accounts.length) throw new Error("请先配置本人测试账号");
+  const channels = Array.from(
+    new Set(
+      input.channels.filter(
+        (channel) => channel === "站内信" || channel === "Push",
+      ),
+    ),
+  );
+  if (!channels.length) throw new Error("请至少选择一个测试发送渠道");
+  if (
+    channels.includes("站内信") &&
+    (!input.content.web.title ||
+      !input.content.web.summary ||
+      !input.content.web.body)
+  )
+    throw new Error("请完整填写站内信标题、摘要和正文");
+  if (
+    channels.includes("Push") &&
+    (!input.content.push.title || !input.content.push.body)
+  )
+    throw new Error("请完整填写 Push 标题和正文");
+  if (Object.values(input.variables).some((value) => !value.trim()))
+    throw new Error("请完整填写模板变量测试值");
+
+  return {
+    operatorId: input.operatorId,
+    recipientUids: accounts.map((account) => account.uid),
+    accountCount: accounts.length,
+    channelCount: channels.length,
+    totalDeliveries: accounts.length * channels.length,
+  };
+};
 export const resetPrototypeStore = () => {
   state = createSeed();
   if (

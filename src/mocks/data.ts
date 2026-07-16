@@ -7,9 +7,31 @@ import type {
   MessageTask,
   MessageTemplate,
   MessageCategory,
+  OperatorTestAccount,
   TranslationBatch,
   UserMessage,
 } from "../domain/types";
+
+export const operatorTestAccounts: OperatorTestAccount[] = [
+  {
+    id: "TEST-ACCOUNT-001",
+    operatorId: "admin-01",
+    uid: "UID-TEST-9001",
+    remark: "Gary · iPhone",
+    verified: true,
+    createdAt: "07-15 14:20",
+    updatedAt: "07-15 14:20",
+  },
+  {
+    id: "TEST-ACCOUNT-002",
+    operatorId: "admin-01",
+    uid: "UID-TEST-9002",
+    remark: "Gary · Android",
+    verified: true,
+    createdAt: "07-15 14:22",
+    updatedAt: "07-15 14:22",
+  },
+];
 
 export const messageCategories: MessageCategory[] = [
   {

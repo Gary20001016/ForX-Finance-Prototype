@@ -452,6 +452,24 @@ export interface LinkAllowlistEntry {
   owner: string;
 }
 
+export interface OperatorTestAccount {
+  id: string;
+  operatorId: string;
+  uid: string;
+  remark: string;
+  verified: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TemplateTestSendResult {
+  operatorId: string;
+  recipientUids: string[];
+  accountCount: number;
+  channelCount: number;
+  totalDeliveries: number;
+}
+
 export interface SystemEventDefinition {
   id: string;
   name: string;
