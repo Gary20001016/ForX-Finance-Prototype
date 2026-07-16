@@ -7,6 +7,10 @@ import type {
 
 type EntryScope = Exclude<TemplateUsageScope, 'shared'>;
 
+export const isReusableMessageTemplate = (
+  template: Pick<MessageTemplate, 'owner'>,
+) => template.owner !== '临时任务';
+
 export const templateSupportsScope = (
   template: Pick<MessageTemplate, 'usageScope'>,
   scope: EntryScope,

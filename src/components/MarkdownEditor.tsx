@@ -9,6 +9,7 @@ import {
 import MarkdownContent from "./MarkdownContent";
 
 type TextAreaHandle = {
+  blur: () => void;
   focus: () => void;
   dom: HTMLTextAreaElement;
 };

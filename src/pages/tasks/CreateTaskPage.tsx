@@ -60,7 +60,10 @@ import {
   mergeUidAudience,
   parseManualUids,
 } from "./uidAudience";
-import { templateSupportsScope } from "../templates/templateScope";
+import {
+  isReusableMessageTemplate,
+  templateSupportsScope,
+} from "../templates/templateScope";
 import { getMessageCategoryDefaultNature } from "../../domain/messageCategoryPolicy";
 import {
   sameChannels,
@@ -166,6 +169,7 @@ export default function CreateTaskPage() {
   );
   const manualTemplates = store.templates.filter(
     (template) =>
+      isReusableMessageTemplate(template) &&
       template.translationReadiness === "全部审核通过" &&
       templateSupportsScope(template, "manual"),
   );
@@ -201,7 +205,7 @@ export default function CreateTaskPage() {
   const approvedTemplates = manualTemplates.filter((template) =>
     templateCoversChannels(template.channels, selectedChannels),
   );
-  const [templateId, setTemplateId] = useState(
+  const [templateId, setTemplateId] = useState<string | undefined>(
     copiedTask?.templateId ||
       store.templates.find(
         (template) =>

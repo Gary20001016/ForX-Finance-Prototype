@@ -6,6 +6,7 @@ import type {
 } from '../../domain/types';
 import {
   inferTemplateUsageScope,
+  isReusableMessageTemplate,
   normalizeTemplateUsageScopes,
   templateSupportsScope,
 } from './templateScope';
@@ -14,6 +15,12 @@ const template = (usageScope: MessageTemplate['usageScope']) =>
   ({ id: 'TPL-1', usageScope }) as MessageTemplate;
 
 describe('template workflow scope', () => {
+  it('excludes temporary task translation carriers from reusable templates', () => {
+    expect(isReusableMessageTemplate({ owner: '消息运营' })).toBe(true);
+    expect(isReusableMessageTemplate({ owner: undefined })).toBe(true);
+    expect(isReusableMessageTemplate({ owner: '临时任务' })).toBe(false);
+  });
+
   it('shows shared templates in both views without leaking dedicated templates', () => {
     expect(templateSupportsScope(template('manual'), 'manual')).toBe(true);
     expect(templateSupportsScope(template('manual'), 'event')).toBe(false);

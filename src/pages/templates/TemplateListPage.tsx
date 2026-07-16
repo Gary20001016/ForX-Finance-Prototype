@@ -21,7 +21,10 @@ import { usePrototypeStore } from "../../store/prototypeStore";
 import MultilingualProgressCell from "../multilingual/MultilingualProgressCell";
 import MultilingualProgressDrawer from "../multilingual/MultilingualProgressDrawer";
 import { useSearchParams } from "react-router-dom";
-import { templateSupportsScope } from "./templateScope";
+import {
+  isReusableMessageTemplate,
+  templateSupportsScope,
+} from "./templateScope";
 import { isApprovedManualTemplateLocked } from "../../domain/templatePolicy";
 
 export default function TemplateListPage() {
@@ -45,7 +48,7 @@ export default function TemplateListPage() {
     );
   const data = store.templates.filter(
     (item) =>
-      item.owner !== "临时任务" &&
+      isReusableMessageTemplate(item) &&
       templateSupportsScope(item, entryScope) &&
       `${item.id}${item.code}${item.name}`
         .toLowerCase()
