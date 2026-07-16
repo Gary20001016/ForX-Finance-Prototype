@@ -309,3 +309,38 @@ test('transfer validates minimum and balance, reverses route, and supports retry
     assert.equal(await page.locator('#transfer-amount-review').textContent(), '2,000.00 USDT');
   });
 });
+
+test('filters unified deposit, withdrawal, and transfer records and opens details', async () => {
+  await withPage(async page => {
+    await page.locator('#open-records').click();
+    await route(page, 'records');
+    assert.match(await page.locator('[data-record-summary]').textContent(), /资金净流入.*\+2,250\.00/s);
+    assert.match(await page.locator('[data-record-summary]').textContent(), /账户划转不计入外部资金流/);
+    assert.ok(await page.locator('[data-record-type="deposit"]').count() >= 1);
+    assert.ok(await page.locator('[data-record-type="withdrawal"]').count() >= 1);
+    assert.ok(await page.locator('[data-record-type="transfer"]').count() >= 1);
+    await page.locator('[data-record-filter="deposit"]').click();
+    assert.equal(await page.locator('[data-record-type="withdrawal"]:visible').count(), 0);
+    await page.locator('[data-record-type="deposit"]:visible').first().click();
+    await route(page, 'record-detail');
+    assert.match(await page.locator('#screen-root').textContent(), /交易哈希/);
+    assert.match(await page.locator('#screen-root').textContent(), /网络确认/);
+  });
+});
+
+test('account value views distinguish external flow, returns, and internal transfers', async () => {
+  await withPage(async page => {
+    await page.locator('#open-value-history').click();
+    await route(page, 'value-history');
+    assert.match(await page.locator('[data-value-breakdown]').textContent(), /内部账户划转.*\$0\.00/s);
+    assert.match(await page.locator('[data-return-source]').textContent(), /交易及其他收益.*\+\$182\.36/s);
+    assert.doesNotMatch(await page.locator('[data-return-source]').textContent(), /划转/);
+    await page.locator('[data-value-account="funding"]').click();
+    assert.match(await page.locator('[data-value-breakdown]').textContent(), /账户划转流出.*-\$2,000\.00/s);
+    assert.doesNotMatch(await page.locator('[data-return-source]').textContent(), /划转/);
+    await page.locator('[data-value-range="7d"]').click();
+    assert.equal(await page.locator('[data-value-chart]').getAttribute('data-range'), '7d');
+    assert.equal(await page.locator('[data-value-marker="deposit"]').count(), 1);
+    assert.equal(await page.locator('[data-value-marker="withdrawal"]').count(), 1);
+  });
+});
