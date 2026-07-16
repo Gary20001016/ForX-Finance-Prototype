@@ -25,6 +25,7 @@ import {
 } from "../../store/prototypeStore";
 import { isApprovedManualTemplateLocked } from "../../domain/templatePolicy";
 import TemplateReadOnlyDetails from "./TemplateReadOnlyDetails";
+import TemplateTestSendModal from "./TemplateTestSendModal";
 
 const categories = [
   "系统公告",
@@ -82,6 +83,7 @@ export default function TemplateEditorDrawer({
   const [content, setContent] = useState<LocalizedMessageContent>(emptyContent);
   const [targetLocales, setTargetLocales] = useState<string[]>(["en-US"]);
   const [submitting, setSubmitting] = useState(false);
+  const [testSendVisible, setTestSendVisible] = useState(false);
   const locked = Boolean(
     template && isApprovedManualTemplateLocked(template),
   );
@@ -209,6 +211,7 @@ export default function TemplateEditorDrawer({
       footer={
         <Space>
           <Button onClick={onClose}>取消</Button>
+          <Button onClick={() => setTestSendVisible(true)}>测试发送</Button>
           <Button onClick={() => save(false)}>保存草稿</Button>
           <Button
             type="primary"
@@ -459,6 +462,16 @@ export default function TemplateEditorDrawer({
           <MessagePreview content={content} />
         </Tabs.TabPane>
       </Tabs>
+      <TemplateTestSendModal
+        visible={testSendVisible}
+        content={content}
+        channels={(form.getFieldValue("channels") || []) as MessageTemplate["channels"]}
+        variables={String(form.getFieldValue("variables") || "")
+          .split(",")
+          .map((item) => item.trim())
+          .filter(Boolean)}
+        onClose={() => setTestSendVisible(false)}
+      />
     </Drawer>
   );
 }
