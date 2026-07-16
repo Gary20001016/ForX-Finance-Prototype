@@ -4,7 +4,7 @@
 
 **Goal:** 禁止修改业务审核通过并已发布的人工专用或通用消息模板，同时保留查看能力和纯事件模板的现有编辑行为。
 
-**Architecture:** 在领域层提供唯一的锁定判断与提示文案，列表、多语言流程、编辑抽屉和数据存储层共同引用。界面层阻止正常入口，存储层负责防止绕过界面的更新调用。
+**Architecture:** 在领域层提供唯一的锁定判断与提示文案，列表、多语言流程、只读详情和数据存储层共同引用。已锁定模板从列表进入独立只读内容组件，编辑抽屉仅负责选择只读或编辑模式；存储层负责防止绕过界面的更新调用。
 
 **Tech Stack:** React 18、TypeScript、Arco Design React、Vite、本地原型状态仓库。
 
@@ -56,9 +56,9 @@ export const isApprovedManualTemplateLocked = (
 **Interfaces:**
 - Consumes: `isApprovedManualTemplateLocked` 与 `APPROVED_MANUAL_TEMPLATE_LOCK_MESSAGE`。
 
-- [ ] **Step 1: 锁定列表编辑按钮**
+- [ ] **Step 1: 将已锁定模板的编辑入口改为查看详情**
 
-对每条模板计算锁定状态。锁定时渲染禁用的“编辑”按钮，并使用 Arco `Tooltip` 展示统一提示；未锁定时沿用现有 `setEditing(r)` 行为。
+对每条模板计算锁定状态。锁定时渲染可点击的“查看详情”并沿用 `setEditing(r)` 打开抽屉；未锁定时显示“编辑”。两种入口共享模板选择状态，但由抽屉内部判断渲染模式。
 
 - [ ] **Step 2: 将多语言流程切换为只读**
 
@@ -69,14 +69,19 @@ export const isApprovedManualTemplateLocked = (
 ### Task 3: 防止残留状态打开可编辑表单
 
 **Files:**
+- Create: `src/pages/templates/TemplateReadOnlyDetails.tsx`
 - Modify: `src/pages/templates/TemplateEditorDrawer.tsx`
 
 **Interfaces:**
 - Consumes: `isApprovedManualTemplateLocked` 与 `APPROVED_MANUAL_TEMPLATE_LOCK_MESSAGE`。
 
-- [ ] **Step 1: 为已锁定模板渲染只读拦截抽屉**
+- [ ] **Step 1: 创建只读模板详情组件**
 
-当 `visible` 且模板已锁定时，只展示错误提示与关闭按钮，不渲染表单和保存/机翻操作。新建模板及未锁定模板继续使用原编辑器。
+`TemplateReadOnlyDetails` 接收 `MessageTemplate`，使用 `Alert` 展示锁定原因，使用 `Descriptions`、`Tag` 和 `Space` 展示模板 ID、编码、名称、版本、状态、分类、性质、风险、适用场景、所有者、渠道、默认语言、语言覆盖、模板变量和更新时间；存在 `content` 时使用 `MessagePreview` 展示 Web 站内信、App 站内信和 App Push。
+
+- [ ] **Step 2: 在编辑抽屉中渲染只读详情**
+
+当 `visible` 且模板已锁定时，抽屉标题为“查看模板”，内容渲染 `TemplateReadOnlyDetails`，底部只保留“关闭”。新建模板及未锁定模板继续使用原编辑器和保存操作。
 
 ---
 
@@ -87,7 +92,7 @@ export const isApprovedManualTemplateLocked = (
 
 - [ ] **Step 1: 更新 PRD 模板编辑规则**
 
-写明人工专用及通用模板业务审核通过、状态进入“已发布”后不可修改；其他状态修改后回到草稿并重走翻译与审核；纯事件模板不受本次规则影响。
+写明人工专用及通用模板业务审核通过、状态进入“已发布”后可以查看完整基础信息、变量和三端预览，但不可修改；其他状态修改后回到草稿并重走翻译与审核；纯事件模板不受本次规则影响。
 
 - [ ] **Step 2: 运行静态验证**
 
