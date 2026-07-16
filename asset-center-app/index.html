@@ -18,12 +18,86 @@
     .controls { display:grid; gap:10px; margin-top:24px; }
     .controls button,.controls select { min-height:42px; border:1px solid var(--line); border-radius:12px; background:var(--surface); color:var(--text); padding:0 12px; }
     .phone { width:390px; height:844px; overflow:hidden; border:1px solid #2b322e; border-radius:40px; background:var(--bg); box-shadow:0 38px 100px rgba(0,0,0,.55); position:relative; }
-    #screen-root { min-height:100%; }
+    #screen-root { min-height:100%; height:100%; overflow:hidden; }
     #sheet-root[hidden] { display:none; }
+    .sr-only { position:absolute!important; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+    .app-screen { min-height:100%; height:100%; background:var(--bg); position:relative; overflow-y:auto; scrollbar-width:none; }
+    .app-screen::-webkit-scrollbar { display:none; }
+    .status-bar { height:42px; padding:13px 22px 0; display:flex; justify-content:space-between; font-size:12px; font-weight:650; }
+    .system-icons { display:flex; gap:7px; align-items:center; font-size:10px; }
+    .account-nav { height:58px; display:flex; align-items:stretch; padding:0 15px 0 21px; border-bottom:1px solid var(--line); }
+    .account-tabs { display:flex; gap:29px; }
+    .account-tab { height:58px; border:0; background:transparent; color:#667069; padding:0; font-size:14px; font-weight:630; position:relative; }
+    .account-tab[aria-selected="true"] { color:var(--text); }
+    .account-tab[aria-selected="true"]::after { content:""; position:absolute; left:0; bottom:-1px; width:22px; height:2px; border-radius:2px; background:var(--green); box-shadow:0 0 12px rgba(99,246,162,.55); }
+    .nav-tools { margin-left:auto; display:flex; align-items:center; gap:3px; }
+    .icon-button { width:36px; height:36px; border:0; border-radius:11px; background:transparent; display:grid; place-items:center; color:#aab4ad; position:relative; }
+    .icon-button svg { width:18px; height:18px; fill:none; stroke:currentColor; stroke-width:1.7; }
+    .icon-button.notice::after { content:""; position:absolute; width:5px; height:5px; border-radius:50%; background:var(--green); right:7px; top:6px; box-shadow:0 0 7px rgba(99,246,162,.8); }
+    .account-hero { min-height:216px; padding:24px 21px 18px; position:relative; overflow:hidden; border-bottom:1px solid var(--line); }
+    .account-hero::after { content:""; position:absolute; width:190px; height:190px; right:-70px; top:-40px; border-radius:50%; background:rgba(99,246,162,.06); filter:blur(55px); pointer-events:none; }
+    .hero-label { display:flex; align-items:center; gap:7px; color:#78817b; font-size:11px; }
+    .visibility-toggle { width:20px; height:18px; border:0; background:transparent; color:#657069; padding:0; }
+    .visibility-toggle svg { width:16px; fill:none; stroke:currentColor; }
+    .hero-value { margin:7px 0 4px; font-size:38px; font-weight:570; line-height:1.1; letter-spacing:-.04em; font-variant-numeric:tabular-nums; }
+    .hero-value small { color:#bcc4be; font-size:14px; font-weight:520; letter-spacing:0; }
+    .hero-change { color:#717a74; font-size:11px; }
+    .hero-change strong { color:var(--green); font-weight:560; margin-left:7px; }
+    .hero-metrics { display:flex; gap:27px; margin-top:28px; }
+    .hero-metrics span { color:#626c65; font-size:9px; }
+    .hero-metrics b { display:block; color:#ccd4ce; font-size:12px; font-weight:560; margin-top:4px; font-variant-numeric:tabular-nums; }
+    .mini-chart { position:absolute; right:12px; bottom:16px; width:164px; height:94px; border:0; padding:0; background:transparent; }
+    .mini-chart svg { width:100%; height:100%; overflow:visible; }
+    .home-actions { display:grid; grid-template-columns:1.3fr 1fr 1fr; gap:8px; padding:14px 21px 13px; }
+    .home-action { min-height:48px; border:1px solid var(--line); border-radius:13px; background:var(--surface); color:#cdd4cf; display:flex; justify-content:center; align-items:center; gap:7px; font-size:12px; font-weight:620; }
+    .home-action.primary { border-color:var(--green); background:var(--green); color:#041009; box-shadow:0 8px 25px rgba(48,224,126,.16); }
+    .home-action svg { width:16px; height:16px; fill:none; stroke:currentColor; stroke-width:1.8; }
+    .home-body { padding:3px 21px 88px; }
+    .section-heading { height:40px; display:flex; align-items:center; }
+    .section-heading h2 { margin:0; font-size:14px; font-weight:650; }
+    .section-heading small { margin-left:7px; color:#5f6962; font-size:9px; }
+    .section-heading button { margin-left:auto; border:0; background:transparent; color:#69726c; font-size:10px; }
+    .composition { height:3px; display:flex; overflow:hidden; border-radius:4px; background:#222824; }
+    .composition span:first-child { width:74%; background:var(--green); }
+    .composition span:last-child { width:26%; background:#407ce4; }
+    .asset-row { min-height:66px; display:flex; align-items:center; border-bottom:1px solid rgba(230,255,239,.075); }
+    .token-icon { width:35px; height:35px; border-radius:50%; display:grid; place-items:center; margin-right:11px; background:linear-gradient(145deg,#20b987,#0c7252); color:white; font-size:13px; font-weight:750; box-shadow:inset 0 0 0 1px rgba(255,255,255,.14); }
+    .token-icon.usdc { background:linear-gradient(145deg,#4d96f0,#2364bf); }
+    .asset-copy b,.activity-copy b { display:block; font-size:13px; }
+    .asset-copy small,.activity-copy small { display:block; margin-top:2px; color:#626c65; font-size:9px; }
+    .asset-amount { margin-left:auto; text-align:right; font-variant-numeric:tabular-nums; }
+    .asset-amount b { display:block; font-size:13px; font-weight:590; }
+    .asset-amount small { display:block; margin-top:2px; color:#626c65; font-size:9px; }
+    .row-chevron { margin-left:10px; color:#58615b; }
+    .activity-row { display:flex; align-items:center; padding:10px 0 3px; }
+    .activity-icon { width:31px; height:31px; border:1px solid rgba(255,255,255,.06); border-radius:9px; background:#101512; color:var(--green); display:grid; place-items:center; margin-right:10px; }
+    .activity-icon svg { width:14px; fill:none; stroke:currentColor; }
+    .activity-value { margin-left:auto; text-align:right; }
+    .activity-value b { color:var(--green); display:block; font-size:10px; }
+    .activity-value small { color:#606a63; font-size:8px; }
+    .contract-grid { margin-top:17px; border-top:1px solid var(--line); }
+    .metric-row { display:grid; grid-template-columns:1fr 1fr; border-bottom:1px solid rgba(255,255,255,.07); }
+    .metric { padding:13px 0; }
+    .metric:nth-child(even) { text-align:right; }
+    .metric label { display:block; color:#68716b; font-size:9px; }
+    .metric b { display:block; margin-top:4px; font-size:13px; font-weight:570; }
+    .positive { color:var(--green)!important; }
+    .bottom-nav { position:absolute; left:0; right:0; bottom:0; z-index:5; height:72px; padding:9px 10px 5px; display:grid; grid-template-columns:repeat(5,1fr); background:rgba(5,7,6,.95); border-top:1px solid var(--line); backdrop-filter:blur(18px); }
+    .bottom-item { border:0; background:transparent; color:#515a54; font-size:8px; position:relative; }
+    .bottom-item svg { width:19px; height:19px; margin:0 auto 5px; display:block; fill:none; stroke:currentColor; stroke-width:1.6; }
+    .bottom-item[aria-current="page"] { color:var(--text); }
+    .bottom-item[aria-current="page"] svg { color:var(--green); }
+    .bottom-item[aria-current="page"]::before { content:""; position:absolute; top:-10px; left:50%; width:18px; height:2px; transform:translateX(-50%); background:var(--green); box-shadow:0 0 10px var(--green); }
+    .subpage { min-height:100%; padding-bottom:30px; }
+    .subpage-header { height:56px; padding:0 18px; display:flex; align-items:center; border-bottom:1px solid var(--line); }
+    .back-button { width:36px; height:36px; border:0; background:transparent; color:var(--text); font-size:25px; padding:0; }
+    .subpage-header h1 { margin:0 0 0 5px; font-size:17px; }
+    .placeholder-page { padding:28px 20px; color:var(--muted); }
+    @media (prefers-reduced-motion:reduce) { *,*::before,*::after { scroll-behavior:auto!important; animation-duration:0s!important; transition-duration:0s!important; } }
     .gallery { padding:70px max(24px,calc((100vw - 1180px)/2)); border-top:1px solid var(--line); }
     .gallery h2 { font-size:32px; }
     .gallery p { color:var(--muted); }
-    @media (max-width:800px) { .prototype-shell { grid-template-columns:1fr; padding:0; gap:0; } .prototype-meta { display:none; } .phone { width:100%; max-width:390px; margin:auto; border-radius:0; border:0; } }
+    @media (max-width:800px) { .prototype-shell { grid-template-columns:1fr; padding:0; gap:0; } .prototype-meta { display:none; } .phone { width:100%; max-width:390px; margin:auto; border-radius:0; border:0; } .gallery { display:none; } }
   </style>
 </head>
 <body>
@@ -50,16 +124,116 @@
   </main>
   <script>
     const CONFIG = Object.freeze({ tokens:['USDT','USDC'], networks:['Ethereum','Arbitrum','Polygon','Base','Optimism','Solana','TRON'] });
-    const initialState = () => ({ route:'assets', routeStack:[], account:'funding', session:{ type:'wallet', mfaBound:false }, funding:{ USDT:18240, USDC:6441.75, heldUsd:100.67 }, contract:{ USDT:2000, USDC:0 }, draft:{}, records:[] });
+    const format = (value, digits=2) => Number(value).toLocaleString('en-US',{ minimumFractionDigits:digits, maximumFractionDigits:digits });
+    const initialState = () => ({
+      route:'assets', routeStack:[], routeParams:{}, account:'funding', valuesHidden:false,
+      session:{ type:'wallet', mfaBound:false },
+      funding:{ USDT:18240, USDC:6441.75, heldUsd:100.67 },
+      contract:{ USDT:2000, USDC:0 }, draft:{}, records:[]
+    });
     let state = initialState();
     const root = document.querySelector('#screen-root');
     const live = document.querySelector('#live-region');
+    const icons = {
+      bell:'<svg viewBox="0 0 24 24"><path d="M7 9a5 5 0 0 1 10 0v4l2 3H5l2-3V9Z"/><path d="M10 19h4"/></svg>',
+      history:'<svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.3-5.7L4 8.5"/><path d="M4 4v4.5h4.5M12 7v5l3 2"/></svg>',
+      deposit:'<svg viewBox="0 0 24 24"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 19h14"/></svg>',
+      withdraw:'<svg viewBox="0 0 24 24"><path d="M12 16V4m0 0 4 4m-4-4L8 8M5 20h14"/></svg>',
+      transfer:'<svg viewBox="0 0 24 24"><path d="M4 8h14m0 0-3-3m3 3-3 3M20 16H6m0 0 3-3m-3 3 3 3"/></svg>',
+      eye:'<svg viewBox="0 0 24 24"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"/><circle cx="12" cy="12" r="2.5"/></svg>'
+    };
     function announce(message) { live.textContent=''; requestAnimationFrame(()=>{ live.textContent=message; }); }
-    function render() { root.dataset.route=state.route; root.innerHTML='<div style="padding:40px 20px">资金账户　合约账户</div>'; }
-    function navigate(route,params={}) { state.routeStack.push(state.route); state.route=route; state.routeParams=params; render(); }
-    function resetPrototype() { state=initialState(); render(); announce('原型已重置'); }
+    function statusBar(){ return '<div class="status-bar"><span>9:41</span><span class="system-icons" aria-hidden="true">▥　⌁　▰</span></div>'; }
+    function accountNav(){
+      return `<nav class="account-nav" aria-label="资产账户">
+        <div class="account-tabs" role="tablist">
+          <button class="account-tab" data-account-tab="funding" role="tab" aria-selected="${state.account==='funding'}">资金账户</button>
+          <button class="account-tab" data-account-tab="contract" role="tab" aria-selected="${state.account==='contract'}">合约账户</button>
+        </div>
+        <div class="nav-tools">
+          <button class="icon-button notice" type="button" aria-label="通知">${icons.bell}</button>
+          <button class="icon-button" id="open-records" type="button" aria-label="资金记录">${icons.history}</button>
+        </div>
+      </nav>`;
+    }
+    function miniChart(){
+      return `<button class="mini-chart" id="open-value-history" type="button" aria-label="查看账户价值曲线">
+        <svg viewBox="0 0 164 94" fill="none"><defs><linearGradient id="miniArea" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#63f6a2" stop-opacity=".26"/><stop offset="1" stop-color="#63f6a2" stop-opacity="0"/></linearGradient></defs><path d="M0 78L19 77L31 64L49 68L65 45L84 51L101 27L118 34L139 14L164 18V94H0Z" fill="url(#miniArea)"/><path d="M0 78L19 77L31 64L49 68L65 45L84 51L101 27L118 34L139 14L164 18" stroke="#63f6a2" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/><circle cx="164" cy="18" r="3" fill="#63f6a2"/></svg>
+      </button>`;
+    }
+    function bottomNav(){
+      return `<nav class="bottom-nav" aria-label="主导航">
+        <button class="bottom-item" type="button"><svg viewBox="0 0 24 24"><path d="m4 11 8-7 8 7v9H4v-9Z"/><path d="M9 20v-6h6v6"/></svg>首页</button>
+        <button class="bottom-item" type="button"><svg viewBox="0 0 24 24"><path d="M4 17V9m5 11V4m5 13V8m5 12V6"/></svg>行情</button>
+        <button class="bottom-item" type="button"><svg viewBox="0 0 24 24"><path d="M4 8h14m0 0-3-3m3 3-3 3M20 16H6m0 0 3-3m-3 3 3 3"/></svg>交易</button>
+        <button class="bottom-item" type="button"><svg viewBox="0 0 24 24"><path d="M4 18 9 8l4 6 3-5 4 9H4Z"/></svg>仓位</button>
+        <button class="bottom-item" data-bottom-nav="assets" aria-current="page" type="button"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="14" rx="3"/><path d="M6 6V4h12v2m-3 7h6"/></svg>资产</button>
+      </nav>`;
+    }
+    function fundingHome(){
+      const hidden = state.valuesHidden;
+      const total = hidden ? '••••••' : '24,680.42';
+      return `<section class="account-hero">
+          <div class="hero-label">总资产估值 <button class="visibility-toggle" type="button" aria-label="${hidden?'显示':'隐藏'}资产">${icons.eye}</button></div>
+          <div class="hero-value">${total} <small>USD⌄</small></div>
+          <div class="hero-change">今日收益 <strong>+$182.36　+0.74%</strong></div>
+          <div class="hero-metrics"><span>可用资产<b>${hidden?'••••': '$24,579.75'}</b></span><span>冻结资产<b>${hidden?'••••':'$100.67'}</b></span></div>
+          ${miniChart()}
+        </section>
+        <div class="home-actions">
+          <button class="home-action primary" id="open-deposit" type="button">${icons.deposit}充值</button>
+          <button class="home-action" id="open-withdraw" type="button">${icons.withdraw}提现</button>
+          <button class="home-action" id="open-transfer" type="button">${icons.transfer}划转</button>
+        </div>
+        <div class="home-body">
+          <div class="section-heading"><h2>资产组合</h2><small>2 项资产</small><button type="button">隐藏零余额　○</button></div>
+          <div class="composition" aria-label="USDT 占 74%，USDC 占 26%"><span></span><span></span></div>
+          ${assetRow('USDT','₮','73.9%','usdt')}${assetRow('USDC','$','26.1%','usdc')}
+          <div class="section-heading"><h2>资金动态</h2><button id="open-records-inline" type="button">全部记录　→</button></div>
+          <div class="activity-row"><span class="activity-icon">${icons.deposit}</span><span class="activity-copy"><b>充值 · USDC</b><small>Arbitrum　12 分钟前</small></span><span class="activity-value"><b>+500.00</b><small>已完成</small></span></div>
+        </div>`;
+    }
+    function assetRow(token,symbol,share,kind){
+      const value=state.funding[token];
+      return `<button class="asset-row" type="button" data-asset="${token}" style="width:100%;border-left:0;border-right:0;border-top:0;background:transparent;color:inherit;padding:0;text-align:left"><span class="token-icon ${kind==='usdc'?'usdc':''}">${symbol}</span><span class="asset-copy"><b>${token}</b><small>资产占比 ${share}</small></span><span class="asset-amount"><b data-funding-balance="${token}" data-value="${value}">${format(value)}</b><small>≈ $${format(token==='USDT'?value*.9999:value)}</small></span><span class="row-chevron">›</span></button>`;
+    }
+    function contractHome(){
+      return `<section class="account-hero">
+          <div class="hero-label">账户权益 <button class="visibility-toggle" type="button" aria-label="隐藏资产">${icons.eye}</button></div>
+          <div class="hero-value">7,680.42 <small>USD⌄</small></div>
+          <div class="hero-change">未实现盈亏 <strong>+$124.80　+1.65%</strong></div>
+          <div class="hero-metrics"><span>可用保证金<b>$6,910.23</b></span><span>保证金率<b>12.80%</b></span></div>${miniChart()}
+        </section>
+        <div class="home-actions"><button class="home-action primary" id="open-transfer" type="button">${icons.deposit}划入资金</button><button class="home-action" id="open-transfer-out" type="button">${icons.withdraw}划出</button><button class="home-action" id="open-records-inline" type="button">${icons.history}记录</button></div>
+        <div class="home-body"><div class="section-heading"><h2>合约资产</h2><small class="positive">风险状态正常</small></div><div class="contract-grid">
+          <div class="metric-row"><div class="metric"><label>账户余额</label><b>7,555.62 USD</b></div><div class="metric"><label>未实现盈亏</label><b class="positive">+124.80 USD</b></div></div>
+          <div class="metric-row"><div class="metric"><label>占用保证金</label><b>770.19 USD</b></div><div class="metric"><label>可用保证金</label><b>6,910.23 USD</b></div></div>
+          <div class="metric-row"><div class="metric"><label>维持保证金</label><b>98.34 USD</b></div><div class="metric"><label>保证金率</label><b>12.80%</b></div></div>
+        </div></div>`;
+    }
+    function assetsScreen(){ return `<div class="app-screen">${statusBar()}${accountNav()}${state.account==='funding'?fundingHome():contractHome()}${bottomNav()}</div>`; }
+    function subpage(title,routeName){ return `<div class="app-screen subpage">${statusBar()}<header class="subpage-header"><button class="back-button" data-back type="button" aria-label="返回">‹</button><h1>${title}</h1></header><div class="placeholder-page">${routeName==='deposit'?'选择 USDT 或 USDC，并选择 Ethereum、Arbitrum、Polygon、Base、Optimism、Solana 或 TRON 网络。':'页面内容将在后续步骤完成。'}</div></div>`; }
+    function render(){
+      root.dataset.route=state.route;
+      root.innerHTML=state.route==='assets'?assetsScreen():subpage(state.route==='deposit'?'充值':state.route==='value-history'?'账户价值':'资产操作',state.route);
+    }
+    function navigate(route,params={}){ state.routeStack.push(state.route); state.route=route; state.routeParams=params; render(); }
+    function goBack(){ state.route=state.routeStack.pop()||'assets'; render(); }
+    function setAccount(account){ state.account=account; render(); announce(account==='funding'?'已切换到资金账户':'已切换到合约账户'); }
+    function resetPrototype(){ state=initialState(); document.querySelector('#session-mode').value='wallet'; render(); announce('原型已重置'); }
+    root.addEventListener('click',event=>{
+      const target=event.target.closest('button'); if(!target) return;
+      if(target.dataset.accountTab) return setAccount(target.dataset.accountTab);
+      if(target.matches('[data-back]')) return goBack();
+      if(target.id==='open-deposit') return navigate('deposit');
+      if(target.id==='open-withdraw') return navigate('withdraw');
+      if(target.id==='open-transfer'||target.id==='open-transfer-out') return navigate('transfer');
+      if(target.id==='open-records'||target.id==='open-records-inline') return navigate('records');
+      if(target.id==='open-value-history') return navigate('value-history');
+      if(target.matches('.visibility-toggle')){ state.valuesHidden=!state.valuesHidden; render(); announce(state.valuesHidden?'资产金额已隐藏':'资产金额已显示'); }
+    });
     document.querySelector('#reset-prototype').addEventListener('click',resetPrototype);
-    document.querySelector('#session-mode').addEventListener('change',event=>{ const value=event.target.value; state.session={ type:value.startsWith('email')?'email':'wallet', mfaBound:value==='email-bound' }; render(); });
+    document.querySelector('#session-mode').addEventListener('change',event=>{ const value=event.target.value; state.session={ type:value.startsWith('email')?'email':'wallet', mfaBound:value==='email-bound' }; render(); announce('登录状态已切换'); });
     window.assetPrototype={ getState:()=>structuredClone(state), navigate, reset:resetPrototype };
     render();
   </script>
