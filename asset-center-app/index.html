@@ -318,6 +318,21 @@
     .input-shell { position:relative; margin-bottom:7px; }
     .text-input { width:100%; min-height:52px; padding:0 42px 0 13px; border:1px solid var(--line); border-radius:12px; background:#090c0a; color:var(--text); font-size:11px; }
     .input-action { position:absolute; right:7px; top:8px; width:36px; height:36px; border:0; border-radius:9px; background:#141a16; color:#879089; font-size:15px; }
+    .input-action svg { width:16px; }
+    .withdrawal-form { padding-top:12px; }
+    .withdraw-selectors { display:grid; grid-template-columns:1fr 1.15fr; gap:9px; }
+    .withdraw-selectors .selector-button { min-height:58px; padding:0 10px; }
+    .withdraw-selectors .token-icon { flex:none; width:30px; height:30px; margin-right:8px; }
+    .withdraw-selectors .network-mark { flex:none; margin-right:8px; }
+    .withdraw-selectors .selector-button>span:not(.token-icon):not(.network-mark) { min-width:0; }
+    .withdraw-selectors .selector-button b,.withdraw-selectors .selector-button small { display:block; margin-left:0; }
+    .withdraw-selectors .selector-button small { margin-top:2px; overflow:hidden; font-size:7px; text-overflow:ellipsis; white-space:nowrap; }
+    .address-risk { min-height:35px; margin:-1px 0 8px; padding:0 9px; display:flex; align-items:center; border:1px solid rgba(255,255,255,.07); border-radius:9px; background:#0b0e0c; color:#747e77; }
+    .address-risk>svg,.address-risk>span svg { width:13px; margin-right:7px; }
+    .address-risk b { font-size:7px; font-weight:560; }
+    .address-risk small { margin-left:auto; color:#5e6861; font-size:6px; }
+    .address-risk.is-verified { border-color:rgba(141,250,169,.16); color:var(--green); background:rgba(141,250,169,.035); }
+    .address-risk.is-blocked { border-color:rgba(255,122,122,.15); color:var(--error); background:rgba(255,122,122,.03); }
     .inline-actions { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:15px; }
     .inline-actions button { min-height:40px; border:1px solid var(--line); border-radius:10px; background:#101512; color:#9ba49e; font-size:9px; }
     .validation { min-height:18px; margin:3px 2px 7px; color:var(--error); font-size:8px; line-height:1.45; }
@@ -325,6 +340,12 @@
     .amount-panel .amount-input { border:0; padding:0; background:transparent; }
     .amount-tools { display:flex; justify-content:space-between; align-items:center; margin-top:6px; color:#667069; font-size:8px; }
     .amount-tools button { border:0; background:transparent; color:var(--green); font-size:9px; }
+    .withdraw-operations { display:grid; grid-template-columns:repeat(3,1fr); margin:10px 0 4px; padding:10px 0; border-top:1px solid rgba(255,255,255,.07); border-bottom:1px solid rgba(255,255,255,.07); }
+    .withdraw-operations div { padding:0 9px; border-right:1px solid rgba(255,255,255,.07); }
+    .withdraw-operations div:first-child { padding-left:0; }
+    .withdraw-operations div:last-child { border-right:0; }
+    .withdraw-operations small { display:block; color:#5f6962; font-size:6px; }
+    .withdraw-operations b { display:block; margin-top:4px; color:#bfc8c1; font-size:7px; font-weight:550; }
     .calculation { margin:12px 0 15px; border-top:1px solid var(--line); }
     .calculation-row { display:flex; padding:9px 0; border-bottom:1px solid rgba(255,255,255,.06); color:#68716b; font-size:9px; }
     .calculation-row b { margin-left:auto; color:#c5cdc7; font-weight:550; }
@@ -333,6 +354,13 @@
     .review-amount { text-align:center; padding:7px 0 17px; border-bottom:1px solid var(--line); }
     .review-amount small { display:block; color:#68716b; font-size:9px; }
     .review-amount strong { display:block; margin-top:5px; font-size:25px; }
+    .review-amount .token-icon { width:32px; height:32px; margin:0 auto 7px; }
+    .review-amount span { display:block; margin-top:4px; color:#5f6962; font-size:7px; }
+    .review-network { min-height:52px; padding:10px 0; display:flex; align-items:center; border-bottom:1px solid rgba(255,255,255,.07); }
+    .review-network .network-mark { margin-right:9px; }
+    .review-network small { display:block; color:#5f6962; font-size:6px; }
+    .review-network b { display:block; margin-top:3px; font-size:9px; }
+    .review-network em { margin-left:auto; color:var(--green); font-size:7px; font-style:normal; }
     .risk-check { display:flex; gap:9px; margin:13px 0; color:#7a837d; font-size:8px; line-height:1.55; }
     .risk-check input { margin-top:2px; accent-color:var(--green); }
     .auth-page { padding:26px 20px; }
@@ -345,16 +373,34 @@
     .confirm-check input { accent-color:var(--green); }
     .otp-input { width:100%; height:54px; margin-bottom:13px; border:1px solid var(--line); border-radius:12px; background:#090c0a; color:var(--text); text-align:center; font-size:20px; letter-spacing:.35em; }
     .address-list { border-top:1px solid var(--line); }
+    .address-book-summary,.security-intro { min-height:58px; margin-bottom:13px; padding:11px; display:flex; align-items:center; border:1px solid rgba(141,250,169,.12); border-radius:12px; background:linear-gradient(145deg,rgba(141,250,169,.04),transparent),#0b0f0c; }
+    .address-book-summary>svg,.security-intro>svg { width:21px; margin-right:10px; color:var(--green); }
+    .address-book-summary b,.security-intro b { display:block; font-size:9px; }
+    .address-book-summary small,.security-intro small { display:block; margin-top:3px; color:#69736c; font-size:7px; }
+    .address-book-summary strong { margin-left:auto; color:var(--green); font-size:18px; }
     .address-item { width:100%; min-height:64px; display:flex; align-items:center; border:0; border-bottom:1px solid rgba(255,255,255,.07); background:transparent; color:inherit; text-align:left; }
-    .address-item .wallet-mark { width:34px; height:34px; margin-right:10px; font-size:11px; }
+    .address-item .network-mark { flex:none; width:34px; height:34px; margin-right:10px; }
+    .address-item-main { min-width:0; }
     .address-item b { display:block; font-size:11px; }
+    .address-item b em { margin-left:5px; padding:2px 5px; border-radius:999px; background:rgba(141,250,169,.07); color:var(--green); font-size:6px; font-style:normal; font-weight:550; }
     .address-item small { display:block; margin-top:3px; color:#68716b; font-size:8px; }
     .address-item>span:last-child { margin-left:auto; color:#68716b; font-size:9px; }
     .empty-state { padding:48px 10px; text-align:center; color:#69726c; font-size:10px; line-height:1.6; }
     .add-address-button { width:100%; height:44px; margin-top:13px; border:1px solid rgba(99,246,162,.24); border-radius:11px; background:rgba(99,246,162,.045); color:#9dd8b2; }
+    .address-network-selector .network-mark { margin-right:9px; }
+    .address-network-selector>span:not(.network-mark) { min-width:0; }
+    .address-network-selector b,.address-network-selector small { display:block; margin-left:0; }
+    .address-network-selector small { margin-top:3px; font-size:7px; }
+    .authorization-box { margin:14px 0; padding:12px; border:1px solid rgba(141,250,169,.12); border-radius:11px; background:rgba(141,250,169,.035); }
+    .authorization-box small { display:block; color:#68736b; font-size:7px; }
+    .authorization-box b { display:block; margin-top:4px; font-size:10px; }
+    .authorization-box span { display:block; margin-top:6px; color:#7f8982; font-size:7px; }
     .withdraw-status-card { padding:18px; margin-top:16px; border:1px solid var(--line); border-radius:15px; background:#0b0f0c; }
     .withdraw-status-card h2 { margin:0 0 6px; font-size:15px; }
     .withdraw-status-card p { margin:0; color:#7b847e; font-size:9px; line-height:1.55; }
+    .withdraw-status-head { display:flex; gap:9px; align-items:flex-start; }
+    .withdraw-status-head>span:first-child { flex:1; }
+    .withdrawal-audit { padding-top:2px; }
     .status-list { margin:15px 0; }
     .status-line { display:grid; grid-template-columns:20px 1fr auto; gap:9px; align-items:center; padding:9px 0; border-bottom:1px solid rgba(255,255,255,.06); }
     .status-line i { width:18px; height:18px; border:1px solid #313a34; border-radius:50%; display:grid; place-items:center; color:#68716b; font-style:normal; font-size:7px; }
@@ -370,13 +416,29 @@
     .route-balance { margin-left:auto; text-align:right; }
     .route-balance small { margin-bottom:3px; }
     .swap-route { position:absolute; z-index:2; right:18px; top:65px; width:34px; height:34px; border:4px solid var(--bg); border-radius:50%; background:var(--green); color:#06110a; font-size:15px; }
+    .swap-route svg { width:14px; }
     .percentage-row { display:grid; grid-template-columns:repeat(4,1fr); gap:7px; margin:9px 0 15px; }
     .percentage-row button { min-height:34px; border:1px solid var(--line); border-radius:9px; background:#101512; color:#78817b; font-size:9px; }
+    .transfer-review-card { padding-bottom:13px; }
+    .balance-comparison { margin-top:12px; }
+    .balance-comparison h2 { margin:12px 0 6px; color:#68726b; font-size:7px; font-weight:550; }
+    .balance-comparison>div { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+    .balance-comparison>div span { padding:9px; border:1px solid rgba(255,255,255,.07); border-radius:9px; color:#68716b; font-size:7px; }
+    .balance-comparison>div b { display:block; margin-top:4px; color:#c5cdc7; font-size:9px; font-weight:560; }
+    .balance-comparison p { margin:0; padding:10px; display:flex; border:1px solid rgba(141,250,169,.12); border-radius:9px; background:rgba(141,250,169,.035); }
+    .balance-comparison p>svg { flex:none; width:15px; margin-right:8px; color:var(--green); }
+    .balance-comparison p b { display:block; color:#b6c0b9; font-size:8px; }
+    .balance-comparison p small { display:block; margin-top:3px; color:#657068; font-size:7px; }
     .receipt { text-align:center; padding:22px 15px; }
     .receipt-mark { width:52px; height:52px; margin:0 auto 15px; border-radius:50%; display:grid; place-items:center; background:rgba(99,246,162,.09); border:1px solid rgba(99,246,162,.22); color:var(--green); font-size:24px; }
     .receipt.error .receipt-mark { background:rgba(255,116,125,.08); border-color:rgba(255,116,125,.22); color:var(--error); }
     .receipt h2 { margin:0; font-size:19px; }
     .receipt p { margin:8px 0 19px; color:#7b847e; font-size:10px; line-height:1.55; }
+    .receipt-details { margin:0 0 16px; padding:4px 13px; border:1px solid var(--line); border-radius:13px; background:#0a0d0b; text-align:left; }
+    .receipt-details div { min-height:40px; display:flex; align-items:center; border-bottom:1px solid rgba(255,255,255,.06); }
+    .receipt-details div:last-child { border-bottom:0; }
+    .receipt-details small { color:#69736c; font-size:7px; }
+    .receipt-details b { margin-left:auto; color:#bec7c0; font-size:8px; font-weight:550; }
     .filter-row { min-height:49px; padding:8px 17px; display:flex; align-items:center; gap:7px; overflow-x:auto; border-bottom:1px solid var(--line); scrollbar-width:none; }
     .filter-chip { flex:none; min-height:31px; padding:0 12px; border:0; border-radius:999px; background:#101512; color:#6f7872; font-size:9px; }
     .filter-chip[aria-pressed="true"] { background:#edf2ef; color:#070907; font-weight:650; }
@@ -768,14 +830,25 @@
       if(amount>available) return '可用余额不足。提现金额已包含网络费。';
       return '';
     }
+    function withdrawalQuote(){
+      const d=state.withdrawalDraft, gross=Number(d.amount)||0, fee=WITHDRAW_FEES[d.network];
+      return { gross,fee,net:roundMoney(Math.max(0,gross-fee)),dailyRemaining:roundMoney(Math.max(0,25000-gross)) };
+    }
+    function addressRisk(address,network,checkDuplicate=false){
+      if(!address) return {level:'neutral',label:'等待输入地址',type:'尚未识别'};
+      if(checkDuplicate&&state.addressBook.some(item=>item.network===network&&item.address.toLowerCase()===address.toLowerCase())) return {level:'blocked',label:'地址簿中已存在此地址',type:`${NETWORKS[network].family.toUpperCase()} 地址`};
+      if(!validAddress(address,network)) return {level:'blocked',label:'地址格式与所选网络不匹配',type:'无法识别'};
+      const type=NETWORKS[network].family==='evm'?'EVM 地址':NETWORKS[network].family==='solana'?'Solana 地址':'TRON 地址';
+      return {level:'verified',label:`地址格式有效 · ${type}`,type};
+    }
     function withdrawalValid(){ const d=state.withdrawalDraft; return validAddress(d.address,d.network)&&Number(d.amount)>=10&&Number(d.amount)<=state.funding[d.token]; }
     function withdrawalScreen(){
-      const d=state.withdrawalDraft, fee=WITHDRAW_FEES[d.network], amount=Number(d.amount)||0, received=Math.max(0,amount-fee), error=withdrawalError();
-      return `<div class="app-screen subpage">${statusBar()}<header class="subpage-header"><button class="back-button" data-back type="button" aria-label="返回">‹</button><h1>提现</h1></header><div class="form-page"><label class="field-label">提现资产</label><button class="selector-button" id="withdraw-token" type="button"><b>${d.token}</b><small>可用 ${format(state.funding[d.token])}</small><i>⌄</i></button><label class="field-label">提现网络</label><button class="selector-button" id="withdraw-network" type="button"><b>${d.network}</b><small>网络费 ${format(fee)} ${d.token}</small><i>⌄</i></button><label class="field-label" for="withdraw-address">提现地址</label><div class="input-shell"><input class="text-input" id="withdraw-address" value="${d.address}" placeholder="输入或粘贴 ${d.network} 地址"><button class="input-action" id="scan-address" type="button" aria-label="扫描地址">⌗</button></div><div class="inline-actions"><button id="open-address-book" type="button">从地址簿选择</button><button id="paste-demo-address" type="button">填入示例地址</button></div><div class="validation" id="withdraw-error" aria-live="polite">${error}</div><label class="field-label" for="withdraw-amount">提现金额 <span>最低 10 ${d.token}</span></label><div class="amount-panel"><input class="amount-input" id="withdraw-amount" inputmode="decimal" value="${d.amount}" placeholder="0.00"><div class="amount-tools"><span>可用 ${format(state.funding[d.token])} ${d.token}</span><button id="withdraw-max" type="button">最大</button></div></div><div class="calculation"><div class="calculation-row"><span>网络费</span><b>${format(fee)} ${d.token}</b></div><div class="calculation-row received"><span>预计到账</span><b data-withdraw-received>${format(received)} ${d.token}</b></div></div><button class="primary-button" id="review-withdrawal" type="button" ${withdrawalValid()?'':'disabled'}>核对提现信息</button><p class="wallet-note">请确认地址与网络完全一致。链上提现提交后通常无法撤销。</p></div></div>`;
+      const d=state.withdrawalDraft, quote=withdrawalQuote(), risk=addressRisk(d.address,d.network), error=withdrawalError();
+      return `<div class="app-screen subpage">${statusBar()}<header class="subpage-header"><button class="back-button" data-back type="button" aria-label="返回">‹</button><h1>提现</h1></header><div class="form-page withdrawal-form"><div class="withdraw-selectors"><div><label class="field-label">提现资产</label><button class="selector-button" id="withdraw-token" type="button">${tokenMark(d.token)}<span><b>${d.token}</b><small>可用 ${format(state.funding[d.token])}</small></span><i>⌄</i></button></div><div><label class="field-label">提现网络</label><button class="selector-button" id="withdraw-network" type="button">${networkMark(d.network)}<span><b>${d.network}</b><small>网络费 ${format(quote.fee)}</small></span><i>⌄</i></button></div></div><label class="field-label" for="withdraw-address">提现地址 <span>仅支持 ${d.network}</span></label><div class="input-shell"><input class="text-input" id="withdraw-address" value="${d.address}" placeholder="输入或粘贴 ${d.network} 地址"><button class="input-action" id="scan-address" type="button" aria-label="扫描地址">${icon('scan')}</button></div><div class="address-risk is-${risk.level}" data-address-risk><span>${icon(risk.level==='verified'?'shield':'info')}</span><b>${risk.label}</b><small data-address-type>${risk.type}</small></div><div class="inline-actions"><button id="open-address-book" type="button">从地址簿选择</button><button id="paste-demo-address" type="button">填入示例地址</button></div><div class="validation" id="withdraw-error" aria-live="polite">${error}</div><label class="field-label" for="withdraw-amount">提现金额 <span>最低 10 ${d.token}</span></label><div class="amount-panel"><input class="amount-input" id="withdraw-amount" inputmode="decimal" value="${d.amount}" placeholder="0.00"><div class="amount-tools"><span>可用 ${format(state.funding[d.token])} ${d.token}</span><button id="withdraw-max" type="button">最大</button></div></div><div class="withdraw-operations"><div><small>地址类型</small><b data-operation-address-type>${risk.type}</b></div><div><small>网络拥堵</small><b>${NETWORKS[d.network].health} · 低</b></div><div><small>预计处理</small><b>${NETWORKS[d.network].eta}</b></div></div><div class="calculation quote-calculation"><div class="calculation-row"><span>本次扣除</span><b data-withdraw-gross>${format(quote.gross)} ${d.token}</b></div><div class="calculation-row"><span>网络费</span><b>${format(quote.fee)} ${d.token}</b></div><div class="calculation-row received"><span>预计到账</span><b data-withdraw-net data-withdraw-received>${format(quote.net)} ${d.token}</b></div><div class="calculation-row"><span>今日剩余额度</span><b data-withdraw-limit>${format(quote.dailyRemaining)} ${d.token}</b></div></div><button class="primary-button" id="review-withdrawal" type="button" ${withdrawalValid()?'':'disabled'}>核对提现信息</button><p class="wallet-note">提现会先经过安全审核；链上交易发送后通常无法撤销。</p></div></div>`;
     }
     function withdrawalReviewScreen(){
-      const d=state.withdrawalDraft, fee=WITHDRAW_FEES[d.network], received=Number(d.amount)-fee;
-      return `<div class="app-screen subpage">${statusBar()}<header class="subpage-header"><button class="back-button" data-back type="button" aria-label="返回">‹</button><h1>确认提现</h1></header><div class="form-page"><div class="review-card"><div class="review-amount"><small>提现金额</small><strong>${format(d.amount)} ${d.token}</strong></div><div class="detail-list"><div class="detail-line"><span>提现网络</span><span>${d.network}</span></div><div class="detail-line"><span>提现地址</span><span>${d.address.slice(0,8)}...${d.address.slice(-6)}</span></div><div class="detail-line"><span>网络费</span><span>${format(fee)} ${d.token}</span></div><div class="detail-line"><span>预计到账</span><span class="positive">${format(received)} ${d.token}</span></div></div></div><label class="risk-check"><input type="checkbox" id="withdraw-risk" ${d.acknowledged?'checked':''}><span>我已确认币种、网络与地址正确，并了解链上交易提交后通常无法撤销。</span></label><button class="primary-button" id="submit-withdrawal" type="button" ${d.acknowledged?'':'disabled'}>提交提现</button><p class="wallet-note">${state.session.type==='wallet'?'钱包登录用户无需 MFA；提交后进入平台审核。':'邮箱登录用户提交时需要 MFA 验证。'}</p></div></div>`;
+      const d=state.withdrawalDraft, quote=withdrawalQuote(), risk=addressRisk(d.address,d.network);
+      return `<div class="app-screen subpage">${statusBar()}<header class="subpage-header"><button class="back-button" data-back type="button" aria-label="返回">‹</button><h1>确认提现</h1></header><div class="form-page"><div class="review-card withdraw-review-card"><div class="review-amount">${tokenMark(d.token)}<small>预计到账</small><strong>${format(quote.net)} ${d.token}</strong><span>本次扣除 ${format(quote.gross)} ${d.token}</span></div><div class="review-network"><span>${networkMark(d.network)}</span><span><small>提现网络</small><b>${d.network}</b></span><em>${NETWORKS[d.network].health}</em></div><div class="detail-list"><div class="detail-line"><span>提现地址</span><span>${d.address.slice(0,8)}...${d.address.slice(-6)}</span></div><div class="detail-line"><span>地址校验</span><span class="positive">${risk.label}</span></div><div class="detail-line"><span>网络费</span><span>${format(quote.fee)} ${d.token}</span></div><div class="detail-line"><span>预计处理</span><span>${NETWORKS[d.network].eta}</span></div><div class="detail-line"><span>今日剩余额度</span><span>${format(quote.dailyRemaining)} ${d.token}</span></div></div></div><label class="risk-check"><input type="checkbox" id="withdraw-risk" ${d.acknowledged?'checked':''}><span>我已逐项确认资产、网络和目标地址正确，并了解链上交易发送后无法撤销。</span></label><button class="primary-button" id="submit-withdrawal" type="button" ${d.acknowledged?'':'disabled'}>提交提现</button><p class="wallet-note">${state.session.type==='wallet'?'钱包登录会话已验证，本次无需 MFA；提交后进入安全审核。':'邮箱登录用户提交前需要完成 MFA 验证。'}</p></div></div>`;
     }
     function mfaSetupScreen(){
       return `<div class="app-screen subpage">${statusBar()}<header class="subpage-header"><button class="back-button" data-back type="button" aria-label="返回">‹</button><h1>绑定 MFA</h1></header><div class="auth-page"><div class="auth-symbol">⌁</div><h2>保护你的提现操作</h2><p>邮箱登录用户需要先绑定 MFA。完成后会回到刚才的提现信息，不会清空已填写内容。</p><div class="secret-box"><code>FORX-DEMO-MFA-2026</code></div><label class="confirm-check"><input id="mfa-secret-confirmed" type="checkbox"><span>我已将密钥保存到身份验证器</span></label><input class="otp-input" id="mfa-code" inputmode="numeric" maxlength="6" placeholder="000000" aria-label="MFA 验证码"><button class="primary-button" id="confirm-mfa-setup" type="button">完成绑定</button><p class="validation" id="mfa-setup-error"></p></div></div>`;
@@ -784,26 +857,28 @@
       return `<div class="app-screen subpage">${statusBar()}<header class="subpage-header"><button class="back-button" data-back type="button" aria-label="返回">‹</button><h1>MFA 验证</h1></header><div class="auth-page"><div class="auth-symbol">✓</div><h2>确认本次提现</h2><p>输入身份验证器中的 6 位动态验证码。原型示例验证码为 123456。</p><input class="otp-input" id="mfa-verify-code" inputmode="numeric" maxlength="6" placeholder="000000" aria-label="MFA 验证码"><button class="primary-button" id="confirm-mfa-verify" type="button">验证并提交</button><p class="validation" id="mfa-verify-error"></p></div></div>`;
     }
     function addressBookScreen(){
-      return `<div class="app-screen subpage">${statusBar()}<header class="subpage-header"><button class="back-button" data-back type="button" aria-label="返回">‹</button><h1>提现地址簿</h1></header><div class="form-page">${state.addressBook.length?`<div class="address-list">${state.addressBook.map((item,index)=>`<button class="address-item" data-address-index="${index}" type="button"><span class="wallet-mark">${escapeHtml(item.network[0])}</span><span><b>${escapeHtml(item.label)}</b><small>${escapeHtml(item.network)} · ${escapeHtml(item.address.slice(0,8))}...${escapeHtml(item.address.slice(-5))}</small></span><span>选择　›</span></button>`).join('')}</div>`:'<div class="empty-state">还没有保存的提现地址。<br>新增地址后，需要完成安全验证才会生效。</div>'}<button class="add-address-button" id="add-address" type="button">＋ 新增提现地址</button></div></div>`;
+      return `<div class="app-screen subpage">${statusBar()}<header class="subpage-header"><button class="back-button" data-back type="button" aria-label="返回">‹</button><h1>提现地址簿</h1></header><div class="form-page"><div class="address-book-summary">${icon('shield')}<span><b>已验证地址</b><small>保存地址必须通过钱包签名或 MFA</small></span><strong>${state.addressBook.length}</strong></div>${state.addressBook.length?`<div class="address-list">${state.addressBook.map((item,index)=>`<button class="address-item" data-address-index="${index}" type="button">${networkMark(item.network)}<span class="address-item-main"><b>${escapeHtml(item.label)} <em>已验证</em></b><small>${escapeHtml(item.network)} · ${escapeHtml(item.address.slice(0,8))}...${escapeHtml(item.address.slice(-5))}</small><small>${escapeHtml(item.verificationMethod||'钱包签名')} · 最后使用 ${escapeHtml(item.lastUsed||'尚未使用')}</small></span><span class="row-chevron">${icon('chevron')}</span></button>`).join('')}</div>`:'<div class="empty-state">还没有保存的提现地址。<br>新增地址后，需要完成安全验证才会生效。</div>'}<button class="add-address-button" id="add-address" type="button">＋ 新增提现地址</button></div></div>`;
     }
     function addAddressScreen(){
       const pending=state.pendingAddress||{label:'',network:state.withdrawalDraft.network,address:''}; state.pendingAddress=pending;
-      return `<div class="app-screen subpage">${statusBar()}<header class="subpage-header"><button class="back-button" data-back type="button" aria-label="返回">‹</button><h1>新增提现地址</h1></header><div class="form-page"><label class="field-label" for="address-label">地址名称</label><input class="text-input" id="address-label" value="${escapeHtml(pending.label)}" placeholder="例如：常用钱包" style="padding-right:13px;margin-bottom:15px"><label class="field-label">网络</label><button class="selector-button" id="address-network" type="button"><b>${escapeHtml(pending.network)}</b><i>⌄</i></button><label class="field-label" for="address-value">地址</label><input class="text-input" id="address-value" value="${escapeHtml(pending.address)}" placeholder="输入 ${escapeHtml(pending.network)} 地址" style="padding-right:13px"><p class="validation" id="address-error">${pending.address&&!validAddress(pending.address,pending.network)?'地址格式与所选网络不匹配。':''}</p><button class="primary-button" id="save-address" type="button" ${pending.label&&validAddress(pending.address,pending.network)?'':'disabled'}>验证并保存</button><p class="wallet-note">${state.session.type==='wallet'?'将调用登录钱包进行消息签名。签名不授权资金转移。':'保存前需要完成 MFA 验证。'}</p></div></div>`;
+      const risk=addressRisk(pending.address,pending.network,true), canSave=pending.label&&risk.level==='verified';
+      return `<div class="app-screen subpage">${statusBar()}<header class="subpage-header"><button class="back-button" data-back type="button" aria-label="返回">‹</button><h1>新增提现地址</h1></header><div class="form-page"><div class="security-intro">${icon('shield')}<span><b>保存可信地址</b><small>验证只确认本次保存，不会产生提现或转账。</small></span></div><label class="field-label" for="address-label">地址名称</label><input class="text-input" id="address-label" value="${escapeHtml(pending.label)}" placeholder="例如：主钱包" style="padding-right:13px;margin-bottom:15px"><label class="field-label">网络</label><button class="selector-button address-network-selector" id="address-network" type="button">${networkMark(pending.network)}<span><b>${escapeHtml(pending.network)}</b><small>${NETWORKS[pending.network].family.toUpperCase()} 地址</small></span><i>⌄</i></button><label class="field-label" for="address-value">地址</label><input class="text-input" id="address-value" value="${escapeHtml(pending.address)}" placeholder="输入 ${escapeHtml(pending.network)} 地址" style="padding-right:13px"><div class="address-risk is-${risk.level}" data-address-risk>${icon(risk.level==='verified'?'shield':'info')}<b>${risk.label}</b><small>${risk.type}</small></div><p class="validation" id="address-error">${risk.level==='blocked'?risk.label:''}</p><button class="primary-button" id="save-address" type="button" ${canSave?'':'disabled'}>验证并保存</button><p class="wallet-note">${state.session.type==='wallet'?'下一步将调用登录钱包签名，只授权保存这条地址。':'下一步需要 MFA 验证，仅用于保存这条地址。'}</p></div></div>`;
     }
     function savePendingAddress(){
-      const item={...state.pendingAddress};
+      const item={...state.pendingAddress,verificationMethod:state.session.type==='wallet'?'钱包签名':'MFA 验证',verifiedAt:'2026-07-16 10:18',lastUsed:'尚未使用'};
       if(state.addressBook.some(saved=>saved.network===item.network&&saved.address.toLowerCase()===item.address.toLowerCase())){ announce('该地址已存在'); return false; }
       state.addressBook.push(item); state.pendingAddress=null; state.routeStack.pop(); state.route='address-book'; render(); announce('地址已保存'); return true;
     }
     function addressSignatureSheet(){
-      openSheet(`<div class="sheet-header"><div><h2>签名保存地址</h2><p>签名仅用于保存地址，不会提交提现、授权转账或改变登录状态。</p></div><button class="sheet-close" data-sheet-close aria-label="关闭">×</button></div><div class="detail-list"><div class="detail-line"><span>地址名称</span><span>${escapeHtml(state.pendingAddress.label)}</span></div><div class="detail-line"><span>网络</span><span>${escapeHtml(state.pendingAddress.network)}</span></div><div class="detail-line"><span>地址</span><span>${escapeHtml(state.pendingAddress.address.slice(0,8))}...${escapeHtml(state.pendingAddress.address.slice(-5))}</span></div></div><button class="sheet-action" id="confirm-signature">模拟钱包签名</button>`);
+      openSheet(`<div class="sheet-header"><div><h2>签名保存地址</h2><p>签名仅用于保存地址。本次签名仅授权 ForX 保存此地址到提现地址簿；不会发起提现、转账或任何链上授权，也不会改变登录状态。</p></div><button class="sheet-close" data-sheet-close aria-label="关闭">×</button></div><div class="authorization-box"><small>授权范围</small><b>保存 1 条提现地址</b><span>无资金权限 · 无代币授权 · 无登录权限变更</span></div><div class="detail-list"><div class="detail-line"><span>地址名称</span><span>${escapeHtml(state.pendingAddress.label)}</span></div><div class="detail-line"><span>网络</span><span>${escapeHtml(state.pendingAddress.network)}</span></div><div class="detail-line"><span>地址</span><span>${escapeHtml(state.pendingAddress.address.slice(0,8))}...${escapeHtml(state.pendingAddress.address.slice(-5))}</span></div></div><button class="sheet-action" id="confirm-signature">打开钱包签名</button>`);
     }
     function addressMfaSheet(){
-      openSheet(`<div class="sheet-header"><div><h2>MFA 验证</h2><p>验证通过后仅保存该提现地址。</p></div><button class="sheet-close" data-sheet-close aria-label="关闭">×</button></div><input class="otp-input" id="address-mfa-code" inputmode="numeric" maxlength="6" placeholder="000000" aria-label="MFA 验证码"><button class="sheet-action" id="confirm-address-mfa">验证并保存</button><p class="validation" id="address-mfa-error"></p>`);
+      openSheet(`<div class="sheet-header"><div><h2>MFA 验证</h2><p>本次验证仅授权 ForX 保存此地址到提现地址簿；不会发起提现、转账或改变登录状态。</p></div><button class="sheet-close" data-sheet-close aria-label="关闭">×</button></div><div class="authorization-box"><small>授权范围</small><b>保存 1 条提现地址</b><span>验证码只用于本次操作，5 分钟后失效</span></div><input class="otp-input" id="address-mfa-code" inputmode="numeric" maxlength="6" placeholder="000000" aria-label="MFA 验证码"><button class="sheet-action" id="confirm-address-mfa">验证并保存</button><p class="validation" id="address-mfa-error"></p>`);
     }
     function startWithdrawal(){
       const d=state.withdrawalDraft;
-      state.withdrawal={ id:'wd-'+Date.now(),token:d.token,network:d.network,address:d.address,amount:Number(d.amount),fee:WITHDRAW_FEES[d.network],stage:'reviewing',debited:false,scenario:'normal' };
+      const id='wd-'+Date.now();
+      state.withdrawal={ id,referenceId:`FXWD-${id.slice(-8)}`,token:d.token,network:d.network,address:d.address,amount:Number(d.amount),fee:WITHDRAW_FEES[d.network],stage:'reviewing',submittedAt:'2026-07-16 10:16:08',broadcastAt:'2026-07-16 10:17:24',completedAt:'2026-07-16 10:21:40',hash:'0x73B1...F9C0',debited:false,scenario:'normal' };
       navigate('withdraw-status');
     }
     const withdrawalStages=['reviewing','broadcasting','confirming','complete'];
@@ -815,7 +890,7 @@
     function withdrawalStatusScreen(){
       const wd=state.withdrawal, index=Math.max(0,withdrawalStages.indexOf(wd.stage));
       const copy={reviewing:['提现申请已提交','平台正在执行提现安全审核。'],broadcasting:['正在发送链上交易','审核已通过，系统正在构建并发送交易。'],confirming:['等待网络确认','交易已发送到链上，正在等待网络确认。'],complete:['提现已完成','交易已获得网络确认，资金已发送到目标地址。']}[wd.stage];
-      return `<div class="app-screen subpage">${statusBar()}<header class="subpage-header"><button class="back-button" data-back type="button" aria-label="返回">‹</button><h1>提现详情</h1></header><div class="progress-page"><div class="deposit-amount"><span class="token-icon">₮</span><strong>${format(wd.amount)} ${wd.token}</strong><small>${wd.network} · 手续费 ${format(wd.fee)} ${wd.token}</small></div><section class="withdraw-status-card"><h2>${copy[0]}</h2><p>${copy[1]}</p><div class="status-list">${withdrawalStages.map((stage,i)=>`<div class="status-line ${i<index?'done':i===index?'current':''}"><i>${i<index?'✓':i+1}</i><b>${{reviewing:'平台审核',broadcasting:'发送交易',confirming:'网络确认',complete:'完成'}[stage]}</b><span>${i<index?'已完成':i===index?'进行中':'等待中'}</span></div>`).join('')}</div></section><div class="detail-list"><div class="detail-line"><span>提现地址</span><span>${wd.address.slice(0,8)}...${wd.address.slice(-6)}</span></div><div class="detail-line"><span>预计到账</span><span>${format(wd.amount-wd.fee)} ${wd.token}</span></div></div><select id="withdrawal-scenario" class="scenario-select" aria-label="提现异常场景"><option value="normal">正常流程</option><option value="rejected" ${wd.scenario==='rejected'?'selected':''}>安全审核拒绝</option><option value="failed" ${wd.scenario==='failed'?'selected':''}>链上发送失败</option></select><p class="exception-copy" data-withdrawal-exception>${withdrawalExceptionCopy()}</p><button class="primary-button" data-advance-withdrawal type="button" ${wd.scenario!=='normal'?'disabled':''}>${wd.stage==='complete'?'返回资产中心':'推进演示状态'}</button></div></div>`;
+      return `<div class="app-screen subpage">${statusBar()}<header class="subpage-header"><button class="back-button" data-back type="button" aria-label="返回">‹</button><h1>提现详情</h1><span class="header-network">${networkMark(wd.network)}${wd.network}</span></header><div class="progress-page"><div class="deposit-amount">${tokenMark(wd.token)}<strong>${format(wd.amount)} ${wd.token}</strong><small>预计到账 ${format(wd.amount-wd.fee)} · 网络费 ${format(wd.fee)} ${wd.token}</small></div><section class="withdraw-status-card"><div class="withdraw-status-head"><span><h2>${copy[0]}</h2><p>${copy[1]}</p></span>${statusBadge(wd.stage==='complete'?'complete':wd.scenario==='normal'?'reviewing':'failed')}</div><div class="status-list">${withdrawalStages.map((stage,i)=>`<div class="status-line ${i<index?'done':i===index?'current':''}"><i>${i<index?'✓':i+1}</i><b>${{reviewing:'平台审核',broadcasting:'发送交易',confirming:'网络确认',complete:'完成'}[stage]}</b><span>${i<index?'已完成':i===index?'进行中':'等待中'}</span></div>`).join('')}</div></section><section class="audit-card withdrawal-audit"><div class="mini-section-title"><h2>处理信息</h2><span>${wd.referenceId}</span></div><div class="detail-list"><div class="detail-line"><span>提现地址</span><span>${wd.address.slice(0,8)}...${wd.address.slice(-6)}</span></div><div class="detail-line"><span>提现网络</span><span>${wd.network}</span></div><div class="detail-line"><span>交易哈希</span><span>${index<2?'等待生成':wd.hash}</span></div><div class="detail-line"><span>提交时间</span><span>${wd.submittedAt}</span></div><div class="detail-line"><span>预计到账</span><span class="positive">${format(wd.amount-wd.fee)} ${wd.token}</span></div></div></section><select id="withdrawal-scenario" class="scenario-select" aria-label="提现异常场景"><option value="normal">正常流程</option><option value="rejected" ${wd.scenario==='rejected'?'selected':''}>安全审核拒绝</option><option value="failed" ${wd.scenario==='failed'?'selected':''}>链上发送失败</option></select><p class="exception-copy" data-withdrawal-exception>${withdrawalExceptionCopy()}</p><button class="primary-button" data-advance-withdrawal type="button" ${wd.scenario!=='normal'?'disabled':''}>${wd.stage==='complete'?'返回资产中心':'推进演示状态'}</button></div></div>`;
     }
     function debitWithdrawalOnce(){
       const wd=state.withdrawal; if(wd.debited) return;
@@ -846,22 +921,25 @@
     function transferScreen(){
       const d=state.transferDraft;
       const available=transferLimit(d.source,d.token);
-      return `<div class="app-screen subpage">${statusBar()}<header class="subpage-header"><button class="back-button" data-back type="button" aria-label="返回">‹</button><h1>账户划转</h1></header><div class="form-page"><div class="transfer-route"><div class="route-node" data-transfer-source><i>出</i><span><small>从</small><b>${accountName(d.source)}</b></span><span class="route-balance"><small>${d.source==='contract'?'可划转':'可用余额'}</small><b>${format(available)} ${d.token}</b></span></div><button class="swap-route" id="swap-transfer-route" type="button" aria-label="交换划转方向">⇅</button><div class="route-node"><i>入</i><span><small>到</small><b>${accountName(d.destination)}</b></span><span class="route-balance"><small>当前余额</small><b>${format(state[d.destination][d.token])} ${d.token}</b></span></div></div><label class="field-label">划转币种</label><button class="selector-button" id="transfer-token" type="button"><b>${d.token}</b><small>内部划转 · 0 手续费</small><i>⌄</i></button><label class="field-label" for="transfer-amount">划转金额 <span>最低 10 ${d.token}</span></label><div class="amount-panel"><input class="amount-input" id="transfer-amount" inputmode="decimal" value="${d.amount}" placeholder="0.00"><div class="amount-tools"><span>可划转 ${format(available)} ${d.token}</span><button id="transfer-max" type="button">最大</button></div></div>${d.source==='contract'?'<div class="notice-box" style="margin-top:10px">可划转金额已预留当前占用保证金，划出后风险指标会同步更新。</div>':''}<div class="percentage-row"><button data-transfer-percentage=".25" type="button">25%</button><button data-transfer-percentage=".5" type="button">50%</button><button data-transfer-percentage=".75" type="button">75%</button><button data-transfer-percentage="1" type="button">全部</button></div><p class="validation" id="transfer-error">${transferError()}</p><button class="primary-button" id="review-transfer" type="button" ${transferValid()?'':'disabled'}>核对划转信息</button></div></div>`;
+      return `<div class="app-screen subpage">${statusBar()}<header class="subpage-header"><button class="back-button" data-back type="button" aria-label="返回">‹</button><h1>账户划转</h1></header><div class="form-page"><div class="transfer-route"><div class="route-node" data-transfer-source><i>出</i><span><small>从</small><b>${accountName(d.source)}</b></span><span class="route-balance"><small>${d.source==='contract'?'可划转':'可用余额'}</small><b>${format(available)} ${d.token}</b></span></div><button class="swap-route" id="swap-transfer-route" type="button" aria-label="交换划转方向">${icon('transfer')}</button><div class="route-node"><i>入</i><span><small>到</small><b>${accountName(d.destination)}</b></span><span class="route-balance"><small>当前余额</small><b>${format(state[d.destination][d.token])} ${d.token}</b></span></div></div><label class="field-label">划转币种</label><button class="selector-button" id="transfer-token" type="button"><b>${d.token}</b><small>内部划转 · 0 手续费</small><i>⌄</i></button><label class="field-label" for="transfer-amount">划转金额 <span>最低 10 ${d.token}</span></label><div class="amount-panel"><input class="amount-input" id="transfer-amount" inputmode="decimal" value="${d.amount}" placeholder="0.00"><div class="amount-tools"><span>可划转 ${format(available)} ${d.token}</span><button id="transfer-max" type="button">最大</button></div></div>${d.source==='contract'?'<div class="notice-box" style="margin-top:10px">可划转金额已预留当前占用保证金，划出后风险指标会同步更新。</div>':''}<div class="percentage-row"><button data-transfer-percentage=".25" type="button">25%</button><button data-transfer-percentage=".5" type="button">50%</button><button data-transfer-percentage=".75" type="button">75%</button><button data-transfer-percentage="1" type="button">全部</button></div><p class="validation" id="transfer-error">${transferError()}</p><button class="primary-button" id="review-transfer" type="button" ${transferValid()?'':'disabled'}>核对划转信息</button></div></div>`;
     }
     function transferReviewScreen(){
       const d=state.transferDraft, amount=Number(d.amount);
-      return `<div class="app-screen subpage">${statusBar()}<header class="subpage-header"><button class="back-button" data-back type="button" aria-label="返回">‹</button><h1>确认划转</h1></header><div class="form-page"><div class="review-card"><div class="review-amount"><small>划转金额</small><strong id="transfer-amount-review">${format(amount)} ${d.token}</strong></div><div class="detail-list"><div class="detail-line"><span>资金方向</span><span>${accountName(d.source)} → ${accountName(d.destination)}</span></div><div class="detail-line"><span>手续费</span><span>0 ${d.token}</span></div><div class="detail-line"><span>${accountName(d.source)}划转后</span><span>${format(state[d.source][d.token]-amount)} ${d.token}</span></div><div class="detail-line"><span>${accountName(d.destination)}划转后</span><span>${format(state[d.destination][d.token]+amount)} ${d.token}</span></div></div></div><button class="primary-button" id="confirm-transfer" type="button" style="margin-top:15px">确认划转</button><button class="secondary-link" id="simulate-transfer-failure" type="button">模拟本次划转失败</button></div></div>`;
+      const sourceBefore=state[d.source][d.token], destinationBefore=state[d.destination][d.token], sourceAfter=roundMoney(sourceBefore-amount), destinationAfter=roundMoney(destinationBefore+amount);
+      const riskImpact=d.source==='contract'?`合约可用保证金预计减少 ${format(amount)} USD`:`合约账户保证金缓冲预计增加 ${format(amount)} USD`;
+      return `<div class="app-screen subpage">${statusBar()}<header class="subpage-header"><button class="back-button" data-back type="button" aria-label="返回">‹</button><h1>确认划转</h1></header><div class="form-page"><div class="review-card transfer-review-card"><div class="review-amount">${tokenMark(d.token)}<small>划转金额</small><strong id="transfer-amount-review">${format(amount)} ${d.token}</strong><span>${accountName(d.source)} → ${accountName(d.destination)}</span></div><section class="balance-comparison"><h2>划转前</h2><div><span>${accountName(d.source)}<b>${format(sourceBefore)} ${d.token}</b></span><span>${accountName(d.destination)}<b>${format(destinationBefore)} ${d.token}</b></span></div><h2>划转后</h2><div><span>${accountName(d.source)}<b>${format(sourceAfter)} ${d.token}</b></span><span>${accountName(d.destination)}<b class="positive">${format(destinationAfter)} ${d.token}</b></span></div><h2>风险影响</h2><p>${icon('shield')}<span><b>${riskImpact}</b><small>内部划转不改变总资产，不产生链上网络费。</small></span></p></section><div class="detail-list"><div class="detail-line"><span>资金方向</span><span>${accountName(d.source)} → ${accountName(d.destination)}</span></div><div class="detail-line"><span>手续费</span><span>0 ${d.token}</span></div><div class="detail-line"><span>预计完成</span><span>即时</span></div></div></div><button class="primary-button" id="confirm-transfer" type="button" style="margin-top:15px">确认划转</button><button class="secondary-link" id="simulate-transfer-failure" type="button">模拟本次划转失败</button></div></div>`;
     }
     function completeTransferOnce(){
       const d=state.transferDraft; if(d.completed) return;
       const amount=Number(d.amount); state[d.source][d.token]=roundMoney(state[d.source][d.token]-amount); state[d.destination][d.token]=roundMoney(state[d.destination][d.token]+amount); d.completed=true;
-      state.records.unshift({id:'tr-'+Date.now(),type:'transfer',token:d.token,amount,direction:`${accountName(d.source)} → ${accountName(d.destination)}`,status:'complete',fee:0,time:'2026-07-16 10:22:41'});
+      d.referenceId=`FXTR-${String(Date.now()).slice(-8)}`; d.completedAt='2026-07-16 10:22:41';
+      state.records.unshift({id:d.referenceId,type:'transfer',token:d.token,amount,direction:`${accountName(d.source)} → ${accountName(d.destination)}`,status:'complete',fee:0,time:d.completedAt});
     }
     function transferStatusScreen(){
       const d=state.transferDraft, result=state.transferResult;
       if(result==='processing') return `<div class="app-screen subpage">${statusBar()}<header class="subpage-header"><button class="back-button" data-back type="button" aria-label="返回">‹</button><h1>账户划转</h1></header><div class="receipt"><div class="receipt-mark">↻</div><h2>正在更新账户余额</h2><p>ForX 正在处理内部账本划转，请勿重复提交。</p><button class="primary-button" data-complete-transfer type="button">完成演示处理</button></div></div>`;
       if(result==='failed') return `<div class="app-screen subpage">${statusBar()}<header class="subpage-header"><button class="back-button" data-back type="button" aria-label="返回">‹</button><h1>账户划转</h1></header><div class="receipt error"><div class="receipt-mark">×</div><h2>划转失败</h2><p>账户余额没有发生变化。你可以保留当前金额与方向后重试。</p><button class="primary-button" id="retry-transfer" type="button">返回重试</button></div></div>`;
-      return `<div class="app-screen subpage">${statusBar()}<header class="subpage-header"><button class="back-button" data-back type="button" aria-label="返回">‹</button><h1>账户划转</h1></header><div class="receipt" data-transfer-receipt><div class="receipt-mark">✓</div><h2>划转完成</h2><p>${format(d.amount)} ${d.token} 已从${accountName(d.source)}划入${accountName(d.destination)}。手续费 0 ${d.token}。</p><button class="primary-button" data-transfer-done type="button">返回资产中心</button></div></div>`;
+      return `<div class="app-screen subpage">${statusBar()}<header class="subpage-header"><button class="back-button" data-back type="button" aria-label="返回">‹</button><h1>账户划转</h1></header><div class="receipt transfer-receipt" data-transfer-receipt><div class="receipt-mark">✓</div><h2>划转完成</h2><p>${format(d.amount)} ${d.token} 已从${accountName(d.source)}划入${accountName(d.destination)}。手续费 0 ${d.token}。</p><div class="receipt-details"><div><small>参考编号</small><b>${d.referenceId||'FXTR-DEMO'}</b></div><div><small>完成时间</small><b>${d.completedAt||'2026-07-16 10:22:41'}</b></div><div><small>划转方向</small><b>${accountName(d.source)} → ${accountName(d.destination)}</b></div><div><small>处理方式</small><b>ForX 内部账本</b></div></div><button class="primary-button" id="open-transfer-records" type="button">查看资金记录</button><button class="secondary-link" data-transfer-done type="button">返回资产中心</button></div></div>`;
     }
     function allRecords(){ return [...state.records,...SAMPLE_RECORDS]; }
     function recordTypeLabel(type){ return type==='deposit'?'充值':type==='withdrawal'?'提现':'账户划转'; }
@@ -1010,6 +1088,7 @@
       if(target.dataset.completeTransfer!==undefined){ completeTransferOnce(); state.transferResult='complete'; render(); announce('划转完成'); return; }
       if(target.id==='retry-transfer'){ state.routeStack.pop(); state.route='transfer-review'; state.transferResult=null; render(); return; }
       if(target.dataset.transferDone!==undefined){ state.routeStack=[]; state.route='assets'; render(); return; }
+      if(target.id==='open-transfer-records') return navigate('records');
       if(target.id==='open-notifications') return openSheet(`<div class="sheet-header"><div><h2>原型通知</h2><p>这里展示与账户资金直接相关的状态提醒。</p></div><button class="sheet-close" data-sheet-close aria-label="关闭">×</button></div><div class="sheet-list"><div class="sheet-option" style="font-size:10px">充值已到账 · 500 USDC<span>12 分钟前</span></div><div class="sheet-option" style="font-size:10px">提现正在等待网络确认<span>今天 08:46</span></div></div>`);
       if(target.id==='open-record-filters') return recordFiltersSheet();
       if(target.dataset.recordFilter){ state.recordsFilter=target.dataset.recordFilter; render(); return; }
@@ -1022,14 +1101,21 @@
       if(event.target.id==='wallet-deposit-amount'){ state.depositDraft.amount=event.target.value; const network=NETWORKS[state.depositDraft.network]; document.querySelector('#launch-wallet').disabled=!(Number(event.target.value)>=network.min[state.depositDraft.token]&&state.depositDraft.walletMatches); }
       if(event.target.id==='withdraw-address'||event.target.id==='withdraw-amount'){
         if(event.target.id==='withdraw-address') state.withdrawalDraft.address=event.target.value.trim(); else state.withdrawalDraft.amount=event.target.value;
+        const quote=withdrawalQuote(), risk=addressRisk(state.withdrawalDraft.address,state.withdrawalDraft.network);
         const error=document.querySelector('#withdraw-error'); if(error) error.textContent=withdrawalError();
-        const received=document.querySelector('[data-withdraw-received]'); if(received) received.textContent=`${format(Math.max(0,(Number(state.withdrawalDraft.amount)||0)-WITHDRAW_FEES[state.withdrawalDraft.network]))} ${state.withdrawalDraft.token}`;
+        document.querySelectorAll('[data-withdraw-gross]').forEach(node=>node.textContent=`${format(quote.gross)} ${state.withdrawalDraft.token}`);
+        document.querySelectorAll('[data-withdraw-net],[data-withdraw-received]').forEach(node=>node.textContent=`${format(quote.net)} ${state.withdrawalDraft.token}`);
+        document.querySelectorAll('[data-withdraw-limit]').forEach(node=>node.textContent=`${format(quote.dailyRemaining)} ${state.withdrawalDraft.token}`);
+        const riskNode=document.querySelector('[data-address-risk]'); if(riskNode){ riskNode.className=`address-risk is-${risk.level}`; riskNode.innerHTML=`${icon(risk.level==='verified'?'shield':'info')}<b>${risk.label}</b><small data-address-type>${risk.type}</small>`; }
+        const addressType=document.querySelector('[data-operation-address-type]'); if(addressType) addressType.textContent=risk.type;
         const review=document.querySelector('#review-withdrawal'); if(review) review.disabled=!withdrawalValid();
       }
       if(event.target.id==='address-label'||event.target.id==='address-value'){
         if(event.target.id==='address-label') state.pendingAddress.label=event.target.value; else state.pendingAddress.address=event.target.value.trim();
-        const error=document.querySelector('#address-error'); if(error) error.textContent=state.pendingAddress.address&&!validAddress(state.pendingAddress.address,state.pendingAddress.network)?'地址格式与所选网络不匹配。':'';
-        const save=document.querySelector('#save-address'); if(save) save.disabled=!(state.pendingAddress.label&&validAddress(state.pendingAddress.address,state.pendingAddress.network));
+        const risk=addressRisk(state.pendingAddress.address,state.pendingAddress.network,true);
+        const riskNode=document.querySelector('[data-address-risk]'); if(riskNode){ riskNode.className=`address-risk is-${risk.level}`; riskNode.innerHTML=`${icon(risk.level==='verified'?'shield':'info')}<b>${risk.label}</b><small>${risk.type}</small>`; }
+        const error=document.querySelector('#address-error'); if(error) error.textContent=risk.level==='blocked'?risk.label:'';
+        const save=document.querySelector('#save-address'); if(save) save.disabled=!(state.pendingAddress.label&&risk.level==='verified');
       }
       if(event.target.id==='transfer-amount'){
         state.transferDraft.amount=event.target.value;

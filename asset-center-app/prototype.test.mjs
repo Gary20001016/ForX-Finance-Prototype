@@ -675,3 +675,49 @@ test('deposit confirmation provides an auditable timeline', async () => {
     assert.ok(await page.locator('[data-deposit-timeline-step]').count() >= 4);
   });
 });
+
+test('withdrawal separates debit fee receipt limit and risk', async () => {
+  await withPage(async page => {
+    await openWithdrawal(page);
+    await page.locator('#paste-demo-address').click();
+    await page.locator('#withdraw-amount').fill('250');
+    for (const label of ['本次扣除', '网络费', '预计到账', '今日剩余额度', '地址类型', '网络拥堵', '预计处理']) {
+      assert.match(await page.locator('#screen-root').textContent(), new RegExp(label));
+    }
+    assert.equal(await page.locator('[data-withdraw-gross]').textContent(), '250.00 USDT');
+    assert.equal(await page.locator('[data-withdraw-net]').textContent(), '249.20 USDT');
+  });
+});
+
+test('transfer receipt exposes balances risk and reference id', async () => {
+  await withPage(async page => {
+    await page.locator('#open-transfer').click();
+    await page.locator('#transfer-amount').fill('500');
+    await page.locator('#review-transfer').click();
+    assert.match(await page.locator('#screen-root').textContent(), /划转前.*划转后.*风险影响/s);
+    await page.locator('#confirm-transfer').click();
+    await page.locator('[data-complete-transfer]').click();
+    assert.match(await page.locator('#screen-root').textContent(), /参考编号.*完成时间.*查看资金记录/s);
+  });
+});
+
+test('address book discloses verification and duplicate risk', async () => {
+  await withPage(async page => {
+    await setSession(page, 'wallet');
+    await openWithdrawal(page);
+    await page.locator('#open-address-book').click();
+    await page.locator('#add-address').click();
+    const address = '0x1234567890abcdef1234567890abcdef12345678';
+    await page.locator('#address-label').fill('主钱包');
+    await page.locator('#address-value').fill(address);
+    await page.locator('#save-address').click();
+    assert.match(await page.locator('#sheet-root').textContent(), /仅授权.*保存.*不会发起提现.*链上授权/s);
+    await page.locator('#confirm-signature').click();
+    assert.match(await page.locator('#screen-root').textContent(), /已验证.*钱包签名.*最后使用/s);
+    await page.locator('#add-address').click();
+    await page.locator('#address-label').fill('重复地址');
+    await page.locator('#address-value').fill(address);
+    assert.match(await page.locator('[data-address-risk]').textContent(), /地址簿中已存在/);
+    assert.equal(await page.locator('#save-address').isDisabled(), true);
+  });
+});
