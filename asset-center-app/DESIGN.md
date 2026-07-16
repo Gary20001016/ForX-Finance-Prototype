@@ -43,7 +43,7 @@ rounded:
   sm: 8px
   md: 12px
   lg: 16px
-  phone: 40px
+  phone: 34px
   full: 9999px
 spacing:
   xs: 4px
@@ -89,6 +89,20 @@ components:
     textColor: "{colors.warning}"
     rounded: "{rounded.sm}"
     padding: 12px
+  balance-strip:
+    backgroundColor: "{colors.panel}"
+    textColor: "{colors.text}"
+    rounded: "{rounded.md}"
+    padding: 12px
+  audit-panel:
+    backgroundColor: "{colors.panel}"
+    textColor: "{colors.muted-strong}"
+    rounded: "{rounded.md}"
+    padding: 13px
+  status-badge:
+    backgroundColor: "{colors.surface}"
+    textColor: "{colors.primary-strong}"
+    rounded: "{rounded.full}"
 ---
 
 # ForX Quiet Capital
@@ -114,7 +128,7 @@ Use the platform sans-serif stack. Numbers are the visual anchor: keep tabular a
 
 ## Layout
 
-Design for a 390 × 844 phone with 18–20px horizontal gutters, a 4px base grid, and an 8px row rhythm. Every actionable control provides at least a 44px touch target unless it is grouped inside a larger semantic row. The status area is followed directly by the account-tabs row; there is no page-title or brand-lockup row. Network selection belongs inside deposit and withdrawal, never on the asset home.
+Design for a 390 × 844 phone with 18–20px horizontal gutters, a 4px base grid, and an 8px row rhythm. Primary controls provide 44–48px touch targets; compact 32–36px icon controls appear only inside navigation or a larger semantic row. The status area is followed directly by the account-tabs row; there is no page-title or brand-lockup row. Network selection belongs inside deposit and withdrawal, never on the asset home.
 
 ## Elevation & Depth
 
@@ -134,6 +148,12 @@ Rounded corners communicate hierarchy: 12px for controls, 16px for major panels,
 - Asset and record rows align amounts to the trailing edge and use small muted metadata below.
 - Icons come from one 1.75px outline SVG family. Token and network marks use consistent containers; no emoji or improvised symbol acts as a control.
 - Transaction screens expose orientation, primary value, supporting metadata, state, action hierarchy, and auditability before they are considered complete.
+- Funding uses a three-column balance strip for available, frozen, and incoming value; contract uses the same pattern for available margin, ratio, and transfer headroom.
+- Deposit and withdrawal network panels expose health, minimums, confirmations, estimates, contract or address family, and fee responsibility before submission.
+- Audit timelines include a text label, state icon, timestamp or progress value, and terminal result. A colored dot alone is never sufficient.
+- Records reconcile deposits, withdrawals, network fees, and net inflow. Failed records remain visible but do not contribute to effective flow totals.
+- Account-value analysis exposes axes, selectable points, event markers, period statistics, and separate value/flow-adjusted-return modes.
+- Desktop galleries freeze the real mobile renderers, disable interactions, and pair every screen with entry, action, response, next-state, and implementation notes.
 
 ## Do's and Don'ts
 
