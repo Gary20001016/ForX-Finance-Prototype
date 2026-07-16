@@ -63,7 +63,11 @@ export default function TaskSummary({ data }: { data: TaskSummaryData }) {
             </Space>
           }
         >
-          <MessagePreview content={data.content} compact />
+          <MessagePreview
+            content={data.content}
+            channels={data.channels}
+            compact
+          />
         </Card>
         <Card title="受众计算与样例" bordered={false} className="inner-card">
           <Grid.Row gutter={12}>

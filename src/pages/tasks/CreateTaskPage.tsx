@@ -60,6 +60,10 @@ import {
 } from "./uidAudience";
 import { templateSupportsScope } from "../templates/templateScope";
 import { getMessageCategoryDefaultNature } from "../../domain/messageCategoryPolicy";
+import {
+  sameChannels,
+  templateCoversChannels,
+} from "./taskChannelPolicy";
 
 const FormItem = Form.Item;
 const localeOptions = [
@@ -158,7 +162,7 @@ export default function CreateTaskPage() {
         (isManualTaskStatus(copiedTask.status) &&
           canEditManualTask(copiedTask.status))),
   );
-  const approvedTemplates = store.templates.filter(
+  const manualTemplates = store.templates.filter(
     (template) =>
       template.translationReadiness === "全部审核通过" &&
       templateSupportsScope(template, "manual"),
@@ -183,6 +187,17 @@ export default function CreateTaskPage() {
     initialTriggerType === "event"
       ? "template"
       : copiedTask?.contentMode || "template",
+  );
+  const [selectedChannels, setSelectedChannels] = useState<Channel[]>(() => {
+    const supportedChannels = copiedTask?.channels.filter(
+      (channel) => channel === "站内信" || channel === "Push",
+    );
+    return supportedChannels?.length
+      ? supportedChannels
+      : ["站内信", "Push"];
+  });
+  const approvedTemplates = manualTemplates.filter((template) =>
+    templateCoversChannels(template.channels, selectedChannels),
   );
   const [templateId, setTemplateId] = useState(
     copiedTask?.templateId ||
@@ -221,6 +236,9 @@ export default function CreateTaskPage() {
   const [temporaryBatchId, setTemporaryBatchId] = useState<string | undefined>(
     copiedTask?.translationBatchId,
   );
+  const [temporaryBatchChannels, setTemporaryBatchChannels] = useState<
+    Channel[]
+  >(copiedTask?.translationBatchId ? [...selectedChannels] : []);
   const [audienceType, setAudienceType] = useState(
     copiedTask?.audienceType || "all",
   );
@@ -243,7 +261,9 @@ export default function CreateTaskPage() {
   const [snapshot, setSnapshot] = useState<Record<string, unknown>>({});
   const [categoryChanged, setCategoryChanged] = useState(false);
   const selectedTemplate =
-    store.templates.find((template) => template.id === templateId) ||
+    (triggerType === "event"
+      ? eventTemplates.find((template) => template.id === templateId)
+      : approvedTemplates.find((template) => template.id === templateId)) ||
     (triggerType === "event" ? eventTemplates[0] : approvedTemplates[0]);
   const currentBatch = temporaryBatchId
     ? store.translationBatches.find((batch) => batch.id === temporaryBatchId)
@@ -294,10 +314,14 @@ export default function CreateTaskPage() {
       : audienceType === "uid"
         ? specifiedUidAudience
         : audienceMap[audienceType];
+  const translationScopeCurrent =
+    !temporaryBatchId ||
+    sameChannels(temporaryBatchChannels, selectedChannels);
   const translationReady =
     contentMode === "template"
       ? selectedTemplate?.translationReadiness === "全部审核通过"
-      : targetLocales.length === 0 || currentBatch?.status === "全部审核通过";
+      : targetLocales.length === 0 ||
+        (currentBatch?.status === "全部审核通过" && translationScopeCurrent);
   const values = { ...snapshot, ...form.getFieldsValue() };
   const selectedCategory = String(
     values.category || copiedTask?.category || "系统公告",
@@ -310,10 +334,16 @@ export default function CreateTaskPage() {
       ? copiedTask.nature
       : getMessageCategoryDefaultNature(store.categories, selectedCategory) ||
         "事务";
-  const channels = (values.channels as Channel[] | undefined) || [
-    "站内信",
-    "Push",
-  ];
+  const channels = selectedChannels;
+  const temporaryWebComplete = Boolean(
+    temporary.web.title && temporary.web.summary && temporary.web.body,
+  );
+  const temporaryPushComplete = Boolean(
+    temporary.push.title && temporary.push.body,
+  );
+  const temporaryContentComplete =
+    (!channels.includes("站内信") || temporaryWebComplete) &&
+    (!channels.includes("Push") || temporaryPushComplete);
   const schedule =
     triggerType === "event"
       ? "事件到达时"
@@ -351,6 +381,22 @@ export default function CreateTaskPage() {
         : {}),
     });
   };
+  const updateChannels = (nextChannels: Channel[]) => {
+    setSelectedChannels(nextChannels);
+    const currentTemplate = manualTemplates.find(
+      (template) => template.id === templateId,
+    );
+    if (
+      !currentTemplate ||
+      !templateCoversChannels(currentTemplate.channels, nextChannels)
+    ) {
+      setTemplateId(
+        manualTemplates.find((template) =>
+          templateCoversChannels(template.channels, nextChannels),
+        )?.id,
+      );
+    }
+  };
   const patchWeb = (changes: Partial<LocalizedMessageContent["web"]>) =>
     setTemporary((value) => ({ ...value, web: { ...value.web, ...changes } }));
   const patchPush = (changes: Partial<LocalizedMessageContent["push"]>) =>
@@ -370,19 +416,20 @@ export default function CreateTaskPage() {
       } catch {
         return;
       }
+      if (!channels.length) {
+        Message.warning("请至少选择站内信或 App Push");
+        return;
+      }
       if (triggerType === "event" && !eventValidation.valid) {
         Message.warning(eventValidation.reason || "请完整配置系统事件触发策略");
         return;
       }
-      if (
-        contentMode === "temporary" &&
-        (!temporary.web.title ||
-          !temporary.web.summary ||
-          !temporary.web.body ||
-          !temporary.push.title ||
-          !temporary.push.body)
-      ) {
-        Message.warning("请完整填写站内信与 App Push 内容");
+      if (contentMode === "template" && !selectedTemplate) {
+        Message.warning("当前渠道没有可用的审核通过模板，请调整渠道或改用临时消息");
+        return;
+      }
+      if (contentMode === "temporary" && !temporaryContentComplete) {
+        Message.warning("请完整填写所选发送渠道的消息内容");
         return;
       }
     }
@@ -472,6 +519,14 @@ export default function CreateTaskPage() {
       Message.warning("请至少选择站内信或 App Push");
       return;
     }
+    if (contentMode === "template" && !selectedTemplate) {
+      Message.warning("当前渠道没有可用的审核通过模板，请调整渠道或改用临时消息");
+      return;
+    }
+    if (contentMode === "temporary" && !temporaryContentComplete) {
+      Message.warning("请完整填写所选发送渠道的消息内容");
+      return;
+    }
     if (triggerType === "manual" && audienceType === "uid") {
       if (uidAudienceValue.csvFileName && !uidAudienceValue.csvConfirmed) {
         Message.warning("请先确认 UID CSV 导入结果");
@@ -498,11 +553,19 @@ export default function CreateTaskPage() {
       Message.warning("仍有目标语言未完成人工审核，不能提交业务审核");
       return;
     }
-    if (content.web.targetUrl && !validateActionUrl(content.web.targetUrl)) {
+    if (
+      channels.includes("站内信") &&
+      content.web.targetUrl &&
+      !validateActionUrl(content.web.targetUrl)
+    ) {
       Message.error("站内信跳转链接未通过白名单校验");
       return;
     }
-    if (content.push.deepLink && !validateActionUrl(content.push.deepLink)) {
+    if (
+      channels.includes("Push") &&
+      content.push.deepLink &&
+      !validateActionUrl(content.push.deepLink)
+    ) {
       Message.error("Push Deep Link 未通过白名单校验");
       return;
     }
@@ -521,8 +584,12 @@ export default function CreateTaskPage() {
     }
   };
   const createTemporaryTranslation = () => {
-    if (!temporary.web.title || !temporary.web.body) {
-      Message.warning("请先填写默认语言文案");
+    if (!channels.length) {
+      Message.warning("请至少选择站内信或 App Push");
+      return;
+    }
+    if (!temporaryContentComplete) {
+      Message.warning("请先完整填写所选发送渠道的默认语言文案");
       return;
     }
     if (!targetLocales.length) {
@@ -535,7 +602,7 @@ export default function CreateTaskPage() {
       category: form.getFieldValue("category") || "系统公告",
       nature: resolvedNature,
       risk: form.getFieldValue("risk") || "中",
-      channels: ["站内信", "Push"],
+      channels,
       locales: ["zh-CN", ...targetLocales],
       sourceLocale: "zh-CN",
       content: { ...temporary, locales: ["zh-CN", ...targetLocales] },
@@ -559,14 +626,27 @@ export default function CreateTaskPage() {
       },
       sourceLocale: "zh-CN",
       sourceContent: {
-        title: temporary.web.title,
-        summary: temporary.web.summary,
-        body: temporary.web.body,
+        title:
+          channels.length === 1 && channels.includes("Push")
+            ? temporary.push.title
+            : channels.length === 1
+              ? temporary.web.title
+              : `站内信：${temporary.web.title} / Push：${temporary.push.title}`,
+        summary: channels.includes("站内信")
+          ? temporary.web.summary
+          : undefined,
+        body:
+          channels.length === 1 && channels.includes("Push")
+            ? temporary.push.body
+            : channels.length === 1
+              ? temporary.web.body
+              : `【站内信】\n${temporary.web.body}\n\n【App Push】\n${temporary.push.body}`,
       },
       targetLocales,
       createdBy: "Gary Ma",
     });
     setTemporaryBatchId(batch.id);
+    setTemporaryBatchChannels([...channels]);
     saveTaskDraft(
       {
         ...submission(),
@@ -640,9 +720,9 @@ export default function CreateTaskPage() {
           labelPlacement="vertical"
           className="task-steps"
         >
-          <Steps.Step title="内容与多语言" description="模板或临时消息" />
+          <Steps.Step title="内容与多语言" description="渠道、模板与临时消息" />
           <Steps.Step title="目标用户" description="受众、排除与样例" />
-          <Steps.Step title="发送策略" description="站内信与 App Push" />
+          <Steps.Step title="发送策略" description="排期、有效期与渠道检查" />
           <Steps.Step title="预览并提交" description="冻结与审批" />
         </Steps>
         <Form
@@ -658,7 +738,6 @@ export default function CreateTaskPage() {
             category: copiedTask?.category || "系统公告",
             risk: copiedTask?.risk || "中",
             template: approvedTemplates[0]?.id,
-            channels: copiedTask?.channels || ["站内信", "Push"],
             audienceType: copiedTask?.audienceType || "all",
             priority: "普通",
             scheduleMode:
@@ -730,6 +809,21 @@ export default function CreateTaskPage() {
                 </Grid.Col>
               </Grid.Row>
               <div className="section-divider" />
+              <h3>发送渠道</h3>
+              <Alert
+                type="info"
+                content="先确定发送渠道，模板、临时内容、多语言和预览将按渠道筛选。站内信内容由 Web 与 App 共用。"
+              />
+              <FormItem label="正式发送渠道" required>
+                <Checkbox.Group
+                  value={channels}
+                  onChange={(value) => updateChannels(value as Channel[])}
+                >
+                  <Checkbox value="站内信">站内信（Web + App）</Checkbox>
+                  <Checkbox value="Push">App Push</Checkbox>
+                </Checkbox.Group>
+              </FormItem>
+              <div className="section-divider" />
               <h3>发送方式</h3>
               <Alert
                 type="info"
@@ -766,6 +860,13 @@ export default function CreateTaskPage() {
                   </Radio.Group>
                   {contentMode === "template" ? (
                     <div className="template-source-panel">
+                      {!approvedTemplates.length && (
+                        <Alert
+                          type="warning"
+                          title="当前渠道暂无可用模板"
+                          content="请调整发送渠道，或切换为临时消息继续创建。"
+                        />
+                      )}
                       <FormItem
                         label="消息模板"
                         field="template"
@@ -773,19 +874,28 @@ export default function CreateTaskPage() {
                         extra="仅显示全部目标语言人工审核通过的不可变模板版本"
                       >
                         <Select
-                          value={templateId}
+                          value={selectedTemplate?.id}
                           onChange={setTemplateId}
+                          disabled={!approvedTemplates.length}
                           options={approvedTemplates.map((item) => ({
-                            label: `${item.name} · ${item.version}`,
+                            label: `${item.name} · ${item.version} · ${item.channels.join(" + ")}`,
                             value: item.id,
                           }))}
                         />
                       </FormItem>
-                      <Alert
-                        type="success"
-                        content={`翻译审核通过 · ${selectedTemplate?.translationBatchId} · ${selectedTemplate?.locales.join("、")}`}
-                      />
-                      <MessagePreview content={content} compact />
+                      {selectedTemplate && (
+                        <>
+                          <Alert
+                            type="success"
+                            content={`翻译审核通过 · ${selectedTemplate.translationBatchId} · ${selectedTemplate.locales.join("、")}`}
+                          />
+                          <MessagePreview
+                            content={content}
+                            channels={channels}
+                            compact
+                          />
+                        </>
+                      )}
                     </div>
                   ) : (
                     <div className="temporary-content-editor">
@@ -794,129 +904,141 @@ export default function CreateTaskPage() {
                         content="临时消息同样必须完成外部机翻和逐语言人工审核；内容仅冻结在当前任务版本中。"
                       />
                       <Grid.Row gutter={20}>
-                        <Grid.Col span={12}>
-                          <h3>站内信内容（Web + App 共用）</h3>
-                          <FormItem label="站内信标题">
-                            <Input
-                              aria-label="站内信标题"
-                              value={temporary.web.title}
-                              onChange={(value) => patchWeb({ title: value })}
-                            />
-                          </FormItem>
-                          <FormItem label="站内信摘要">
-                            <Input.TextArea
-                              value={temporary.web.summary}
-                              onChange={(value) => patchWeb({ summary: value })}
-                            />
-                          </FormItem>
-                          <FormItem label="站内信正文">
-                            <Input.TextArea
-                              rows={5}
-                              value={temporary.web.body}
-                              onChange={(value) => patchWeb({ body: value })}
-                            />
-                          </FormItem>
-                          <FormItem label="风险提示">
-                            <Input
-                              value={temporary.web.riskCopy}
-                              onChange={(value) =>
-                                patchWeb({ riskCopy: value })
-                              }
-                            />
-                          </FormItem>
-                          <Grid.Row gutter={12}>
-                            <Grid.Col span={8}>
-                              <FormItem label="按钮文案">
-                                <Input
-                                  value={temporary.web.actionText}
-                                  onChange={(value) =>
-                                    patchWeb({ actionText: value })
-                                  }
-                                />
-                              </FormItem>
-                            </Grid.Col>
-                            <Grid.Col span={16}>
-                              <FormItem label="跳转链接">
-                                <Input
-                                  value={temporary.web.targetUrl}
-                                  onChange={(value) =>
-                                    patchWeb({ targetUrl: value })
-                                  }
-                                />
-                              </FormItem>
-                            </Grid.Col>
-                          </Grid.Row>
-                        </Grid.Col>
-                        <Grid.Col span={12}>
-                          <h3>App Push 内容</h3>
-                          <FormItem label="Push 标题">
-                            <Input
-                              aria-label="Push 标题"
-                              value={temporary.push.title}
-                              onChange={(value) => patchPush({ title: value })}
-                            />
-                          </FormItem>
-                          <FormItem label="Push 正文">
-                            <Input.TextArea
-                              value={temporary.push.body}
-                              onChange={(value) => patchPush({ body: value })}
-                            />
-                          </FormItem>
-                          <FormItem label="Push 图片">
-                            <Input
-                              value={temporary.push.imageUrl}
-                              onChange={(value) =>
-                                patchPush({ imageUrl: value })
-                              }
-                            />
-                          </FormItem>
-                          <FormItem label="Push Deep Link">
-                            <Input
-                              value={temporary.push.deepLink}
-                              onChange={(value) =>
-                                patchPush({ deepLink: value })
-                              }
-                            />
-                          </FormItem>
-                          <Grid.Row gutter={12}>
-                            <Grid.Col span={8}>
-                              <FormItem label="设备平台">
-                                <Select
-                                  value={temporary.push.platform}
-                                  onChange={(value) =>
-                                    patchPush({ platform: value })
-                                  }
-                                  options={["全部设备", "iOS", "Android"].map(
-                                    (value) => ({ label: value, value }),
-                                  )}
-                                />
-                              </FormItem>
-                            </Grid.Col>
-                            <Grid.Col span={8}>
-                              <FormItem label="优先级">
-                                <Select
-                                  value={temporary.push.priority}
-                                  onChange={(value) =>
-                                    patchPush({ priority: value })
-                                  }
-                                  options={["普通", "高", "紧急"].map(
-                                    (value) => ({ label: value, value }),
-                                  )}
-                                />
-                              </FormItem>
-                            </Grid.Col>
-                            <Grid.Col span={8}>
-                              <FormItem label="折叠键">
-                                <Input
-                                  value={temporary.push.collapseKey}
-                                  onChange={(value) =>
-                                    patchPush({ collapseKey: value })
-                                  }
-                                />
-                              </FormItem>
-                            </Grid.Col>
-                          </Grid.Row>
-                        </Grid.Col>
+                        {channels.includes("站内信") && (
+                          <Grid.Col span={channels.length === 1 ? 24 : 12}>
+                            <h3>站内信内容（Web + App 共用）</h3>
+                            <FormItem label="站内信标题">
+                              <Input
+                                aria-label="站内信标题"
+                                value={temporary.web.title}
+                                onChange={(value) => patchWeb({ title: value })}
+                              />
+                            </FormItem>
+                            <FormItem label="站内信摘要">
+                              <Input.TextArea
+                                value={temporary.web.summary}
+                                onChange={(value) =>
+                                  patchWeb({ summary: value })
+                                }
+                              />
+                            </FormItem>
+                            <FormItem label="站内信正文">
+                              <Input.TextArea
+                                rows={5}
+                                value={temporary.web.body}
+                                onChange={(value) => patchWeb({ body: value })}
+                              />
+                            </FormItem>
+                            <FormItem label="风险提示">
+                              <Input
+                                value={temporary.web.riskCopy}
+                                onChange={(value) =>
+                                  patchWeb({ riskCopy: value })
+                                }
+                              />
+                            </FormItem>
+                            <Grid.Row gutter={12}>
+                              <Grid.Col span={8}>
+                                <FormItem label="按钮文案">
+                                  <Input
+                                    value={temporary.web.actionText}
+                                    onChange={(value) =>
+                                      patchWeb({ actionText: value })
+                                    }
+                                  />
+                                </FormItem>
+                              </Grid.Col>
+                              <Grid.Col span={16}>
+                                <FormItem label="跳转链接">
+                                  <Input
+                                    value={temporary.web.targetUrl}
+                                    onChange={(value) =>
+                                      patchWeb({ targetUrl: value })
+                                    }
+                                  />
+                                </FormItem>
+                              </Grid.Col>
+                            </Grid.Row>
+                          </Grid.Col>
+                        )}
+                        {channels.includes("Push") && (
+                          <Grid.Col span={channels.length === 1 ? 24 : 12}>
+                            <h3>App Push 内容</h3>
+                            <FormItem label="Push 标题">
+                              <Input
+                                aria-label="Push 标题"
+                                value={temporary.push.title}
+                                onChange={(value) =>
+                                  patchPush({ title: value })
+                                }
+                              />
+                            </FormItem>
+                            <FormItem label="Push 正文">
+                              <Input.TextArea
+                                value={temporary.push.body}
+                                onChange={(value) =>
+                                  patchPush({ body: value })
+                                }
+                              />
+                            </FormItem>
+                            <FormItem label="Push 图片">
+                              <Input
+                                value={temporary.push.imageUrl}
+                                onChange={(value) =>
+                                  patchPush({ imageUrl: value })
+                                }
+                              />
+                            </FormItem>
+                            <FormItem label="Push Deep Link">
+                              <Input
+                                value={temporary.push.deepLink}
+                                onChange={(value) =>
+                                  patchPush({ deepLink: value })
+                                }
+                              />
+                            </FormItem>
+                            <Grid.Row gutter={12}>
+                              <Grid.Col span={8}>
+                                <FormItem label="设备平台">
+                                  <Select
+                                    value={temporary.push.platform}
+                                    onChange={(value) =>
+                                      patchPush({ platform: value })
+                                    }
+                                    options={[
+                                      "全部设备",
+                                      "iOS",
+                                      "Android",
+                                    ].map((value) => ({ label: value, value }))}
+                                  />
+                                </FormItem>
+                              </Grid.Col>
+                              <Grid.Col span={8}>
+                                <FormItem label="优先级">
+                                  <Select
+                                    value={temporary.push.priority}
+                                    onChange={(value) =>
+                                      patchPush({ priority: value })
+                                    }
+                                    options={["普通", "高", "紧急"].map(
+                                      (value) => ({ label: value, value }),
+                                    )}
+                                  />
+                                </FormItem>
+                              </Grid.Col>
+                              <Grid.Col span={8}>
+                                <FormItem label="折叠键">
+                                  <Input
+                                    value={temporary.push.collapseKey}
+                                    onChange={(value) =>
+                                      patchPush({ collapseKey: value })
+                                    }
+                                  />
+                                </FormItem>
+                              </Grid.Col>
+                            </Grid.Row>
+                          </Grid.Col>
+                        )}
                       </Grid.Row>
                       <div className="translation-submit-strip">
                         <Select
@@ -933,7 +1055,9 @@ export default function CreateTaskPage() {
                           type="primary"
                           onClick={createTemporaryTranslation}
                         >
-                          创建外部机翻任务
+                          {temporaryBatchId && !translationScopeCurrent
+                            ? "按新渠道重新创建机翻任务"
+                            : "创建外部机翻任务"}
                         </Button>
                         {temporaryBatchId && (
                           <Tag color={translationReady ? "green" : "orange"}>
@@ -941,6 +1065,13 @@ export default function CreateTaskPage() {
                           </Tag>
                         )}
                       </div>
+                      {temporaryBatchId && !translationScopeCurrent && (
+                        <Alert
+                          type="warning"
+                          title="发送渠道已变更"
+                          content="现有机翻批次的内容范围与当前渠道不一致，请按新渠道重新创建机翻任务后再提交审核。"
+                        />
+                      )}
                       {currentBatch && temporaryTranslationTemplate && (
                         <TranslationWorkflowPanel
                           template={temporaryTranslationTemplate}
@@ -948,7 +1079,7 @@ export default function CreateTaskPage() {
                           context="temporary-task"
                         />
                       )}
-                      <MessagePreview content={content} />
+                      <MessagePreview content={content} channels={channels} />
                     </div>
                   )}
                 </>
@@ -1093,7 +1224,7 @@ export default function CreateTaskPage() {
           )}
           {current === 2 && (
             <div className="form-section">
-              <h3>发送与 App Push 策略</h3>
+              <h3>发送策略</h3>
               {triggerType === "event" && (
                 <Alert
                   type="info"
@@ -1103,8 +1234,17 @@ export default function CreateTaskPage() {
               )}
               <Grid.Row gutter={20}>
                 <Grid.Col span={8}>
-                  <FormItem label="正式渠道" field="channels">
-                    <Checkbox.Group options={["站内信", "Push"]} />
+                  <FormItem label="正式发送渠道">
+                    <Space>
+                      {channels.map((channel) => (
+                        <Tag
+                          key={channel}
+                          color={channel === "Push" ? "purple" : "arcoblue"}
+                        >
+                          {channel === "Push" ? "App Push" : "站内信（Web + App）"}
+                        </Tag>
+                      ))}
+                    </Space>
                   </FormItem>
                 </Grid.Col>
                 {triggerType === "manual" && (
@@ -1173,12 +1313,14 @@ export default function CreateTaskPage() {
                   </FormItem>
                 </Grid.Col>
               </Grid.Row>
-              <Alert
-                type="info"
-                title="App Push 正式发送检查"
-                content="提交前校验 APNs/FCM 状态、通知权限、有效设备 Token、Deep Link 白名单、折叠键和优先级；临时失败退避重试，永久失败使 Token 失效。"
-              />
-              <MessagePreview content={content} compact />
+              {channels.includes("Push") && (
+                <Alert
+                  type="info"
+                  title="App Push 正式发送检查"
+                  content="提交前校验 APNs/FCM 状态、通知权限、有效设备 Token、Deep Link 白名单、折叠键和优先级；临时失败退避重试，永久失败使 Token 失效。"
+                />
+              )}
+              <MessagePreview content={content} channels={channels} compact />
             </div>
           )}
           {current === 3 && <TaskSummary data={summary} />}
