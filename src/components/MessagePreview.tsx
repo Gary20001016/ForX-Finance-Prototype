@@ -1,16 +1,19 @@
 import { Button, Space, Tag } from "@arco-design/web-react";
-import type { LocalizedMessageContent } from "../domain/types";
+import type { Channel, LocalizedMessageContent } from "../domain/types";
 
 export default function MessagePreview({
   content,
   compact = false,
+  channels = ["站内信", "Push"],
 }: {
   content: LocalizedMessageContent;
   compact?: boolean;
+  channels?: Channel[];
 }) {
   return (
     <div className={`dual-message-preview ${compact ? "compact" : ""}`}>
-      <section className="web-message-preview" aria-label="Web 站内信预览">
+      {channels.includes("站内信") && (
+        <section className="web-message-preview" aria-label="Web 站内信预览">
         <div className="preview-heading">
           <strong>Web 站内信预览</strong>
           <Tag color="arcoblue">{content.sourceLocale}</Tag>
@@ -32,9 +35,11 @@ export default function MessagePreview({
           )}
           <small>{content.web.targetUrl || "未配置跳转链接"}</small>
         </div>
-      </section>
+        </section>
+      )}
 
-      <section className="app-inbox-message-preview" aria-label="App 站内信预览">
+      {channels.includes("站内信") && (
+        <section className="app-inbox-message-preview" aria-label="App 站内信预览">
         <div className="preview-heading">
           <strong>App 站内信预览</strong>
           <Tag color="cyan">共享内容</Tag>
@@ -62,9 +67,11 @@ export default function MessagePreview({
             <small>{content.web.targetUrl || "未配置跳转链接"}</small>
           </div>
         </div>
-      </section>
+        </section>
+      )}
 
-      <section className="push-message-preview" aria-label="App Push 预览">
+      {channels.includes("Push") && (
+        <section className="push-message-preview" aria-label="App Push 预览">
         <div className="preview-heading">
           <strong>App Push 预览</strong>
           <Space>
@@ -89,7 +96,8 @@ export default function MessagePreview({
             <small>{content.push.deepLink || "未配置 Deep Link"}</small>
           </div>
         </div>
-      </section>
+        </section>
+      )}
     </div>
   );
 }
