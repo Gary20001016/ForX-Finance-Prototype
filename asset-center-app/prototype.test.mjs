@@ -78,6 +78,8 @@ test('keeps the approved home usable at 320 and 390 pixel widths', async () => {
     await withPage(async page => {
       const dimensions = await page.evaluate(() => ({ width: document.documentElement.scrollWidth, viewport: innerWidth }));
       assert.ok(dimensions.width <= dimensions.viewport);
+      const navBox = await page.locator('.bottom-nav').boundingBox();
+      assert.ok(navBox && navBox.y + navBox.height <= viewport.height, `${viewport.width}×${viewport.height} bottom navigation is in the viewport`);
       assert.equal(await page.locator('#open-deposit').isVisible(), true);
       assert.equal(await page.locator('[data-bottom-nav="assets"]').getAttribute('aria-current'), 'page');
     }, viewport);
@@ -192,9 +194,31 @@ test('wallet-login withdrawal does not request MFA and completes once', async ()
     for (let i = 0; i < 4; i += 1) await page.locator('[data-advance-withdrawal]').click();
     await route(page, 'assets');
     const after = Number(await page.locator('[data-funding-balance="USDT"]').getAttribute('data-value'));
-    assert.equal(Math.round((before - after) * 100) / 100, 250.8);
+    assert.equal(Math.round((before - after) * 100) / 100, 250);
     assert.equal(await page.locator('[data-record-type="withdrawal"]').count(), 1);
+    const withdrawal = await page.evaluate(() => window.assetPrototype.getState().records.find(record => record.type === 'withdrawal'));
+    assert.equal(withdrawal.amount, 250);
+    assert.equal(withdrawal.fee, 0.8);
   });
+});
+
+test('terminal deposit exceptions never credit funding and show an honest amount', async () => {
+  for (const scenario of ['below-minimum', 'mismatch', 'failed']) {
+    await withPage(async page => {
+      const before = await page.evaluate(() => window.assetPrototype.getState().funding.USDC);
+      await openDeposit(page);
+      await page.locator('[data-start-demo-deposit]').click();
+      await page.locator('#deposit-scenario').selectOption(scenario);
+      if (scenario === 'below-minimum') {
+        assert.equal(await page.locator('[data-deposit-amount]').getAttribute('data-value'), '5');
+      }
+      assert.equal(await page.locator('[data-advance-deposit]').count(), 0);
+      await page.locator('[data-return-deposit]').click();
+      const after = await page.evaluate(() => window.assetPrototype.getState().funding.USDC);
+      assert.equal(after, before, scenario);
+      assert.equal(await page.evaluate(() => window.assetPrototype.getState().records.filter(record => record.type === 'deposit').length), 0);
+    });
+  }
 });
 
 test('email withdrawal binds MFA, preserves its draft, then verifies the code', async () => {
@@ -228,6 +252,19 @@ test('validates withdrawal address family and calculates fee and received amount
     await page.locator('#withdraw-address').fill('0x1234567890abcdef1234567890abcdef12345678');
     assert.equal(await page.locator('#review-withdrawal').isEnabled(), true);
     assert.match(await page.locator('[data-withdraw-received]').textContent(), /249\.20 USDT/);
+  });
+});
+
+test('every configured network supplies a valid fictional withdrawal address', async () => {
+  await withPage(async page => {
+    await openWithdrawal(page);
+    for (const network of ['Ethereum','Arbitrum','Polygon','Base','Optimism','Solana','TRON']) {
+      await page.locator('#withdraw-network').click();
+      await page.locator(`[data-withdraw-network="${network}"]`).click();
+      await page.locator('#paste-demo-address').click();
+      await page.locator('#withdraw-amount').fill('250');
+      assert.equal(await page.locator('#review-withdrawal').isEnabled(), true, network);
+    }
   });
 });
 
@@ -299,14 +336,18 @@ test('transfer validates minimum and balance, reverses route, and supports retry
     await page.locator('#swap-transfer-route').click();
     assert.match(await page.locator('[data-transfer-source]').textContent(), /合约账户/);
     await page.locator('[data-transfer-percentage="1"]').click();
-    assert.equal(await page.locator('#transfer-amount').inputValue(), '2000');
+    const contractAvailable = await page.evaluate(() => {
+      const state = window.assetPrototype.getState();
+      return Math.round((state.contract.USDT + state.contract.USDC + state.contractMeta.unrealizedPnl - state.contractMeta.usedMargin) * 100) / 100;
+    });
+    assert.equal(Number(await page.locator('#transfer-amount').inputValue()), contractAvailable);
     await page.locator('#review-transfer').click();
     await page.locator('#simulate-transfer-failure').click();
     await route(page, 'transfer-status');
     assert.match(await page.locator('#screen-root').textContent(), /划转失败/);
     await page.locator('#retry-transfer').click();
     await route(page, 'transfer-review');
-    assert.equal(await page.locator('#transfer-amount-review').textContent(), '2,000.00 USDT');
+    assert.equal(await page.locator('#transfer-amount-review').textContent(), '1,354.61 USDT');
   });
 });
 
@@ -444,6 +485,104 @@ test('advanced record filters combine asset, network, status, and time', async (
     assert.equal(await page.locator('[data-record-type]:visible').count(), 1);
     assert.match(await page.locator('[data-record-type]:visible').textContent(), /提现 · USDC/);
     assert.match(await page.locator('[data-record-type]:visible').textContent(), /Base/);
+  });
+});
+
+test('record time filters exclude records outside the selected window', async () => {
+  await withPage(async page => {
+    await page.locator('#open-records').click();
+    assert.equal(await page.locator('[data-record-id="sample-deposit-old"]').count(), 1);
+    await page.locator('#open-record-filters').click();
+    await page.locator('#record-time-filter').selectOption('month');
+    await page.locator('#apply-record-filters').click();
+    assert.equal(await page.locator('[data-record-id="sample-deposit-old"]').count(), 0);
+  });
+});
+
+test('account totals and value history follow balance mutations and time ranges', async () => {
+  await withPage(async page => {
+    const initialFunding = Number(await page.locator('[data-funding-total]').getAttribute('data-value'));
+    await openDeposit(page);
+    await page.locator('[data-start-demo-deposit]').click();
+    for (let i = 0; i < 4; i += 1) await page.locator('[data-advance-deposit]').click();
+    const updatedFunding = Number(await page.locator('[data-funding-total]').getAttribute('data-value'));
+    assert.equal(updatedFunding - initialFunding, 500);
+
+    await page.locator('#open-value-history').click();
+    const state = await page.evaluate(() => window.assetPrototype.getState());
+    const expectedAll = state.funding.USDT + state.funding.USDC + state.contract.USDT + state.contract.USDC + state.contractMeta.unrealizedPnl;
+    assert.equal(Number(await page.locator('[data-current-value]').getAttribute('data-value')), expectedAll);
+    const path30d = await page.locator('[data-value-line]').getAttribute('d');
+    const change30d = await page.locator('[data-value-change]').textContent();
+    await page.locator('[data-value-range="7d"]').click();
+    assert.notEqual(await page.locator('[data-value-line]').getAttribute('d'), path30d);
+    assert.notEqual(await page.locator('[data-value-change]').textContent(), change30d);
+  });
+});
+
+test('each account value change reconciles exactly to its displayed sources', async () => {
+  await withPage(async page => {
+    await page.locator('#open-value-history').click();
+    for (const account of ['all', 'funding', 'contract']) {
+      await page.locator(`[data-value-account="${account}"]`).click();
+      const headlineAttribute = await page.locator('[data-value-change]').getAttribute('data-value');
+      assert.notEqual(headlineAttribute, null, account);
+      const headline = Number(headlineAttribute);
+      const sources = await page.locator('[data-source-value]').evaluateAll(nodes => nodes.map(node => Number(node.getAttribute('data-source-value'))));
+      assert.equal(sources.length, 3, account);
+      assert.equal(Math.round(sources.reduce((sum, value) => sum + value, 0) * 100), Math.round(headline * 100), account);
+    }
+  });
+});
+
+test('contract transfer-out respects available margin and updates risk metrics', async () => {
+  await withPage(async page => {
+    await page.locator('[data-account-tab="contract"]').click();
+    await page.locator('#open-transfer-out').click();
+    await page.locator('#transfer-max').click();
+    const state = await page.evaluate(() => window.assetPrototype.getState());
+    const allowed = Math.round((state.contract.USDT + state.contractMeta.unrealizedPnl - state.contractMeta.usedMargin) * 100) / 100;
+    assert.equal(Number(await page.locator('#transfer-amount').inputValue()), allowed);
+    await page.locator('#review-transfer').click();
+    await page.locator('#confirm-transfer').click();
+    await page.locator('[data-complete-transfer]').click();
+    await page.locator('[data-transfer-done]').click();
+    await page.locator('[data-account-tab="contract"]').click();
+    const after = await page.evaluate(() => window.assetPrototype.getState());
+    assert.ok(Math.round((after.contract.USDT + after.contractMeta.unrealizedPnl) * 100) >= Math.round(after.contractMeta.usedMargin * 100));
+    assert.match(await page.locator('[data-risk-status]').textContent(), /偏高/);
+    const expectedPnlRate = after.contractMeta.unrealizedPnl / (after.contract.USDT + after.contract.USDC) * 100;
+    assert.equal(Number(await page.locator('[data-pnl-rate]').getAttribute('data-value')), expectedPnlRate);
+  });
+});
+
+test('credited deposits lock exception scenarios and cannot be rewritten as failures', async () => {
+  await withPage(async page => {
+    await openDeposit(page);
+    await page.locator('[data-start-demo-deposit]').click();
+    for (let i = 0; i < 3; i += 1) await page.locator('[data-advance-deposit]').click();
+    assert.equal(await page.locator('#deposit-scenario').isDisabled(), true);
+    const credited = await page.evaluate(() => window.assetPrototype.getState().deposit);
+    assert.equal(credited.credited, true);
+    assert.equal(credited.scenario, 'normal');
+    assert.equal(credited.stage, 'complete');
+  });
+});
+
+test('address labels are escaped and sheets expose an accessible name', async () => {
+  await withPage(async page => {
+    await setSession(page, 'wallet');
+    await openWithdrawal(page);
+    await page.locator('#open-address-book').click();
+    await page.locator('#add-address').click();
+    await page.locator('#address-label').fill('\"><img data-injected src=x>');
+    await page.locator('#address-value').fill('0x1234567890abcdef1234567890abcdef12345678');
+    await page.locator('#save-address').click();
+    const dialog = page.getByRole('dialog');
+    const labelledBy = await dialog.getAttribute('aria-labelledby');
+    assert.ok(labelledBy);
+    assert.equal(await page.locator(`#${labelledBy}`).count(), 1);
+    assert.equal(await page.locator('#sheet-root [data-injected]').count(), 0);
   });
 });
 
