@@ -4,14 +4,19 @@ name: ForX Quiet Capital
 description: A restrained dark capital terminal for professional crypto asset operations.
 colors:
   canvas: "#050706"
-  surface: "#0D110F"
-  surface-raised: "#111613"
-  text: "#F3F7F4"
-  muted: "#717A74"
-  line: "rgba(224, 255, 236, 0.105)"
-  primary: "#63F6A2"
-  warning: "#FFC45D"
-  error: "#FF747D"
+  panel: "#0D100F"
+  surface: "#121614"
+  surface-raised: "#171C19"
+  text: "#F2F6F3"
+  muted: "#858E89"
+  muted-strong: "#AEB7B2"
+  line: "rgba(255, 255, 255, 0.10)"
+  line-strong: "rgba(255, 255, 255, 0.17)"
+  primary: "#8DFAA9"
+  primary-strong: "#53D782"
+  primary-ink: "#08210F"
+  warning: "#F8CA6C"
+  error: "#FF7A7A"
 typography:
   display:
     fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
@@ -49,7 +54,7 @@ spacing:
 components:
   button-primary:
     backgroundColor: "{colors.primary}"
-    textColor: "{colors.canvas}"
+    textColor: "{colors.primary-ink}"
     rounded: "{rounded.md}"
     height: 48px
   button-secondary:
@@ -57,6 +62,15 @@ components:
     textColor: "{colors.text}"
     rounded: "{rounded.md}"
     height: 48px
+  control:
+    backgroundColor: "{colors.panel}"
+    textColor: "{colors.text}"
+    rounded: "{rounded.md}"
+    height: 44px
+  icon-muted:
+    textColor: "{colors.muted-strong}"
+  status-success:
+    textColor: "{colors.primary-strong}"
   phone:
     backgroundColor: "{colors.canvas}"
     textColor: "{colors.text}"
@@ -66,6 +80,9 @@ components:
     typography: "{typography.label}"
   divider:
     backgroundColor: "{colors.line}"
+    height: 1px
+  divider-strong:
+    backgroundColor: "{colors.line-strong}"
     height: 1px
   notice-warning:
     backgroundColor: "{colors.surface}"
@@ -78,7 +95,7 @@ components:
 
 ## Overview
 
-The asset center should feel like a quiet institutional capital terminal adapted to a native mobile screen. It is not a consumer wallet full of floating cards, nor a dense desktop order terminal compressed into a phone. Large values, deliberate empty space, exact alignment, and restrained state feedback give the screen authority.
+The asset center uses a quiet exterior and a professional interior. Account homes remain value-led and calm; operational screens become dense with meaningful balances, fees, limits, timestamps, confirmations, addresses, and audit states. It is not a consumer wallet full of floating cards, nor a dense desktop order terminal compressed into a phone.
 
 The fluorescent green {colors.primary} is the product's scarce signal. It appears on the active account, the primary deposit action, the value curve, positive movement, and completed states. Its scarcity is the source of its strength.
 
@@ -97,7 +114,7 @@ Use the platform sans-serif stack. Numbers are the visual anchor: keep tabular a
 
 ## Layout
 
-Design for a 390 × 844 phone with 20–21px horizontal gutters and an 8px rhythm. The status area is followed directly by the account-tabs row; there is no page-title or brand-lockup row. Network selection belongs inside deposit and withdrawal, never on the asset home.
+Design for a 390 × 844 phone with 18–20px horizontal gutters, a 4px base grid, and an 8px row rhythm. Every actionable control provides at least a 44px touch target unless it is grouped inside a larger semantic row. The status area is followed directly by the account-tabs row; there is no page-title or brand-lockup row. Network selection belongs inside deposit and withdrawal, never on the asset home.
 
 ## Elevation & Depth
 
@@ -115,6 +132,8 @@ Rounded corners communicate hierarchy: 12px for controls, 16px for major panels,
 - Status steppers use explicit labels and icons; color alone never communicates progress.
 - Sheets preserve context, trap focus, close with Escape, and return focus to the trigger.
 - Asset and record rows align amounts to the trailing edge and use small muted metadata below.
+- Icons come from one 1.75px outline SVG family. Token and network marks use consistent containers; no emoji or improvised symbol acts as a control.
+- Transaction screens expose orientation, primary value, supporting metadata, state, action hierarchy, and auditability before they are considered complete.
 
 ## Do's and Don'ts
 
@@ -126,6 +145,8 @@ Rounded corners communicate hierarchy: 12px for controls, 16px for major panels,
 - Don't present internal transfers as return or external fund flow.
 - Don't use ornamental English or unexplained abbreviations.
 - Don't imply any prototype wallet, signature, transaction, or blockchain state is real.
+- Don't use empty space to compensate for missing operational content.
+- Don't wrap every metric in a separate rounded card; use tonal sections, aligned columns, and dividers.
 
 ## Motion
 

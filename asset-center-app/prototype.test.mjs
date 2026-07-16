@@ -607,3 +607,25 @@ test('notification shortcut explains prototype-only account events', async () =>
     assert.match(await page.locator('#sheet-root').textContent(), /原型通知/);
   });
 });
+
+test('uses one coherent SVG icon system and exchange-grade controls', async () => {
+  await withPage(async page => {
+    assert.ok(await page.locator('[data-icon]').count() >= 18);
+    assert.equal(await page.locator('button').filter({ hasText: /^[⌁⌗⇅×]+$/ }).count(), 0);
+    const sizes = await page.locator('button:visible').evaluateAll(nodes => nodes.map(node => {
+      const box = node.getBoundingClientRect();
+      return [box.width, box.height];
+    }));
+    assert.ok(sizes.every(([width, height]) => width >= 32 && height >= 32));
+  });
+});
+
+test('matches the reference shell at desktop and mobile sizes', async () => {
+  for (const viewport of [{ width: 390, height: 844 }, { width: 320, height: 760 }, { width: 1280, height: 1000 }]) {
+    await withPage(async page => {
+      const phone = await page.locator('#interactive-phone').boundingBox();
+      assert.ok(phone && phone.height <= viewport.height);
+      assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+    }, viewport);
+  }
+});

@@ -6,9 +6,11 @@
   <meta name="color-scheme" content="dark">
   <title>ForX Finance · 资产中心原型</title>
   <style>
-    :root { --bg:#050706; --surface:#0d110f; --text:#f3f7f4; --muted:#717a74; --line:rgba(224,255,236,.105); --green:#63f6a2; --warning:#ffc45d; --error:#ff747d; }
+    :root { --bg:#050706; --panel:#0d100f; --surface:#121614; --surface-strong:#171c19; --text:#f2f6f3; --muted:#858e89; --muted-strong:#aeb7b2; --line:rgba(255,255,255,.10); --line-strong:rgba(255,255,255,.17); --green:#8dfaa9; --green-strong:#53d782; --green-ink:#08210f; --warning:#f8ca6c; --error:#ff7a7a; --shadow:0 30px 90px rgba(0,0,0,.48); }
     * { box-sizing:border-box; }
-    body { margin:0; min-width:320px; color:var(--text); background:#090b0a; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+    html { background:#030403; }
+    body { margin:0; min-width:320px; color:var(--text); background:radial-gradient(circle at 50% -10%,rgba(83,215,130,.14),transparent 34%),radial-gradient(circle at 15% 90%,rgba(70,117,255,.06),transparent 30%),linear-gradient(155deg,#0b0f0c 0%,#050706 52%,#020302 100%); font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; -webkit-font-smoothing:antialiased; }
+    button { min-width:32px; min-height:32px; cursor:pointer; }
     button,select,input { font:inherit; }
     button:focus-visible,select:focus-visible,input:focus-visible { outline:2px solid var(--green); outline-offset:2px; }
     .prototype-shell { min-height:100svh; display:grid; grid-template-columns:minmax(250px,330px) 390px; align-items:center; justify-content:center; gap:64px; padding:32px; }
@@ -17,7 +19,8 @@
     .prototype-meta p { color:var(--muted); line-height:1.7; }
     .controls { display:grid; gap:10px; margin-top:24px; }
     .controls button,.controls select { min-height:42px; border:1px solid var(--line); border-radius:12px; background:var(--surface); color:var(--text); padding:0 12px; }
-    .phone { width:390px; height:844px; overflow:hidden; border:1px solid #2b322e; border-radius:40px; background:var(--bg); box-shadow:0 38px 100px rgba(0,0,0,.55); position:relative; }
+    .phone { width:390px; height:min(844px,calc(100svh - 32px)); min-height:680px; overflow:hidden; border:1px solid var(--line-strong); border-radius:34px; background:var(--bg); box-shadow:var(--shadow),inset 0 0 0 5px rgba(255,255,255,.018); position:relative; isolation:isolate; }
+    .phone::after { content:""; position:absolute; inset:0; z-index:30; border-radius:inherit; box-shadow:inset 0 0 0 1px rgba(0,0,0,.56); pointer-events:none; }
     #screen-root { min-height:100%; height:100%; overflow:hidden; }
     #sheet-root[hidden] { display:none; }
     #sheet-root { position:absolute; inset:0; z-index:20; display:flex; align-items:flex-end; background:rgba(0,0,0,.58); backdrop-filter:blur(5px); }
@@ -48,7 +51,7 @@
     .account-hero { min-height:216px; padding:24px 21px 18px; position:relative; overflow:hidden; border-bottom:1px solid var(--line); }
     .account-hero::after { content:""; position:absolute; width:190px; height:190px; right:-70px; top:-40px; border-radius:50%; background:rgba(99,246,162,.06); filter:blur(55px); pointer-events:none; }
     .hero-label { display:flex; align-items:center; gap:7px; color:#78817b; font-size:11px; }
-    .visibility-toggle { width:20px; height:18px; border:0; background:transparent; color:#657069; padding:0; }
+    .visibility-toggle { width:32px; height:32px; border:0; background:transparent; color:#657069; padding:7px; }
     .visibility-toggle svg { width:16px; fill:none; stroke:currentColor; }
     .hero-value { margin:7px 0 4px; font-size:38px; font-weight:570; line-height:1.1; letter-spacing:-.04em; font-variant-numeric:tabular-nums; }
     .hero-value small { color:#bcc4be; font-size:14px; font-weight:520; letter-spacing:0; }
@@ -68,11 +71,13 @@
     .section-heading h2 { margin:0; font-size:14px; font-weight:650; }
     .section-heading small { margin-left:7px; color:#5f6962; font-size:9px; }
     .section-heading button { margin-left:auto; border:0; background:transparent; color:#69726c; font-size:10px; }
+    .section-heading button svg { width:12px; height:12px; vertical-align:-2px; }
     .composition { height:3px; display:flex; overflow:hidden; border-radius:4px; background:#222824; }
     .composition span:first-child { width:74%; background:var(--green); }
     .composition span:last-child { width:26%; background:#407ce4; }
     .asset-row { min-height:66px; display:flex; align-items:center; border-bottom:1px solid rgba(230,255,239,.075); }
-    .token-icon { width:35px; height:35px; border-radius:50%; display:grid; place-items:center; margin-right:11px; background:linear-gradient(145deg,#20b987,#0c7252); color:white; font-size:13px; font-weight:750; box-shadow:inset 0 0 0 1px rgba(255,255,255,.14); }
+    .token-icon { width:35px; height:35px; border-radius:50%; display:grid; place-items:center; margin-right:11px; background:linear-gradient(145deg,#20b987,#0c7252); color:white; font-size:13px; font-weight:750; box-shadow:inset 0 0 0 1px rgba(255,255,255,.14); overflow:hidden; }
+    .token-icon svg { width:100%; height:100%; }
     .token-icon.usdc { background:linear-gradient(145deg,#4d96f0,#2364bf); }
     .asset-copy b,.activity-copy b { display:block; font-size:13px; }
     .asset-copy small,.activity-copy small { display:block; margin-top:2px; color:#626c65; font-size:9px; }
@@ -80,6 +85,12 @@
     .asset-amount b { display:block; font-size:13px; font-weight:590; }
     .asset-amount small { display:block; margin-top:2px; color:#626c65; font-size:9px; }
     .row-chevron { margin-left:10px; color:#58615b; }
+    .row-chevron svg { width:14px; height:14px; }
+    .network-mark { display:grid; place-items:center; width:28px; height:28px; border:1px solid var(--line-strong); border-radius:9px; color:var(--muted-strong); background:var(--surface); font-size:8px; font-weight:750; }
+    .status-badge { display:inline-flex; align-items:center; gap:5px; min-height:22px; padding:0 7px; border-radius:999px; color:var(--muted-strong); background:rgba(255,255,255,.045); font-size:8px; font-weight:650; }
+    .status-badge i { width:5px; height:5px; border-radius:50%; background:currentColor; box-shadow:0 0 7px currentColor; }
+    .status-badge.is-complete { color:var(--green); background:rgba(141,250,169,.07); }
+    .status-badge.is-failed { color:var(--error); background:rgba(255,122,122,.07); }
     .activity-row { display:flex; align-items:center; padding:10px 0 3px; }
     .activity-icon { width:31px; height:31px; border:1px solid rgba(255,255,255,.06); border-radius:9px; background:#101512; color:var(--green); display:grid; place-items:center; margin-right:10px; }
     .activity-icon svg { width:14px; fill:none; stroke:currentColor; }
@@ -314,7 +325,7 @@
     .gallery-copy { padding:13px 14px 15px; border-top:1px solid var(--line); }
     .gallery-copy h3 { margin:0; font-size:13px; }
     .gallery-copy p { margin:5px 0 0; font-size:9px; line-height:1.5; }
-    @media (max-width:800px) { .prototype-shell { grid-template-columns:1fr; min-height:100svh; padding:0; gap:0; } .prototype-meta { display:none; } .phone { width:100%; max-width:390px; height:100svh; max-height:844px; margin:auto; border-radius:0; border:0; } .gallery { display:none; } }
+    @media (max-width:800px) { .prototype-shell { grid-template-columns:1fr; min-height:100svh; padding:0; gap:0; } .prototype-meta { display:none; } .phone { width:100%; max-width:390px; height:100svh; min-height:0; max-height:844px; margin:auto; border-radius:0; border:0; box-shadow:none; } .gallery { display:none; } }
   </style>
 </head>
 <body>
@@ -389,14 +400,31 @@
     const root = document.querySelector('#screen-root');
     const sheetRoot = document.querySelector('#sheet-root');
     const live = document.querySelector('#live-region');
-    const icons = {
-      bell:'<svg viewBox="0 0 24 24"><path d="M7 9a5 5 0 0 1 10 0v4l2 3H5l2-3V9Z"/><path d="M10 19h4"/></svg>',
-      history:'<svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.3-5.7L4 8.5"/><path d="M4 4v4.5h4.5M12 7v5l3 2"/></svg>',
-      deposit:'<svg viewBox="0 0 24 24"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 19h14"/></svg>',
-      withdraw:'<svg viewBox="0 0 24 24"><path d="M12 16V4m0 0 4 4m-4-4L8 8M5 20h14"/></svg>',
-      transfer:'<svg viewBox="0 0 24 24"><path d="M4 8h14m0 0-3-3m3 3-3 3M20 16H6m0 0 3-3m-3 3 3 3"/></svg>',
-      eye:'<svg viewBox="0 0 24 24"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"/><circle cx="12" cy="12" r="2.5"/></svg>'
-    };
+    const ICON_PATHS = Object.freeze({
+      bell:'<path d="M7 9a5 5 0 0 1 10 0v4l2 3H5l2-3V9Z"/><path d="M10 19h4"/>',
+      history:'<path d="M4 12a8 8 0 1 0 2.3-5.7L4 8.5"/><path d="M4 4v4.5h4.5M12 7v5l3 2"/>',
+      deposit:'<path d="M12 3v12m0 0 4-4m-4 4-4-4M5 19h14"/>',
+      withdraw:'<path d="M12 16V4m0 0 4 4m-4-4L8 8M5 20h14"/>',
+      transfer:'<path d="M4 8h14m0 0-3-3m3 3-3 3M20 16H6m0 0 3-3m-3 3 3 3"/>',
+      eye:'<path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6Z"/><circle cx="12" cy="12" r="2.5"/>',
+      home:'<path d="m4 11 8-7 8 7v9H4v-9Z"/><path d="M9 20v-6h6v6"/>',
+      market:'<path d="M4 17V9m5 11V4m5 13V8m5 12V6"/>',
+      trade:'<path d="M4 8h14m0 0-3-3m3 3-3 3M20 16H6m0 0 3-3m-3 3 3 3"/>',
+      position:'<path d="M4 18 9 8l4 6 3-5 4 9H4Z"/>',
+      assets:'<rect x="3" y="6" width="18" height="14" rx="3"/><path d="M6 6V4h12v2m-3 7h6"/>',
+      chart:'<path d="m3 17 5-5 4 3 7-9"/><path d="M16 6h3v3"/>',
+      chevron:'<path d="m9 5 7 7-7 7"/>',
+      copy:'<rect x="8" y="8" width="11" height="11" rx="2"/><path d="M16 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h3"/>',
+      scan:'<path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/><path d="M9 9h6v6H9z"/>',
+      shield:'<path d="M12 3 5 6v5c0 4.4 2.8 8.3 7 10 4.2-1.7 7-5.6 7-10V6l-7-3Z"/><path d="m9 12 2 2 4-4"/>',
+      filter:'<path d="M4 6h16M7 12h10M10 18h4"/>',
+      info:'<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/>'
+    });
+    function icon(name){ return `<svg data-icon="${name}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON_PATHS[name]}</svg>`; }
+    function tokenMark(token){ const color=token==='USDT'?'#20b987':'#4d96f0'; return `<span class="token-icon ${token==='USDC'?'usdc':''}"><svg data-icon="token-${token.toLowerCase()}" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="18" fill="${color}"/><text x="18" y="23" fill="white" font-size="16" font-weight="750" text-anchor="middle">${token==='USDT'?'₮':'$'}</text></svg></span>`; }
+    function networkMark(network){ return `<span class="network-mark">${network.slice(0,2).toUpperCase()}</span>`; }
+    function statusBadge(status){ return `<span class="status-badge is-${status}"><i></i>${recordStatusLabel(status)}</span>`; }
+    const icons = Object.freeze({ bell:icon('bell'), history:icon('history'), deposit:icon('deposit'), withdraw:icon('withdraw'), transfer:icon('transfer'), eye:icon('eye') });
     function announce(message) { live.textContent=''; requestAnimationFrame(()=>{ live.textContent=message; }); }
     function openSheet(content,trigger=document.activeElement){
       state.sheetReturnFocus=trigger;
@@ -433,16 +461,16 @@
     }
     function miniChart(){
       return `<button class="mini-chart" id="open-value-history" type="button" aria-label="查看账户价值曲线">
-        <svg viewBox="0 0 164 94" fill="none"><defs><linearGradient id="miniArea" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#63f6a2" stop-opacity=".26"/><stop offset="1" stop-color="#63f6a2" stop-opacity="0"/></linearGradient></defs><path d="M0 78L19 77L31 64L49 68L65 45L84 51L101 27L118 34L139 14L164 18V94H0Z" fill="url(#miniArea)"/><path d="M0 78L19 77L31 64L49 68L65 45L84 51L101 27L118 34L139 14L164 18" stroke="#63f6a2" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/><circle cx="164" cy="18" r="3" fill="#63f6a2"/></svg>
+        <svg data-icon="account-chart" viewBox="0 0 164 94" fill="none"><defs><linearGradient id="miniArea" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#8dfaa9" stop-opacity=".26"/><stop offset="1" stop-color="#8dfaa9" stop-opacity="0"/></linearGradient></defs><path d="M0 78L19 77L31 64L49 68L65 45L84 51L101 27L118 34L139 14L164 18V94H0Z" fill="url(#miniArea)"/><path d="M0 78L19 77L31 64L49 68L65 45L84 51L101 27L118 34L139 14L164 18" stroke="#8dfaa9" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/><circle cx="164" cy="18" r="3" fill="#8dfaa9"/></svg>
       </button>`;
     }
     function bottomNav(){
       return `<nav class="bottom-nav" aria-label="主导航">
-        <button class="bottom-item" type="button"><svg viewBox="0 0 24 24"><path d="m4 11 8-7 8 7v9H4v-9Z"/><path d="M9 20v-6h6v6"/></svg>首页</button>
-        <button class="bottom-item" type="button"><svg viewBox="0 0 24 24"><path d="M4 17V9m5 11V4m5 13V8m5 12V6"/></svg>行情</button>
-        <button class="bottom-item" type="button"><svg viewBox="0 0 24 24"><path d="M4 8h14m0 0-3-3m3 3-3 3M20 16H6m0 0 3-3m-3 3 3 3"/></svg>交易</button>
-        <button class="bottom-item" type="button"><svg viewBox="0 0 24 24"><path d="M4 18 9 8l4 6 3-5 4 9H4Z"/></svg>仓位</button>
-        <button class="bottom-item" data-bottom-nav="assets" aria-current="page" type="button"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="14" rx="3"/><path d="M6 6V4h12v2m-3 7h6"/></svg>资产</button>
+        <button class="bottom-item" type="button">${icon('home')}首页</button>
+        <button class="bottom-item" type="button">${icon('market')}行情</button>
+        <button class="bottom-item" type="button">${icon('trade')}交易</button>
+        <button class="bottom-item" type="button">${icon('position')}仓位</button>
+        <button class="bottom-item" data-bottom-nav="assets" aria-current="page" type="button">${icon('assets')}资产</button>
       </nav>`;
     }
     function fundingHome(){
@@ -465,7 +493,7 @@
           <div class="section-heading"><h2>资产组合</h2><small>2 项资产</small><button type="button">隐藏零余额　○</button></div>
           <div class="composition" aria-label="${assetShare('USDT')}，${assetShare('USDC')}"><span style="width:${fundingTotal()?state.funding.USDT/fundingTotal()*100:0}%"></span><span style="width:${fundingTotal()?state.funding.USDC/fundingTotal()*100:0}%"></span></div>
           ${assetRow('USDT','₮','usdt')}${assetRow('USDC','$','usdc')}
-          <div class="section-heading"><h2>资金动态</h2><button id="open-records-inline" type="button">全部记录　→</button></div>
+          <div class="section-heading"><h2>资金动态</h2><button id="open-records-inline" type="button">全部记录 ${icon('chevron')}</button></div>
           ${state.records.length?state.records.slice(0,2).map(recordRow).join(''):'<div class="activity-row"><span class="activity-icon">'+icons.deposit+'</span><span class="activity-copy"><b>充值 · USDC</b><small>Arbitrum　12 分钟前</small></span><span class="activity-value"><b>+500.00</b><small>示例记录</small></span></div>'}
         </div>`;
     }
@@ -479,7 +507,7 @@
     function assetShare(token){ const total=fundingTotal(); return `${token} 占 ${total?format(state.funding[token]/total*100,1):'0.0'}%`; }
     function assetRow(token,symbol,kind){
       const value=state.funding[token];
-      return `<button class="asset-row" type="button" data-asset="${token}" style="width:100%;border-left:0;border-right:0;border-top:0;background:transparent;color:inherit;padding:0;text-align:left"><span class="token-icon ${kind==='usdc'?'usdc':''}">${symbol}</span><span class="asset-copy"><b>${token}</b><small>资产占比 ${assetShare(token).replace(token+' 占 ','')}</small></span><span class="asset-amount"><b data-funding-balance="${token}" data-value="${value}">${format(value)}</b><small>≈ $${format(token==='USDT'?value*.9999:value)}</small></span><span class="row-chevron">›</span></button>`;
+      return `<button class="asset-row" type="button" data-asset="${token}" style="width:100%;border-left:0;border-right:0;border-top:0;background:transparent;color:inherit;padding:0;text-align:left">${tokenMark(token)}<span class="asset-copy"><b>${token}</b><small>资产占比 ${assetShare(token).replace(token+' 占 ','')}</small></span><span class="asset-amount"><b data-funding-balance="${token}" data-value="${value}">${format(value)}</b><small>≈ $${format(token==='USDT'?value*.9999:value)}</small></span><span class="row-chevron">${icon('chevron')}</span></button>`;
     }
     function contractHome(){
       const hidden=state.valuesHidden, balance=contractBalance(), equity=contractEquity(), available=Math.max(0,equity-state.contractMeta.usedMargin), marginRate=equity?state.contractMeta.maintenanceMargin/equity*100:0, pnlRate=balance?state.contractMeta.unrealizedPnl/balance*100:0, riskHigh=equity?available/equity<=.2:true;
