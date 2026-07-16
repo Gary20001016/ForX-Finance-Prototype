@@ -61,6 +61,17 @@ components:
     backgroundColor: "{colors.canvas}"
     textColor: "{colors.text}"
     rounded: "{rounded.phone}"
+  metadata:
+    textColor: "{colors.muted}"
+    typography: "{typography.label}"
+  divider:
+    backgroundColor: "{colors.line}"
+    height: 1px
+  notice-warning:
+    backgroundColor: "{colors.surface}"
+    textColor: "{colors.warning}"
+    rounded: "{rounded.sm}"
+    padding: 12px
 ---
 
 # ForX Quiet Capital
@@ -119,4 +130,3 @@ Rounded corners communicate hierarchy: 12px for controls, 16px for major panels,
 ## Motion
 
 Feedback transitions take 120ms and content transitions take 220ms with `cubic-bezier(0.2, 0, 0, 1)`. Nothing bounces or overshoots. Under `prefers-reduced-motion`, animation duration becomes zero.
-
