@@ -163,3 +163,99 @@ test('deposit progress exposes minimum, congestion, mismatch, and failure scenar
     assert.match(await page.locator('[data-deposit-exception]').textContent(), /链上交易失败/);
   });
 });
+
+async function setSession(page, mode) {
+  await page.locator('#session-mode').selectOption(mode);
+}
+
+async function openWithdrawal(page) {
+  await page.locator('#open-withdraw').click();
+  await route(page, 'withdraw');
+}
+
+async function fillWithdrawal(page, address = '0x1234567890abcdef1234567890abcdef12345678', amount = '250') {
+  await page.locator('#withdraw-address').fill(address);
+  await page.locator('#withdraw-amount').fill(amount);
+  await page.locator('#review-withdrawal').click();
+  await route(page, 'withdraw-review');
+}
+
+test('wallet-login withdrawal does not request MFA and completes once', async () => {
+  await withPage(async page => {
+    const before = Number(await page.locator('[data-funding-balance="USDT"]').getAttribute('data-value'));
+    await setSession(page, 'wallet');
+    await openWithdrawal(page);
+    await fillWithdrawal(page);
+    await page.locator('#submit-withdrawal').click();
+    await route(page, 'withdraw-status');
+    assert.doesNotMatch(await page.locator('#screen-root').textContent(), /MFA 验证/);
+    for (let i = 0; i < 4; i += 1) await page.locator('[data-advance-withdrawal]').click();
+    await route(page, 'assets');
+    const after = Number(await page.locator('[data-funding-balance="USDT"]').getAttribute('data-value'));
+    assert.equal(Math.round((before - after) * 100) / 100, 250.8);
+    assert.equal(await page.locator('[data-record-type="withdrawal"]').count(), 1);
+  });
+});
+
+test('email withdrawal binds MFA, preserves its draft, then verifies the code', async () => {
+  await withPage(async page => {
+    await setSession(page, 'email-unbound');
+    await openWithdrawal(page);
+    await fillWithdrawal(page);
+    await page.locator('#submit-withdrawal').click();
+    await route(page, 'mfa-setup');
+    assert.match(await page.locator('#screen-root').textContent(), /绑定 MFA/);
+    await page.locator('#mfa-secret-confirmed').check();
+    await page.locator('#mfa-code').fill('123456');
+    await page.locator('#confirm-mfa-setup').click();
+    await route(page, 'withdraw-review');
+    assert.match(await page.locator('#screen-root').textContent(), /250\.00 USDT/);
+    await page.locator('#submit-withdrawal').click();
+    await route(page, 'mfa-verify');
+    await page.locator('#mfa-verify-code').fill('123456');
+    await page.locator('#confirm-mfa-verify').click();
+    await route(page, 'withdraw-status');
+  });
+});
+
+test('validates withdrawal address family and calculates fee and received amount', async () => {
+  await withPage(async page => {
+    await openWithdrawal(page);
+    await page.locator('#withdraw-address').fill('TQn9Y2khEsLJW1ChVWFMSMeRDow5KcbLSE');
+    await page.locator('#withdraw-amount').fill('250');
+    assert.match(await page.locator('#withdraw-error').textContent(), /Ethereum 地址应以 0x 开头/);
+    assert.equal(await page.locator('#review-withdrawal').isDisabled(), true);
+    await page.locator('#withdraw-address').fill('0x1234567890abcdef1234567890abcdef12345678');
+    assert.equal(await page.locator('#review-withdrawal').isEnabled(), true);
+    assert.match(await page.locator('[data-withdraw-received]').textContent(), /249\.20 USDT/);
+  });
+});
+
+test('saving an address uses wallet signature or email MFA without submitting a withdrawal', async () => {
+  await withPage(async page => {
+    await setSession(page, 'wallet');
+    await openWithdrawal(page);
+    await page.locator('#open-address-book').click();
+    await page.locator('#add-address').click();
+    await page.locator('#address-label').fill('常用钱包');
+    await page.locator('#address-value').fill('0x1234567890abcdef1234567890abcdef12345678');
+    await page.locator('#save-address').click();
+    assert.match(await page.locator('#sheet-root').textContent(), /签名仅用于保存地址/);
+    await page.locator('#confirm-signature').click();
+    assert.match(await page.locator('#screen-root').textContent(), /常用钱包/);
+    assert.equal(await page.locator('[data-record-type="withdrawal"]').count(), 0);
+    await page.locator('[data-back]').click();
+    await page.locator('[data-back]').click();
+    await setSession(page, 'email-bound');
+    await openWithdrawal(page);
+    await page.locator('#open-address-book').click();
+    await page.locator('#add-address').click();
+    await page.locator('#address-label').fill('邮箱用户地址');
+    await page.locator('#address-value').fill('0xabcdefabcdefabcdefabcdefabcdefabcdefabcd');
+    await page.locator('#save-address').click();
+    assert.match(await page.locator('#sheet-root').textContent(), /MFA 验证/);
+    await page.locator('#address-mfa-code').fill('123456');
+    await page.locator('#confirm-address-mfa').click();
+    assert.match(await page.locator('#screen-root').textContent(), /邮箱用户地址/);
+  });
+});

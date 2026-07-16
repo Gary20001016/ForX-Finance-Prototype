@@ -174,6 +174,52 @@
     .detail-line span:last-child { margin-left:auto; color:#b8c1bb; }
     .scenario-select { width:100%; height:38px; margin-top:13px; padding:0 10px; border:1px solid var(--line); border-radius:10px; background:var(--surface); color:#aab3ad; font-size:9px; }
     .exception-copy { min-height:0; margin-top:9px; color:var(--warning); font-size:8px; line-height:1.55; }
+    .input-shell { position:relative; margin-bottom:7px; }
+    .text-input { width:100%; min-height:52px; padding:0 42px 0 13px; border:1px solid var(--line); border-radius:12px; background:#090c0a; color:var(--text); font-size:11px; }
+    .input-action { position:absolute; right:7px; top:8px; width:36px; height:36px; border:0; border-radius:9px; background:#141a16; color:#879089; font-size:15px; }
+    .inline-actions { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:15px; }
+    .inline-actions button { min-height:40px; border:1px solid var(--line); border-radius:10px; background:#101512; color:#9ba49e; font-size:9px; }
+    .validation { min-height:18px; margin:3px 2px 7px; color:var(--error); font-size:8px; line-height:1.45; }
+    .amount-panel { padding:13px; margin-bottom:12px; border:1px solid var(--line); border-radius:13px; background:var(--surface); }
+    .amount-panel .amount-input { border:0; padding:0; background:transparent; }
+    .amount-tools { display:flex; justify-content:space-between; align-items:center; margin-top:6px; color:#667069; font-size:8px; }
+    .amount-tools button { border:0; background:transparent; color:var(--green); font-size:9px; }
+    .calculation { margin:12px 0 15px; border-top:1px solid var(--line); }
+    .calculation-row { display:flex; padding:9px 0; border-bottom:1px solid rgba(255,255,255,.06); color:#68716b; font-size:9px; }
+    .calculation-row b { margin-left:auto; color:#c5cdc7; font-weight:550; }
+    .calculation-row.received b { color:var(--green); font-size:11px; }
+    .review-card { padding:15px; border:1px solid var(--line); border-radius:15px; background:#0b0f0c; }
+    .review-amount { text-align:center; padding:7px 0 17px; border-bottom:1px solid var(--line); }
+    .review-amount small { display:block; color:#68716b; font-size:9px; }
+    .review-amount strong { display:block; margin-top:5px; font-size:25px; }
+    .risk-check { display:flex; gap:9px; margin:13px 0; color:#7a837d; font-size:8px; line-height:1.55; }
+    .risk-check input { margin-top:2px; accent-color:var(--green); }
+    .auth-page { padding:26px 20px; }
+    .auth-symbol { width:48px; height:48px; margin:0 auto 15px; border-radius:15px; background:rgba(99,246,162,.08); color:var(--green); display:grid; place-items:center; font-size:20px; }
+    .auth-page h2 { margin:0; text-align:center; font-size:19px; }
+    .auth-page>p { margin:8px auto 20px; max-width:290px; color:#7b847e; font-size:10px; line-height:1.6; text-align:center; }
+    .secret-box { padding:13px; margin-bottom:13px; border:1px dashed rgba(99,246,162,.24); border-radius:12px; background:#0d1410; text-align:center; }
+    .secret-box code { color:#bfe6cc; font-size:10px; letter-spacing:.08em; }
+    .confirm-check { display:flex; gap:9px; margin:10px 0 15px; color:#7b847e; font-size:9px; }
+    .confirm-check input { accent-color:var(--green); }
+    .otp-input { width:100%; height:54px; margin-bottom:13px; border:1px solid var(--line); border-radius:12px; background:#090c0a; color:var(--text); text-align:center; font-size:20px; letter-spacing:.35em; }
+    .address-list { border-top:1px solid var(--line); }
+    .address-item { width:100%; min-height:64px; display:flex; align-items:center; border:0; border-bottom:1px solid rgba(255,255,255,.07); background:transparent; color:inherit; text-align:left; }
+    .address-item .wallet-mark { width:34px; height:34px; margin-right:10px; font-size:11px; }
+    .address-item b { display:block; font-size:11px; }
+    .address-item small { display:block; margin-top:3px; color:#68716b; font-size:8px; }
+    .address-item>span:last-child { margin-left:auto; color:#68716b; font-size:9px; }
+    .empty-state { padding:48px 10px; text-align:center; color:#69726c; font-size:10px; line-height:1.6; }
+    .add-address-button { width:100%; height:44px; margin-top:13px; border:1px solid rgba(99,246,162,.24); border-radius:11px; background:rgba(99,246,162,.045); color:#9dd8b2; }
+    .withdraw-status-card { padding:18px; margin-top:16px; border:1px solid var(--line); border-radius:15px; background:#0b0f0c; }
+    .withdraw-status-card h2 { margin:0 0 6px; font-size:15px; }
+    .withdraw-status-card p { margin:0; color:#7b847e; font-size:9px; line-height:1.55; }
+    .status-list { margin:15px 0; }
+    .status-line { display:grid; grid-template-columns:20px 1fr auto; gap:9px; align-items:center; padding:9px 0; border-bottom:1px solid rgba(255,255,255,.06); }
+    .status-line i { width:18px; height:18px; border:1px solid #313a34; border-radius:50%; display:grid; place-items:center; color:#68716b; font-style:normal; font-size:7px; }
+    .status-line.done i,.status-line.current i { border-color:var(--green); background:var(--green); color:#06110a; }
+    .status-line b { font-size:9px; }
+    .status-line span { color:#68716b; font-size:8px; }
     @media (prefers-reduced-motion:reduce) { *,*::before,*::after { scroll-behavior:auto!important; animation-duration:0s!important; transition-duration:0s!important; } }
     .gallery { padding:70px max(24px,calc((100vw - 1180px)/2)); border-top:1px solid var(--line); }
     .gallery h2 { font-size:32px; }
@@ -213,6 +259,7 @@
       Solana:{ family:'solana', confirmations:32, eta:'约 1 分钟', min:{USDT:10,USDC:10}, address:'9xQeWvG816bUx9EPfD1N4QFvKc8iPzRzA' },
       TRON:{ family:'tron', confirmations:20, eta:'约 1 分钟', min:{USDT:10,USDC:10}, address:'TQn9Y2khEsLJW1ChVWFMSMeRDow5KcbLSE' }
     });
+    const WITHDRAW_FEES = Object.freeze({ Ethereum:0.8, Arbitrum:0.2, Polygon:0.1, Base:0.1, Optimism:0.1, Solana:0.05, TRON:1 });
     const CONFIG = Object.freeze({ tokens:['USDT','USDC'], networks:Object.keys(NETWORKS) });
     const format = (value, digits=2) => Number(value).toLocaleString('en-US',{ minimumFractionDigits:digits, maximumFractionDigits:digits });
     const initialState = () => ({
@@ -221,7 +268,10 @@
       funding:{ USDT:18240, USDC:6441.75, heldUsd:100.67 },
       contract:{ USDT:2000, USDC:0 },
       depositDraft:{ token:'USDC', network:'Arbitrum', method:'address', amount:'500', walletConnected:true, walletMatches:true },
-      deposit:null, draft:{}, records:[]
+      deposit:null,
+      withdrawalDraft:{ token:'USDT', network:'Ethereum', address:'', amount:'', acknowledged:true },
+      withdrawal:null, addressBook:[], pendingAction:null, pendingAddress:null,
+      draft:{}, records:[]
     });
     let state = initialState();
     const root = document.querySelector('#screen-root');
@@ -251,6 +301,9 @@
       const options=isToken?CONFIG.tokens:CONFIG.networks;
       const attr=isToken?'data-token':'data-network';
       openSheet(`<div class="sheet-header"><div><h2>选择${isToken?'币种':'网络'}</h2><p>${isToken?'资产中心当前支持 USDT 与 USDC。':'请确保转出平台使用完全相同的网络。'}</p></div><button class="sheet-close" data-sheet-close aria-label="关闭">×</button></div><div class="sheet-list">${options.map(item=>`<button class="sheet-option" ${attr}="${item}">${item}<span>${isToken?'稳定币':NETWORKS[item].family==='evm'?'EVM':item}</span></button>`).join('')}</div>`);
+    }
+    function simpleSelectionSheet(title,options,attribute){
+      openSheet(`<div class="sheet-header"><div><h2>${title}</h2><p>选择后会重新校验地址、余额和费用。</p></div><button class="sheet-close" data-sheet-close aria-label="关闭">×</button></div><div class="sheet-list">${options.map(item=>`<button class="sheet-option" ${attribute}="${item}">${item}<span>${NETWORKS[item]?.family||'稳定币'}</span></button>`).join('')}</div>`);
     }
     function statusBar(){ return '<div class="status-bar"><span>9:41</span><span class="system-icons" aria-hidden="true">▥　⌁　▰</span></div>'; }
     function accountNav(){
@@ -381,6 +434,76 @@
       else { state.routeStack=[]; state.route='assets'; }
       render(); announce(depositCopy[dep.stage]?.[0]||'返回资产中心');
     }
+    function validAddress(address,network){
+      const family=NETWORKS[network].family;
+      if(family==='evm') return /^0x[a-fA-F0-9]{40}$/.test(address);
+      if(family==='tron') return /^T[1-9A-HJ-NP-Za-km-z]{30,40}$/.test(address);
+      return /^[1-9A-HJ-NP-Za-km-z]{32,48}$/.test(address);
+    }
+    function withdrawalError(){
+      const draft=state.withdrawalDraft, amount=Number(draft.amount), available=state.funding[draft.token], fee=WITHDRAW_FEES[draft.network];
+      if(!draft.address) return '';
+      if(!validAddress(draft.address,draft.network)) return NETWORKS[draft.network].family==='evm'?`${draft.network} 地址应以 0x 开头并包含 40 位十六进制字符。`:NETWORKS[draft.network].family==='tron'?'TRON 地址应以 T 开头。':'请输入有效的 Solana 地址。';
+      if(!amount) return '';
+      if(amount<10) return `最低提现 10 ${draft.token}。`;
+      if(amount+fee>available) return '可用余额不足以支付提现金额与网络费。';
+      return '';
+    }
+    function withdrawalValid(){ const d=state.withdrawalDraft; return validAddress(d.address,d.network)&&Number(d.amount)>=10&&Number(d.amount)+WITHDRAW_FEES[d.network]<=state.funding[d.token]; }
+    function withdrawalScreen(){
+      const d=state.withdrawalDraft, fee=WITHDRAW_FEES[d.network], amount=Number(d.amount)||0, received=Math.max(0,amount-fee), error=withdrawalError();
+      return `<div class="app-screen subpage">${statusBar()}<header class="subpage-header"><button class="back-button" data-back type="button" aria-label="返回">‹</button><h1>提现</h1></header><div class="form-page"><label class="field-label">提现资产</label><button class="selector-button" id="withdraw-token" type="button"><b>${d.token}</b><small>可用 ${format(state.funding[d.token])}</small><i>⌄</i></button><label class="field-label">提现网络</label><button class="selector-button" id="withdraw-network" type="button"><b>${d.network}</b><small>网络费 ${format(fee)} ${d.token}</small><i>⌄</i></button><label class="field-label" for="withdraw-address">提现地址</label><div class="input-shell"><input class="text-input" id="withdraw-address" value="${d.address}" placeholder="输入或粘贴 ${d.network} 地址"><button class="input-action" id="scan-address" type="button" aria-label="扫描地址">⌗</button></div><div class="inline-actions"><button id="open-address-book" type="button">从地址簿选择</button><button id="paste-demo-address" type="button">填入示例地址</button></div><div class="validation" id="withdraw-error" aria-live="polite">${error}</div><label class="field-label" for="withdraw-amount">提现金额 <span>最低 10 ${d.token}</span></label><div class="amount-panel"><input class="amount-input" id="withdraw-amount" inputmode="decimal" value="${d.amount}" placeholder="0.00"><div class="amount-tools"><span>可用 ${format(state.funding[d.token])} ${d.token}</span><button id="withdraw-max" type="button">最大</button></div></div><div class="calculation"><div class="calculation-row"><span>网络费</span><b>${format(fee)} ${d.token}</b></div><div class="calculation-row received"><span>预计到账</span><b data-withdraw-received>${format(received)} ${d.token}</b></div></div><button class="primary-button" id="review-withdrawal" type="button" ${withdrawalValid()?'':'disabled'}>核对提现信息</button><p class="wallet-note">请确认地址与网络完全一致。链上提现提交后通常无法撤销。</p></div></div>`;
+    }
+    function withdrawalReviewScreen(){
+      const d=state.withdrawalDraft, fee=WITHDRAW_FEES[d.network], received=Number(d.amount)-fee;
+      return `<div class="app-screen subpage">${statusBar()}<header class="subpage-header"><button class="back-button" data-back type="button" aria-label="返回">‹</button><h1>确认提现</h1></header><div class="form-page"><div class="review-card"><div class="review-amount"><small>提现金额</small><strong>${format(d.amount)} ${d.token}</strong></div><div class="detail-list"><div class="detail-line"><span>提现网络</span><span>${d.network}</span></div><div class="detail-line"><span>提现地址</span><span>${d.address.slice(0,8)}...${d.address.slice(-6)}</span></div><div class="detail-line"><span>网络费</span><span>${format(fee)} ${d.token}</span></div><div class="detail-line"><span>预计到账</span><span class="positive">${format(received)} ${d.token}</span></div></div></div><label class="risk-check"><input type="checkbox" id="withdraw-risk" ${d.acknowledged?'checked':''}><span>我已确认币种、网络与地址正确，并了解链上交易提交后通常无法撤销。</span></label><button class="primary-button" id="submit-withdrawal" type="button" ${d.acknowledged?'':'disabled'}>提交提现</button><p class="wallet-note">${state.session.type==='wallet'?'钱包登录用户无需 MFA；提交后进入平台审核。':'邮箱登录用户提交时需要 MFA 验证。'}</p></div></div>`;
+    }
+    function mfaSetupScreen(){
+      return `<div class="app-screen subpage">${statusBar()}<header class="subpage-header"><button class="back-button" data-back type="button" aria-label="返回">‹</button><h1>绑定 MFA</h1></header><div class="auth-page"><div class="auth-symbol">⌁</div><h2>保护你的提现操作</h2><p>邮箱登录用户需要先绑定 MFA。完成后会回到刚才的提现信息，不会清空已填写内容。</p><div class="secret-box"><code>FORX-DEMO-MFA-2026</code></div><label class="confirm-check"><input id="mfa-secret-confirmed" type="checkbox"><span>我已将密钥保存到身份验证器</span></label><input class="otp-input" id="mfa-code" inputmode="numeric" maxlength="6" placeholder="000000" aria-label="MFA 验证码"><button class="primary-button" id="confirm-mfa-setup" type="button">完成绑定</button><p class="validation" id="mfa-setup-error"></p></div></div>`;
+    }
+    function mfaVerifyScreen(){
+      return `<div class="app-screen subpage">${statusBar()}<header class="subpage-header"><button class="back-button" data-back type="button" aria-label="返回">‹</button><h1>MFA 验证</h1></header><div class="auth-page"><div class="auth-symbol">✓</div><h2>确认本次提现</h2><p>输入身份验证器中的 6 位动态验证码。原型示例验证码为 123456。</p><input class="otp-input" id="mfa-verify-code" inputmode="numeric" maxlength="6" placeholder="000000" aria-label="MFA 验证码"><button class="primary-button" id="confirm-mfa-verify" type="button">验证并提交</button><p class="validation" id="mfa-verify-error"></p></div></div>`;
+    }
+    function addressBookScreen(){
+      return `<div class="app-screen subpage">${statusBar()}<header class="subpage-header"><button class="back-button" data-back type="button" aria-label="返回">‹</button><h1>提现地址簿</h1></header><div class="form-page">${state.addressBook.length?`<div class="address-list">${state.addressBook.map((item,index)=>`<button class="address-item" data-address-index="${index}" type="button"><span class="wallet-mark">${item.network[0]}</span><span><b>${item.label}</b><small>${item.network} · ${item.address.slice(0,8)}...${item.address.slice(-5)}</small></span><span>选择　›</span></button>`).join('')}</div>`:'<div class="empty-state">还没有保存的提现地址。<br>新增地址后，需要完成安全验证才会生效。</div>'}<button class="add-address-button" id="add-address" type="button">＋ 新增提现地址</button></div></div>`;
+    }
+    function addAddressScreen(){
+      const pending=state.pendingAddress||{label:'',network:state.withdrawalDraft.network,address:''}; state.pendingAddress=pending;
+      return `<div class="app-screen subpage">${statusBar()}<header class="subpage-header"><button class="back-button" data-back type="button" aria-label="返回">‹</button><h1>新增提现地址</h1></header><div class="form-page"><label class="field-label" for="address-label">地址名称</label><input class="text-input" id="address-label" value="${pending.label}" placeholder="例如：常用钱包" style="padding-right:13px;margin-bottom:15px"><label class="field-label">网络</label><button class="selector-button" id="address-network" type="button"><b>${pending.network}</b><i>⌄</i></button><label class="field-label" for="address-value">地址</label><input class="text-input" id="address-value" value="${pending.address}" placeholder="输入 ${pending.network} 地址" style="padding-right:13px"><p class="validation" id="address-error">${pending.address&&!validAddress(pending.address,pending.network)?'地址格式与所选网络不匹配。':''}</p><button class="primary-button" id="save-address" type="button" ${pending.label&&validAddress(pending.address,pending.network)?'':'disabled'}>验证并保存</button><p class="wallet-note">${state.session.type==='wallet'?'将调用登录钱包进行消息签名。签名不授权资金转移。':'保存前需要完成 MFA 验证。'}</p></div></div>`;
+    }
+    function savePendingAddress(){
+      const item={...state.pendingAddress};
+      if(state.addressBook.some(saved=>saved.network===item.network&&saved.address.toLowerCase()===item.address.toLowerCase())){ announce('该地址已存在'); return false; }
+      state.addressBook.push(item); state.pendingAddress=null; state.routeStack.pop(); state.route='address-book'; render(); announce('地址已保存'); return true;
+    }
+    function addressSignatureSheet(){
+      openSheet(`<div class="sheet-header"><div><h2>签名保存地址</h2><p>签名仅用于保存地址，不会提交提现、授权转账或改变登录状态。</p></div><button class="sheet-close" data-sheet-close aria-label="关闭">×</button></div><div class="detail-list"><div class="detail-line"><span>地址名称</span><span>${state.pendingAddress.label}</span></div><div class="detail-line"><span>网络</span><span>${state.pendingAddress.network}</span></div><div class="detail-line"><span>地址</span><span>${state.pendingAddress.address.slice(0,8)}...${state.pendingAddress.address.slice(-5)}</span></div></div><button class="sheet-action" id="confirm-signature">模拟钱包签名</button>`);
+    }
+    function addressMfaSheet(){
+      openSheet(`<div class="sheet-header"><div><h2>MFA 验证</h2><p>验证通过后仅保存该提现地址。</p></div><button class="sheet-close" data-sheet-close aria-label="关闭">×</button></div><input class="otp-input" id="address-mfa-code" inputmode="numeric" maxlength="6" placeholder="000000" aria-label="MFA 验证码"><button class="sheet-action" id="confirm-address-mfa">验证并保存</button><p class="validation" id="address-mfa-error"></p>`);
+    }
+    function startWithdrawal(){
+      const d=state.withdrawalDraft;
+      state.withdrawal={ id:'wd-'+Date.now(),token:d.token,network:d.network,address:d.address,amount:Number(d.amount),fee:WITHDRAW_FEES[d.network],stage:'reviewing',debited:false,scenario:'normal' };
+      navigate('withdraw-status');
+    }
+    const withdrawalStages=['reviewing','broadcasting','confirming','complete'];
+    function withdrawalStatusScreen(){
+      const wd=state.withdrawal, index=Math.max(0,withdrawalStages.indexOf(wd.stage));
+      const copy={reviewing:['提现申请已提交','平台正在执行提现安全审核。'],broadcasting:['正在发送链上交易','审核已通过，系统正在构建并发送交易。'],confirming:['等待网络确认','交易已发送到链上，正在等待网络确认。'],complete:['提现已完成','交易已获得网络确认，资金已发送到目标地址。']}[wd.stage];
+      return `<div class="app-screen subpage">${statusBar()}<header class="subpage-header"><button class="back-button" data-back type="button" aria-label="返回">‹</button><h1>提现详情</h1></header><div class="progress-page"><div class="deposit-amount"><span class="token-icon">₮</span><strong>${format(wd.amount)} ${wd.token}</strong><small>${wd.network} · 手续费 ${format(wd.fee)} ${wd.token}</small></div><section class="withdraw-status-card"><h2>${copy[0]}</h2><p>${copy[1]}</p><div class="status-list">${withdrawalStages.map((stage,i)=>`<div class="status-line ${i<index?'done':i===index?'current':''}"><i>${i<index?'✓':i+1}</i><b>${{reviewing:'平台审核',broadcasting:'发送交易',confirming:'网络确认',complete:'完成'}[stage]}</b><span>${i<index?'已完成':i===index?'进行中':'等待中'}</span></div>`).join('')}</div></section><div class="detail-list"><div class="detail-line"><span>提现地址</span><span>${wd.address.slice(0,8)}...${wd.address.slice(-6)}</span></div><div class="detail-line"><span>预计到账</span><span>${format(wd.amount-wd.fee)} ${wd.token}</span></div></div><button class="primary-button" data-advance-withdrawal type="button">${wd.stage==='complete'?'返回资产中心':'推进演示状态'}</button></div></div>`;
+    }
+    function debitWithdrawalOnce(){
+      const wd=state.withdrawal; if(wd.debited) return;
+      state.funding[wd.token]-=wd.amount+wd.fee; wd.debited=true;
+      state.records.unshift({id:wd.id,type:'withdrawal',token:wd.token,network:wd.network,amount:wd.amount+wd.fee,status:'complete',fee:wd.fee,address:wd.address,time:'2026-07-16 10:16:08'});
+    }
+    function advanceWithdrawal(){
+      const wd=state.withdrawal, index=withdrawalStages.indexOf(wd.stage);
+      if(index<withdrawalStages.length-1){ wd.stage=withdrawalStages[index+1]; if(wd.stage==='complete') debitWithdrawalOnce(); }
+      else { state.routeStack=[]; state.route='assets'; }
+      render();
+    }
     function assetsScreen(){ return `<div class="app-screen">${statusBar()}${accountNav()}${state.account==='funding'?fundingHome():contractHome()}${bottomNav()}</div>`; }
     function subpage(title,routeName){ return `<div class="app-screen subpage">${statusBar()}<header class="subpage-header"><button class="back-button" data-back type="button" aria-label="返回">‹</button><h1>${title}</h1></header><div class="placeholder-page">${routeName==='deposit'?'选择 USDT 或 USDC，并选择 Ethereum、Arbitrum、Polygon、Base、Optimism、Solana 或 TRON 网络。':'页面内容将在后续步骤完成。'}</div></div>`; }
     function render(){
@@ -388,6 +511,13 @@
       if(state.route==='assets') root.innerHTML=assetsScreen();
       else if(state.route==='deposit') root.innerHTML=depositScreen();
       else if(state.route==='deposit-progress') root.innerHTML=depositProgressScreen();
+      else if(state.route==='withdraw') root.innerHTML=withdrawalScreen();
+      else if(state.route==='withdraw-review') root.innerHTML=withdrawalReviewScreen();
+      else if(state.route==='mfa-setup') root.innerHTML=mfaSetupScreen();
+      else if(state.route==='mfa-verify') root.innerHTML=mfaVerifyScreen();
+      else if(state.route==='address-book') root.innerHTML=addressBookScreen();
+      else if(state.route==='add-address') root.innerHTML=addAddressScreen();
+      else if(state.route==='withdraw-status') root.innerHTML=withdrawalStatusScreen();
       else root.innerHTML=subpage(state.route==='value-history'?'账户价值':'资产操作',state.route);
     }
     function navigate(route,params={}){ state.routeStack.push(state.route); state.route=route; state.routeParams=params; render(); }
@@ -413,13 +543,54 @@
       if(target.id==='restore-wallet-address'){ state.depositDraft.walletMatches=true; render(); announce('已切换回登录钱包'); return; }
       if(target.id==='launch-wallet') return beginDeposit('wallet');
       if(target.dataset.advanceDeposit!==undefined) return advanceDeposit();
+      if(target.id==='withdraw-token') return simpleSelectionSheet('选择提现币种',CONFIG.tokens,'data-withdraw-token');
+      if(target.id==='withdraw-network') return simpleSelectionSheet('选择提现网络',CONFIG.networks,'data-withdraw-network');
+      if(target.id==='paste-demo-address'||target.id==='scan-address'){ state.withdrawalDraft.address=NETWORKS[state.withdrawalDraft.network].address; render(); announce(target.id==='scan-address'?'已模拟扫描地址':'已填入示例地址'); return; }
+      if(target.id==='open-address-book') return navigate('address-book');
+      if(target.id==='withdraw-max'){ state.withdrawalDraft.amount=String(Math.max(0,state.funding[state.withdrawalDraft.token]-WITHDRAW_FEES[state.withdrawalDraft.network])); render(); return; }
+      if(target.id==='review-withdrawal'&&withdrawalValid()) return navigate('withdraw-review');
+      if(target.id==='submit-withdrawal'){
+        if(state.session.type==='wallet') return startWithdrawal();
+        state.pendingAction='withdrawal';
+        return navigate(state.session.mfaBound?'mfa-verify':'mfa-setup');
+      }
+      if(target.id==='confirm-mfa-setup'){
+        const confirmed=document.querySelector('#mfa-secret-confirmed').checked, code=document.querySelector('#mfa-code').value;
+        if(!confirmed||code!=='123456'){ document.querySelector('#mfa-setup-error').textContent='请确认已保存密钥，并输入示例验证码 123456。'; return; }
+        state.session.mfaBound=true; document.querySelector('#session-mode').value='email-bound'; state.routeStack.pop(); state.route='withdraw-review'; render(); announce('MFA 已绑定'); return;
+      }
+      if(target.id==='confirm-mfa-verify'){
+        if(document.querySelector('#mfa-verify-code').value!=='123456'){ document.querySelector('#mfa-verify-error').textContent='验证码错误，请输入示例验证码 123456。'; return; }
+        return startWithdrawal();
+      }
+      if(target.id==='add-address'){ state.pendingAddress={label:'',network:state.withdrawalDraft.network,address:''}; return navigate('add-address'); }
+      if(target.dataset.addressIndex!==undefined){ const item=state.addressBook[Number(target.dataset.addressIndex)]; state.withdrawalDraft.network=item.network; state.withdrawalDraft.address=item.address; goBack(); announce('已选择 '+item.label); return; }
+      if(target.id==='address-network') return simpleSelectionSheet('选择地址网络',CONFIG.networks,'data-address-network');
+      if(target.id==='save-address'){
+        if(state.session.type==='wallet') return addressSignatureSheet();
+        if(state.session.mfaBound) return addressMfaSheet();
+        state.pendingAction='save-address'; return navigate('mfa-setup');
+      }
+      if(target.dataset.advanceWithdrawal!==undefined) return advanceWithdrawal();
       if(target.matches('.visibility-toggle')){ state.valuesHidden=!state.valuesHidden; render(); announce(state.valuesHidden?'资产金额已隐藏':'资产金额已显示'); }
     });
     root.addEventListener('input',event=>{
       if(event.target.id==='wallet-deposit-amount'){ state.depositDraft.amount=event.target.value; const network=NETWORKS[state.depositDraft.network]; document.querySelector('#launch-wallet').disabled=!(Number(event.target.value)>=network.min[state.depositDraft.token]&&state.depositDraft.walletMatches); }
+      if(event.target.id==='withdraw-address'||event.target.id==='withdraw-amount'){
+        if(event.target.id==='withdraw-address') state.withdrawalDraft.address=event.target.value.trim(); else state.withdrawalDraft.amount=event.target.value;
+        const error=document.querySelector('#withdraw-error'); if(error) error.textContent=withdrawalError();
+        const received=document.querySelector('[data-withdraw-received]'); if(received) received.textContent=`${format(Math.max(0,(Number(state.withdrawalDraft.amount)||0)-WITHDRAW_FEES[state.withdrawalDraft.network]))} ${state.withdrawalDraft.token}`;
+        const review=document.querySelector('#review-withdrawal'); if(review) review.disabled=!withdrawalValid();
+      }
+      if(event.target.id==='address-label'||event.target.id==='address-value'){
+        if(event.target.id==='address-label') state.pendingAddress.label=event.target.value; else state.pendingAddress.address=event.target.value.trim();
+        const error=document.querySelector('#address-error'); if(error) error.textContent=state.pendingAddress.address&&!validAddress(state.pendingAddress.address,state.pendingAddress.network)?'地址格式与所选网络不匹配。':'';
+        const save=document.querySelector('#save-address'); if(save) save.disabled=!(state.pendingAddress.label&&validAddress(state.pendingAddress.address,state.pendingAddress.network));
+      }
     });
     root.addEventListener('change',event=>{
       if(event.target.id==='deposit-scenario'){ state.deposit.scenario=event.target.value; render(); }
+      if(event.target.id==='withdraw-risk'){ state.withdrawalDraft.acknowledged=event.target.checked; document.querySelector('#submit-withdrawal').disabled=!event.target.checked; }
     });
     sheetRoot.addEventListener('click',event=>{
       const target=event.target.closest('button'); if(!target) return;
@@ -428,6 +599,15 @@
       if(target.dataset.token){ state.depositDraft.token=target.dataset.token; closeSheet(); render(); return; }
       if(target.dataset.network){ state.depositDraft.network=target.dataset.network; if(NETWORKS[target.dataset.network].family==='tron') state.depositDraft.method='address'; closeSheet(); render(); return; }
       if(target.id==='reconnect-wallet'){ state.depositDraft.walletConnected=true; closeSheet(); render(); announce('钱包连接已恢复'); }
+      if(target.dataset.withdrawToken){ state.withdrawalDraft.token=target.dataset.withdrawToken; closeSheet(); render(); return; }
+      if(target.dataset.withdrawNetwork){ state.withdrawalDraft.network=target.dataset.withdrawNetwork; state.withdrawalDraft.address=''; closeSheet(); render(); return; }
+      if(target.dataset.addressNetwork){ state.pendingAddress.network=target.dataset.addressNetwork; state.pendingAddress.address=''; closeSheet(); render(); return; }
+      if(target.id==='confirm-signature'){ closeSheet(); savePendingAddress(); return; }
+      if(target.id==='confirm-address-mfa'){
+        const code=sheetRoot.querySelector('#address-mfa-code').value;
+        if(code!=='123456'){ sheetRoot.querySelector('#address-mfa-error').textContent='验证码错误，请输入示例验证码 123456。'; return; }
+        closeSheet(); savePendingAddress();
+      }
     });
     document.addEventListener('keydown',event=>{ if(event.key==='Escape'&&!sheetRoot.hidden) closeSheet(); });
     document.querySelector('#reset-prototype').addEventListener('click',resetPrototype);
