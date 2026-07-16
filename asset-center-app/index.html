@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="dark">
+  <title>ForX Finance · 资产中心原型</title>
+  <style>
+    :root { --bg:#050706; --surface:#0d110f; --text:#f3f7f4; --muted:#717a74; --line:rgba(224,255,236,.105); --green:#63f6a2; --warning:#ffc45d; --error:#ff747d; }
+    * { box-sizing:border-box; }
+    body { margin:0; min-width:320px; color:var(--text); background:#090b0a; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+    button,select,input { font:inherit; }
+    button:focus-visible,select:focus-visible,input:focus-visible { outline:2px solid var(--green); outline-offset:2px; }
+    .prototype-shell { min-height:100svh; display:grid; grid-template-columns:minmax(250px,330px) 390px; align-items:center; justify-content:center; gap:64px; padding:32px; }
+    .prototype-meta h1 { margin:0; font-size:52px; line-height:.95; letter-spacing:-.05em; font-weight:580; }
+    .prototype-meta h1 em { color:var(--green); font-style:normal; }
+    .prototype-meta p { color:var(--muted); line-height:1.7; }
+    .controls { display:grid; gap:10px; margin-top:24px; }
+    .controls button,.controls select { min-height:42px; border:1px solid var(--line); border-radius:12px; background:var(--surface); color:var(--text); padding:0 12px; }
+    .phone { width:390px; height:844px; overflow:hidden; border:1px solid #2b322e; border-radius:40px; background:var(--bg); box-shadow:0 38px 100px rgba(0,0,0,.55); position:relative; }
+    #screen-root { min-height:100%; }
+    #sheet-root[hidden] { display:none; }
+    .gallery { padding:70px max(24px,calc((100vw - 1180px)/2)); border-top:1px solid var(--line); }
+    .gallery h2 { font-size:32px; }
+    .gallery p { color:var(--muted); }
+    @media (max-width:800px) { .prototype-shell { grid-template-columns:1fr; padding:0; gap:0; } .prototype-meta { display:none; } .phone { width:100%; max-width:390px; margin:auto; border-radius:0; border:0; } }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="prototype-shell">
+      <aside class="prototype-meta">
+        <p>FORX FINANCE · 交互原型</p>
+        <h1>让资产流动<br><em>清晰可见。</em></h1>
+        <p>覆盖资金账户、合约账户，以及 USDT / USDC 在 Ethereum、Arbitrum、Polygon、Base、Optimism、Solana、TRON 的充值与提现。</p>
+        <div class="controls">
+          <label for="session-mode">原型登录状态</label>
+          <select id="session-mode"><option value="wallet">钱包登录</option><option value="email-unbound">邮箱登录 · 未绑定 MFA</option><option value="email-bound">邮箱登录 · 已绑定 MFA</option></select>
+          <button id="reset-prototype" type="button">重置原型</button>
+        </div>
+      </aside>
+      <section class="phone" id="interactive-phone" aria-label="ForX Finance 资产中心交互原型">
+        <div id="screen-root" data-route="assets"></div>
+        <div id="sheet-root" hidden></div>
+        <div id="live-region" class="sr-only" aria-live="polite"></div>
+      </section>
+    </section>
+    <section class="gallery" id="page-gallery"><h2>页面拆解</h2><p>资金账户、合约账户、充值、提现、地址簿、账户划转、资金记录与账户价值。</p></section>
+    <section class="gallery" id="error-gallery"><h2>异常状态</h2><p>网络确认、钱包连接、MFA、地址和交易异常。</p></section>
+  </main>
+  <script>
+    const CONFIG = Object.freeze({ tokens:['USDT','USDC'], networks:['Ethereum','Arbitrum','Polygon','Base','Optimism','Solana','TRON'] });
+    const initialState = () => ({ route:'assets', routeStack:[], account:'funding', session:{ type:'wallet', mfaBound:false }, funding:{ USDT:18240, USDC:6441.75, heldUsd:100.67 }, contract:{ USDT:2000, USDC:0 }, draft:{}, records:[] });
+    let state = initialState();
+    const root = document.querySelector('#screen-root');
+    const live = document.querySelector('#live-region');
+    function announce(message) { live.textContent=''; requestAnimationFrame(()=>{ live.textContent=message; }); }
+    function render() { root.dataset.route=state.route; root.innerHTML='<div style="padding:40px 20px">资金账户　合约账户</div>'; }
+    function navigate(route,params={}) { state.routeStack.push(state.route); state.route=route; state.routeParams=params; render(); }
+    function resetPrototype() { state=initialState(); render(); announce('原型已重置'); }
+    document.querySelector('#reset-prototype').addEventListener('click',resetPrototype);
+    document.querySelector('#session-mode').addEventListener('change',event=>{ const value=event.target.value; state.session={ type:value.startsWith('email')?'email':'wallet', mfaBound:value==='email-bound' }; render(); });
+    window.assetPrototype={ getState:()=>structuredClone(state), navigate, reset:resetPrototype };
+    render();
+  </script>
+</body>
+</html>
