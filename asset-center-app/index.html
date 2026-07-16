@@ -524,29 +524,37 @@
     .breakdown-row div small { display:block; margin-top:2px; color:#68716b; font-size:7px; }
     .breakdown-row>strong { margin-left:auto; font-size:9px; }
     @media (prefers-reduced-motion:reduce) { *,*::before,*::after { scroll-behavior:auto!important; animation-duration:0s!important; transition-duration:0s!important; } }
-    .gallery { padding:70px max(24px,calc((100vw - 1180px)/2)); border-top:1px solid var(--line); }
-    .gallery h2 { font-size:32px; }
-    .gallery p { color:var(--muted); }
-    .gallery-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:16px; margin-top:24px; }
-    .gallery-card { overflow:hidden; border:1px solid var(--line); border-radius:16px; background:#0b0e0c; }
-    .gallery-preview { height:330px; padding:19px 14px; background:linear-gradient(160deg,rgba(99,246,162,.035),transparent 40%),var(--bg); position:relative; }
-    .gallery-preview::before { content:"9:41"; display:block; margin-bottom:20px; color:#dfe6e1; font-size:9px; font-weight:650; }
-    .gallery-preview .mini-tabs { display:flex; gap:15px; padding-bottom:9px; border-bottom:1px solid var(--line); color:#68716b; font-size:8px; }
-    .gallery-preview .mini-tabs b { color:var(--text); border-bottom:2px solid var(--green); padding-bottom:8px; }
-    .gallery-preview .mini-value { margin:19px 0 5px; font-size:23px; }
-    .gallery-preview .mini-copy { color:#707972; font-size:7px; line-height:1.55; }
-    .gallery-preview .mini-actions { display:grid; grid-template-columns:repeat(3,1fr); gap:5px; margin-top:20px; }
-    .gallery-preview .mini-actions i { height:30px; border:1px solid var(--line); border-radius:8px; background:#111613; }
-    .gallery-preview .mini-actions i:first-child { background:var(--green); }
-    .gallery-preview .mini-line { height:1px; margin:15px 0 10px; background:var(--line); }
-    .gallery-preview .mini-row { height:34px; margin-top:5px; border-bottom:1px solid rgba(255,255,255,.07); position:relative; }
-    .gallery-preview .mini-row::before { content:""; position:absolute; top:6px; width:21px; height:21px; border-radius:50%; background:#188a67; }
-    .gallery-preview .mini-row::after { content:""; position:absolute; top:8px; left:30px; width:90px; height:6px; border-radius:4px; background:#d8dfda; box-shadow:0 11px #38403b; }
-    .gallery-preview .mini-status { margin:23px 0 0; padding:13px; border:1px solid rgba(99,246,162,.18); border-radius:11px; color:#b8c2bb; font-size:8px; }
-    .gallery-preview.error .mini-status { border-color:rgba(255,116,125,.2); color:#ff9ba1; }
-    .gallery-copy { padding:13px 14px 15px; border-top:1px solid var(--line); }
-    .gallery-copy h3 { margin:0; font-size:13px; }
-    .gallery-copy p { margin:5px 0 0; font-size:9px; line-height:1.5; }
+    .gallery { padding:76px max(28px,calc((100vw - 1240px)/2)); border-top:1px solid var(--line); background:linear-gradient(180deg,rgba(141,250,169,.018),transparent 24%); }
+    .gallery>h2 { margin:0; font-size:32px; letter-spacing:-.035em; }
+    .gallery>p { max-width:700px; margin:10px 0 0; color:var(--muted); line-height:1.65; }
+    .gallery-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(360px,1fr)); gap:22px; margin-top:32px; }
+    .gallery-card { overflow:hidden; border:1px solid var(--line); border-radius:22px; background:#0b0e0c; box-shadow:0 20px 60px rgba(0,0,0,.2); }
+    .gallery-preview { height:558px; padding:17px; display:grid; place-items:center; background:radial-gradient(circle at 50% 10%,rgba(141,250,169,.08),transparent 34%),linear-gradient(160deg,#101612,#050706 72%); position:relative; overflow:hidden; }
+    .gallery-device-frame { width:252px; height:524px; overflow:hidden; border:1px solid rgba(255,255,255,.14); border-radius:25px; background:var(--bg); box-shadow:0 24px 60px rgba(0,0,0,.52); }
+    .gallery-device { width:390px; height:844px; transform:scale(.646); transform-origin:top left; pointer-events:none; }
+    .gallery-device .phone::after { display:none; }
+    .gallery-device button,.gallery-device input,.gallery-device select { pointer-events:none; }
+    .gallery-copy { padding:19px 20px 21px; border-top:1px solid var(--line); }
+    .gallery-index { display:block; margin-bottom:8px; color:var(--green); font-size:9px; letter-spacing:.12em; }
+    .gallery-copy h3 { margin:0; font-size:18px; }
+    .gallery-copy>p { min-height:38px; margin:7px 0 0; color:#78827b; font-size:10px; line-height:1.6; }
+    .interaction-spec { margin:16px 0 0; border-top:1px solid var(--line); }
+    .interaction-spec div { min-height:43px; padding:9px 0; display:grid; grid-template-columns:65px 1fr; gap:10px; border-bottom:1px solid rgba(255,255,255,.06); }
+    .interaction-spec dt { color:#667069; font-size:8px; }
+    .interaction-spec dd { margin:0; color:#a7b0aa; font-size:8px; line-height:1.55; }
+    .error-card .gallery-preview { background:radial-gradient(circle at 50% 16%,rgba(255,122,122,.08),transparent 32%),linear-gradient(160deg,#15100f,#050706 72%); }
+    .gallery-error-screen { min-height:100%; background:var(--bg); }
+    .error-state-body { padding:72px 25px 30px; text-align:center; }
+    .error-state-icon { width:58px; height:58px; margin:0 auto 18px; display:grid; place-items:center; border:1px solid rgba(255,122,122,.24); border-radius:50%; background:rgba(255,122,122,.07); color:var(--error); font-size:25px; }
+    .error-state-body>small { color:var(--error); font-size:9px; }
+    .error-state-body h2 { margin:8px 0 0; font-size:22px; }
+    .error-state-body>p { margin:10px auto 22px; max-width:290px; color:#7f8882; font-size:11px; line-height:1.65; }
+    .error-facts { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:16px; text-align:left; }
+    .error-facts div { padding:13px; border:1px solid var(--line); border-radius:12px; background:#0d100f; }
+    .error-facts span { display:block; color:#68716b; font-size:8px; }
+    .error-facts b { display:block; margin-top:5px; font-size:10px; }
+    .error-state-body .notice-box { text-align:left; }
+    .error-state-body .primary-button { margin-top:18px; }
     @media (max-width:800px) { .prototype-shell { grid-template-columns:1fr; min-height:100svh; padding:0; gap:0; } .prototype-meta { display:none; } .phone { width:100%; max-width:390px; height:100svh; min-height:0; max-height:844px; margin:auto; border-radius:0; border:0; box-shadow:none; } .gallery { display:none; } }
   </style>
 </head>
@@ -1049,26 +1057,26 @@
     }
     function assetsScreen(){ return `<div class="app-screen">${statusBar()}${accountNav()}${state.account==='funding'?fundingHome():contractHome()}${bottomNav()}</div>`; }
     function subpage(title,routeName){ return `<div class="app-screen subpage">${statusBar()}<header class="subpage-header"><button class="back-button" data-back type="button" aria-label="返回">‹</button><h1>${title}</h1></header><div class="placeholder-page">${routeName==='deposit'?'选择 USDT 或 USDC，并选择 Ethereum、Arbitrum、Polygon、Base、Optimism、Solana 或 TRON 网络。':'页面内容将在后续步骤完成。'}</div></div>`; }
-    function render(){
-      root.dataset.route=state.route;
-      if(state.route==='assets') root.innerHTML=assetsScreen();
-      else if(state.route==='deposit') root.innerHTML=depositScreen();
-      else if(state.route==='deposit-progress') root.innerHTML=depositProgressScreen();
-      else if(state.route==='withdraw') root.innerHTML=withdrawalScreen();
-      else if(state.route==='withdraw-review') root.innerHTML=withdrawalReviewScreen();
-      else if(state.route==='mfa-setup') root.innerHTML=mfaSetupScreen();
-      else if(state.route==='mfa-verify') root.innerHTML=mfaVerifyScreen();
-      else if(state.route==='address-book') root.innerHTML=addressBookScreen();
-      else if(state.route==='add-address') root.innerHTML=addAddressScreen();
-      else if(state.route==='withdraw-status') root.innerHTML=withdrawalStatusScreen();
-      else if(state.route==='transfer') root.innerHTML=transferScreen();
-      else if(state.route==='transfer-review') root.innerHTML=transferReviewScreen();
-      else if(state.route==='transfer-status') root.innerHTML=transferStatusScreen();
-      else if(state.route==='records') root.innerHTML=recordsScreen();
-      else if(state.route==='record-detail') root.innerHTML=recordDetailScreen();
-      else if(state.route==='value-history') root.innerHTML=valueHistoryScreen();
-      else root.innerHTML=subpage(state.route==='value-history'?'账户价值':'资产操作',state.route);
+    function screenHtml(route=state.route){
+      if(route==='assets') return assetsScreen();
+      if(route==='deposit') return depositScreen();
+      if(route==='deposit-progress') return depositProgressScreen();
+      if(route==='withdraw') return withdrawalScreen();
+      if(route==='withdraw-review') return withdrawalReviewScreen();
+      if(route==='mfa-setup') return mfaSetupScreen();
+      if(route==='mfa-verify') return mfaVerifyScreen();
+      if(route==='address-book') return addressBookScreen();
+      if(route==='add-address') return addAddressScreen();
+      if(route==='withdraw-status') return withdrawalStatusScreen();
+      if(route==='transfer') return transferScreen();
+      if(route==='transfer-review') return transferReviewScreen();
+      if(route==='transfer-status') return transferStatusScreen();
+      if(route==='records') return recordsScreen();
+      if(route==='record-detail') return recordDetailScreen();
+      if(route==='value-history') return valueHistoryScreen();
+      return subpage(route==='value-history'?'账户价值':'资产操作',route);
     }
+    function render(){ root.dataset.route=state.route; root.innerHTML=screenHtml(); }
     function navigate(route,params={}){ state.routeStack.push(state.route); state.route=route; state.routeParams=params; render(); }
     function goBack(){ state.route=state.routeStack.pop()||'assets'; render(); }
     function setAccount(account){ state.account=account; render(); announce(account==='funding'?'已切换到资金账户':'已切换到合约账户'); }
@@ -1217,31 +1225,59 @@
       if(event.shiftKey&&document.activeElement===first){ event.preventDefault(); last.focus(); }
       else if(!event.shiftKey&&document.activeElement===last){ event.preventDefault(); first.focus(); }
     });
-    function galleryPreview(item,isError=false){
-      const status=isError?`<div class="mini-status">${item.status}</div>`:`<div class="mini-tabs"><b>${item.tab||'资金账户'}</b><span>${item.alt||'合约账户'}</span></div><div class="mini-value">${item.value||'24,680.42'}</div><div class="mini-copy">${item.meta||'总资产估值 · 今日收益 +0.74%'}</div><div class="mini-actions"><i></i><i></i><i></i></div><div class="mini-line"></div><div class="mini-row"></div><div class="mini-row"></div>`;
-      return `<article class="gallery-card"><div class="gallery-preview ${isError?'error':''}">${status}</div><div class="gallery-copy"><h3>${item.title}</h3><p>${item.copy}</p></div></article>`;
+    function frozenScreen(route,setup=()=>{}){
+      const previous=state;
+      try {
+        state=initialState(); setup(state); state.route=route;
+        const template=document.createElement('template'); template.innerHTML=screenHtml(route);
+        template.content.querySelectorAll('*').forEach(node=>{
+          [...node.attributes].forEach(attribute=>{ if(attribute.name==='id'||attribute.name==='for'||attribute.name.startsWith('aria-')||attribute.name.startsWith('data-')) node.removeAttribute(attribute.name); });
+          if(node.matches('button,input,select')){ node.disabled=true; node.tabIndex=-1; }
+        });
+        return template.innerHTML;
+      } finally { state=previous; }
+    }
+    function interactionSpec(item){
+      return `<dl class="interaction-spec"><div><dt>进入条件</dt><dd>${item.entry}</dd></div><div><dt>用户操作</dt><dd>${item.action}</dd></div><div><dt>系统响应</dt><dd>${item.response}</dd></div><div><dt>下一状态</dt><dd>${item.next}</dd></div><div><dt>开发细节</dt><dd>${item.dev}</dd></div></dl>`;
+    }
+    function galleryPreview(item){
+      const screen=frozenScreen(item.route,item.setup);
+      return `<article class="gallery-card" data-gallery-card="${item.title}"><div class="gallery-preview"><div class="gallery-device-frame"><div class="gallery-device">${screen}</div></div></div><div class="gallery-copy"><span class="gallery-index">${item.index}</span><h3>${item.title}</h3><p>${item.copy}</p>${interactionSpec(item)}</div></article>`;
+    }
+    function errorScreen(item){
+      return `<div class="app-screen gallery-error-screen">${statusBar()}<header class="subpage-header"><button class="back-button" disabled type="button">‹</button><h1>${item.context}</h1></header><div class="error-state-body"><div class="error-state-icon">!</div><small>${item.kicker}</small><h2>${item.title}</h2><p>${item.status}</p><div class="error-facts"><div><span>当前结果</span><b>${item.result}</b></div><div><span>资金影响</span><b>${item.funds}</b></div></div><div class="notice-box"><strong>处理建议</strong>${item.recovery}</div><button class="primary-button" disabled type="button">${item.cta}</button></div></div>`;
+    }
+    function errorSpec(item){
+      return `<dl class="interaction-spec error-interaction"><div><dt>触发条件</dt><dd>${item.trigger}</dd></div><div><dt>提示位置</dt><dd>${item.placement}</dd></div><div><dt>阻断范围</dt><dd>${item.blocking}</dd></div><div><dt>恢复操作</dt><dd>${item.recovery}</dd></div><div><dt>实现规则</dt><dd>${item.rule}</dd></div></dl>`;
+    }
+    function errorGalleryPreview(item){
+      return `<article class="gallery-card error-card" data-error-spec><div class="gallery-preview"><div class="gallery-device-frame"><div class="gallery-device">${errorScreen(item)}</div></div></div><div class="gallery-copy"><span class="gallery-index">${item.index}</span><h3>${item.title}</h3><p>${item.copy}</p>${errorSpec(item)}</div></article>`;
     }
     function renderGalleries(){
       const pages=[
-        {title:'资产主页',copy:'资金与合约账户切换、资产价值、操作与组合。'},
-        {title:'地址充值',copy:'网络选择、二维码、地址与最低金额。',tab:'地址充值',alt:'钱包充值',value:'500 USDC',meta:'Arbitrum 充值地址'},
-        {title:'钱包充值',copy:'预填登录钱包并通过 Deep Link 构建交易。',tab:'钱包充值',alt:'地址充值',value:'500 USDC',meta:'MetaMask · 地址一致'},
-        {title:'网络确认',copy:'区分检测、确认、入账与到账。',tab:'充值详情',alt:'18 / 32',value:'网络确认中',meta:'已检测到链上转账'},
-        {title:'提现',copy:'地址、费用、预计到账与安全验证。',tab:'提现',alt:'Ethereum',value:'250 USDT',meta:'预计到账 249.20 USDT'},
-        {title:'地址簿',copy:'钱包签名或 MFA 授权保存。',tab:'提现地址簿',alt:'新增',value:'常用钱包',meta:'Ethereum · 0x1234...5678'},
-        {title:'账户划转',copy:'资金账户与合约账户之间零费率划转。',tab:'资金账户',alt:'合约账户',value:'2,000 USDT',meta:'手续费 0 USDT'},
-        {title:'资金记录',copy:'充值、提现与划转统一筛选和详情。',tab:'全部',alt:'充值　提现　划转',value:'+2,250.00',meta:'本月资金净流入'},
-        {title:'账户价值',copy:'外部资金流、收益与内部划转分开计算。',tab:'全账户',alt:'资金　合约',value:'$24,680.42',meta:'近 30 天 +10.93%'}
+        {index:'01',title:'资产主页',route:'assets',setup:()=>{},copy:'资金账户总览、资产配置、待入账与近期动态。',entry:'用户已登录并进入资产模块。',action:'查看余额、展开币种明细或发起资产操作。',response:'实时计算可用、冻结、待入账和资产占比。',next:'进入充值、提现、划转、记录或价值分析。',dev:'余额与记录必须来自同一状态源；金额支持隐私隐藏。'},
+        {index:'02',title:'合约账户',route:'assets',setup:s=>{s.account='contract';},copy:'账户权益、保证金结构、持仓敞口与风险缓冲。',entry:'用户切换到合约账户。',action:'查看风险数据或划入、划出资金。',response:'派生权益、可用保证金、保证金率和可划转额度。',next:'进入划转确认或合约资金记录。',dev:'风险指标随持仓盈亏与划转余额同步更新。'},
+        {index:'03',title:'地址充值',route:'deposit',setup:s=>{s.depositDraft.method='address';},copy:'网络运行信息、充值地址、合约与最近活动。',entry:'从资金账户点击充值，默认进入地址充值。',action:'选择币种和网络，复制地址或扫描二维码。',response:'刷新最低金额、确认要求、合约与专属地址。',next:'外部转账后进入链上检测与确认。',dev:'网络切换必须同步清空不兼容状态；二维码标注原型不可用。'},
+        {index:'04',title:'钱包充值',route:'deposit',setup:s=>{s.depositDraft.method='wallet';},copy:'预填登录钱包并通过 Deep Link 构建充值交易。',entry:'所选网络为 EVM 或 Solana。',action:'输入金额并打开钱包确认交易。',response:'校验登录钱包、余额、最低金额与连接状态。',next:'钱包签名后进入网络确认详情。',dev:'断连只恢复连接；地址不一致时阻断交易构建。'},
+        {index:'05',title:'网络确认',route:'deposit-progress',setup:s=>{s.deposit={id:'dep-gallery',token:'USDC',network:'Arbitrum',amount:500,baseAmount:500,source:'address',stage:'confirming',confirmations:18,required:32,senderAddress:'0x4C86...12D9',hash:'0x98C2...A71D',submittedAt:'2026-07-16 09:28:41',firstSeenAt:'2026-07-16 09:29:08',updatedAt:'2026-07-16 09:30:16',creditedAt:'2026-07-16 09:31:02',detectedAt:'2026-07-16 09:29:08',credited:false,scenario:'normal'};},copy:'检测、网络确认、入账处理和到账四阶段审计。',entry:'系统检测到充值交易或钱包已广播交易。',action:'查看确认进度、复制哈希或打开区块浏览器。',response:'持续更新确认数、时间线和预计完成时间。',next:'确认满足后进入入账，最终回到资产中心。',dev:'终态异常不得入账；重复推进不得重复记账。'},
+        {index:'06',title:'提现',route:'withdraw',setup:s=>{s.withdrawalDraft.address=NETWORKS.Ethereum.address;s.withdrawalDraft.amount='250';},copy:'地址风险、扣除、费用、到账和额度清晰分层。',entry:'用户从资金账户点击提现。',action:'选择网络、填写地址和金额并核对。',response:'实时校验地址族、余额、额度、网络费和到账额。',next:'钱包会话直接审核；邮箱会话先完成 MFA。',dev:'钱包提现不追加 MFA；邮箱必须绑定并验证 MFA。'},
+        {index:'07',title:'地址簿',route:'address-book',setup:s=>{s.addressBook=[{label:'主钱包',network:'Ethereum',address:NETWORKS.Ethereum.address,verificationMethod:'钱包签名',verifiedAt:'2026-07-16 10:18',lastUsed:'今天 09:42'}];},copy:'可信地址、验证方式、最近使用与重复地址拦截。',entry:'在提现地址输入区打开地址簿。',action:'选择已验证地址或新增外部地址。',response:'展示网络、缩略地址、验证方式与使用时间。',next:'选中后返回提现；新增时进入签名或 MFA。',dev:'钱包签名只授权保存；邮箱 MFA 只授权本次操作。'},
+        {index:'08',title:'账户划转',route:'transfer',setup:s=>{s.transferDraft.amount='500';},copy:'资金与合约账户间零手续费划转及风险预估。',entry:'从任一账户点击划转。',action:'切换方向、选择币种和输入金额。',response:'计算可划转额度、前后余额和保证金影响。',next:'确认后处理内部账本并生成参考编号。',dev:'划转不改变总资产；提交与完成必须具备幂等保护。'},
+        {index:'09',title:'资金记录',route:'records',setup:()=>{},copy:'充值、提现和划转统一核算、筛选与审计。',entry:'点击账户页右上角记录入口。',action:'按类型或高级条件筛选并打开详情。',response:'重算充值、提现、费用和净流入。',next:'进入记录时间线、交易信息与区块浏览器。',dev:'失败交易排除在有效资金流之外；划转不计外部流。'},
+        {index:'10',title:'账户价值',route:'value-history',setup:()=>{},copy:'账户价值曲线、资金流剔除收益和周期统计。',entry:'点击账户价值微型曲线。',action:'切换账户、周期、图表口径并点选数据点。',response:'重算曲线、坐标、事件、统计和变动来源。',next:'留在分析页继续对比或返回账户首页。',dev:'曲线终值、来源合计和账户余额必须严格对账。'}
       ];
       const errors=[
-        {title:'低于最小金额',copy:'检测到转账，但未满足最低入账门槛。',status:'充值金额低于 10 USDC，暂不会自动入账。'},
-        {title:'钱包地址不一致',copy:'阻止构建交易并引导切回登录钱包。',status:'当前钱包账户与登录时记录的地址不同。'},
-        {title:'MFA 验证失败',copy:'保留提现或地址草稿并允许重试。',status:'验证码错误，请重新输入 6 位动态验证码。'},
-        {title:'网络不匹配',copy:'阻止提交并明确所选网络地址规则。',status:'地址格式与 Ethereum 网络不匹配。'},
-        {title:'提现失败',copy:'展示审核拒绝与链上发送失败的资金结果。',status:'交易没有成功广播，资金仍保留在资金账户。'}
+        {index:'E01',title:'低于最小金额',context:'充值详情',kicker:'金额异常',copy:'检测到交易但未满足自动入账门槛。',status:'充值金额低于 10 USDC，暂不会自动入账。',result:'停止自动入账',funds:'未计入余额',cta:'返回充值',trigger:'检测金额小于网络最低充值额。',placement:'充值详情状态卡与金额下方。',blocking:'阻断入账和状态推进。',recovery:'返回充值并重新发起满足最低金额的转账。',rule:'终态异常，不创建有效充值记录且不得计入余额。'},
+        {index:'E02',title:'钱包地址不一致',context:'钱包充值',kicker:'账户校验失败',copy:'当前钱包与登录时记录地址不同。',status:'无法使用当前账户构建充值交易。',result:'交易按钮禁用',funds:'无资金变化',cta:'切换钱包账户',trigger:'钱包返回地址与登录钱包地址不同。',placement:'钱包账户卡和阻断弹层。',blocking:'只阻断钱包直接充值，不影响登录会话。',recovery:'在钱包中切回登录地址后重新检测。',rule:'不得静默替换预填账户，不得触发重新登录。'},
+        {index:'E03',title:'MFA 验证失败',context:'MFA 验证',kicker:'验证码错误',copy:'保留提现或地址草稿并允许重试。',status:'验证码错误，请重新输入 6 位动态验证码。',result:'安全验证未通过',funds:'无资金变化',cta:'重新输入验证码',trigger:'动态验证码错误、过期或已被使用。',placement:'验证码输入框下方。',blocking:'阻断提现提交或地址保存。',recovery:'输入新的有效验证码后重试。',rule:'错误不得清空业务草稿；连续失败按安全策略限流。'},
+        {index:'E04',title:'网络不匹配',context:'提现',kicker:'地址校验失败',copy:'地址格式与当前网络不一致。',status:'此地址不是有效的 Ethereum 地址。',result:'提交按钮禁用',funds:'无资金变化',cta:'更换网络或地址',trigger:'地址族与所选网络不匹配。',placement:'地址输入框下方和风险条。',blocking:'阻断提现核对。',recovery:'切换匹配网络或输入正确格式地址。',rule:'网络改变后必须重新校验并清空旧地址风险结果。'},
+        {index:'E05',title:'提现失败',context:'提现详情',kicker:'链上发送失败',copy:'交易未成功广播，资金不应被扣减。',status:'链上发送失败，请稍后重试。',result:'提现终止',funds:'资金保留在账户',cta:'返回提现',trigger:'交易构建或广播失败。',placement:'提现详情状态卡。',blocking:'阻断后续网络确认。',recovery:'保留地址与金额后返回重试。',rule:'只有完成态才扣减一次；失败态不得生成成功记录。'},
+        {index:'E06',title:'入账延迟',context:'充值详情',kicker:'账本处理较慢',copy:'网络确认完成但内部账本尚未更新。',status:'资金安全，系统正在完成入账。',result:'继续后台处理',funds:'等待计入余额',cta:'查看资金记录',trigger:'确认数满足但账本更新超过目标时间。',placement:'充值状态卡和安全离开提示。',blocking:'禁用重复推进与重复充值建议。',recovery:'等待系统处理或从记录页查看进度。',rule:'保持同一充值编号，成功后只允许记账一次。'},
+        {index:'E07',title:'重复地址',context:'新增提现地址',kicker:'地址已存在',copy:'同一网络下不允许保存重复地址。',status:'地址簿中已存在此地址。',result:'保存按钮禁用',funds:'无资金影响',cta:'返回地址簿',trigger:'网络和完整地址与已保存项一致。',placement:'地址输入框下方风险条。',blocking:'阻断签名或 MFA 验证。',recovery:'使用现有地址或更换新地址。',rule:'比较前标准化大小写；不得重复创建验证记录。'},
+        {index:'E08',title:'划转余额不足',context:'账户划转',kicker:'可用额度不足',copy:'划转金额超过资金余额或保证金缓冲。',status:'可用余额不足，无法完成本次划转。',result:'确认按钮禁用',funds:'账户余额不变',cta:'调整划转金额',trigger:'金额大于来源账户可划转额度。',placement:'金额输入区下方。',blocking:'阻断划转确认。',recovery:'降低金额或向来源账户补充资金。',rule:'合约划出额度必须预留占用保证金并实时重算。'}
       ];
       document.querySelector('#page-gallery-grid').innerHTML=pages.map(item=>galleryPreview(item)).join('');
-      document.querySelector('#error-gallery-grid').innerHTML=errors.map(item=>galleryPreview(item,true)).join('');
+      document.querySelector('#error-gallery-grid').innerHTML=errors.map(errorGalleryPreview).join('');
     }
     document.querySelector('#reset-prototype').addEventListener('click',resetPrototype);
     document.querySelector('#session-mode').addEventListener('change',event=>{ const value=event.target.value; state.session={ type:value.startsWith('email')?'email':'wallet', mfaBound:value==='email-bound' }; render(); announce('登录状态已切换'); });

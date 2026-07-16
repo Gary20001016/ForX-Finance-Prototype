@@ -78,7 +78,7 @@ test('keeps the approved home usable at 320 and 390 pixel widths', async () => {
     await withPage(async page => {
       const dimensions = await page.evaluate(() => ({ width: document.documentElement.scrollWidth, viewport: innerWidth }));
       assert.ok(dimensions.width <= dimensions.viewport);
-      const navBox = await page.locator('.bottom-nav').boundingBox();
+      const navBox = await page.locator('#screen-root .bottom-nav').boundingBox();
       assert.ok(navBox && navBox.y + navBox.height <= viewport.height, `${viewport.width}×${viewport.height} bottom navigation is in the viewport`);
       assert.equal(await page.locator('#open-deposit').isVisible(), true);
       assert.equal(await page.locator('[data-bottom-nav="assets"]').getAttribute('aria-current'), 'page');
@@ -610,9 +610,9 @@ test('notification shortcut explains prototype-only account events', async () =>
 
 test('uses one coherent SVG icon system and exchange-grade controls', async () => {
   await withPage(async page => {
-    assert.ok(await page.locator('[data-icon]').count() >= 18);
-    assert.equal(await page.locator('button').filter({ hasText: /^[⌁⌗⇅×]+$/ }).count(), 0);
-    const sizes = await page.locator('button:visible').evaluateAll(nodes => nodes.map(node => {
+    assert.ok(await page.locator('#interactive-phone [data-icon]').count() >= 18);
+    assert.equal(await page.locator('#interactive-phone button').filter({ hasText: /^[⌁⌗⇅×]+$/ }).count(), 0);
+    const sizes = await page.locator('#interactive-phone button:visible').evaluateAll(nodes => nodes.map(node => {
       const box = node.getBoundingClientRect();
       return [box.width, box.height];
     }));
@@ -746,5 +746,25 @@ test('value chart exposes axes tooltip modes and period statistics', async () =>
     assert.equal(await page.locator('[data-value-chart]').getAttribute('data-mode'), 'return');
     await page.locator('[data-chart-point]').nth(3).click();
     assert.equal(await page.locator('[data-chart-tooltip]').isVisible(), true);
+  });
+});
+
+test('gallery documents every screen with interaction specs', async () => {
+  await withPage(async page => {
+    for (const label of ['资产主页', '合约账户', '地址充值', '钱包充值', '网络确认', '提现', '地址簿', '账户划转', '资金记录', '账户价值']) {
+      const card = page.locator(`[data-gallery-card="${label}"]`);
+      assert.equal(await card.count(), 1, label);
+      assert.match(await card.textContent(), /进入条件.*用户操作.*系统响应.*下一状态.*开发细节/s);
+    }
+  });
+});
+
+test('error gallery documents trigger blocking and recovery', async () => {
+  await withPage(async page => {
+    assert.ok(await page.locator('[data-error-spec]').count() >= 8);
+    const cards = await page.locator('[data-error-spec]').all();
+    for (const card of cards) {
+      assert.match(await card.textContent(), /触发条件.*提示位置.*阻断范围.*恢复操作.*实现规则/s);
+    }
   });
 });
