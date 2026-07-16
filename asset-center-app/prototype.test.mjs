@@ -721,3 +721,30 @@ test('address book discloses verification and duplicate risk', async () => {
     assert.equal(await page.locator('#save-address').isDisabled(), true);
   });
 });
+
+test('fund records reconcile totals fees and net flow', async () => {
+  await withPage(async page => {
+    await page.locator('#open-records').click();
+    for (const label of ['充值总额', '提现总额', '网络费用', '净流入']) {
+      assert.match(await page.locator('[data-record-summary]').textContent(), new RegExp(label));
+    }
+    await page.locator('[data-record-id]').first().click();
+    assert.ok(await page.locator('[data-record-timeline-step]').count() >= 3);
+    assert.match(await page.locator('#screen-root').textContent(), /复制.*区块浏览器/s);
+  });
+});
+
+test('value chart exposes axes tooltip modes and period statistics', async () => {
+  await withPage(async page => {
+    await page.locator('#open-value-history').click();
+    for (const label of ['期初价值', '期末价值', '区间最高', '区间最低', '净入金', '剔除资金流收益']) {
+      assert.match(await page.locator('#screen-root').textContent(), new RegExp(label));
+    }
+    assert.ok(await page.locator('[data-axis-y]').count() >= 3);
+    assert.ok(await page.locator('[data-axis-x]').count() >= 3);
+    await page.locator('[data-chart-mode="return"]').click();
+    assert.equal(await page.locator('[data-value-chart]').getAttribute('data-mode'), 'return');
+    await page.locator('[data-chart-point]').nth(3).click();
+    assert.equal(await page.locator('[data-chart-tooltip]').isVisible(), true);
+  });
+});

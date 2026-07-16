@@ -443,14 +443,15 @@
     .filter-chip { flex:none; min-height:31px; padding:0 12px; border:0; border-radius:999px; background:#101512; color:#6f7872; font-size:9px; }
     .filter-chip[aria-pressed="true"] { background:#edf2ef; color:#070907; font-weight:650; }
     .records-summary { margin:13px 17px 2px; padding:13px; border:1px solid var(--line); border-radius:13px; background:linear-gradient(135deg,#101813,#0b0e0c); }
-    .records-summary-grid { display:grid; grid-template-columns:1.2fr 1fr 1fr; }
+    .records-summary-grid { display:grid; grid-template-columns:repeat(4,1fr); }
     .summary-item { padding:0 9px; border-right:1px solid var(--line); }
     .summary-item:first-child { padding-left:0; }
     .summary-item:last-child { border-right:0; }
     .summary-item small { display:block; color:#667069; font-size:7px; }
     .summary-item b { display:block; margin-top:5px; font-size:10px; }
     .summary-note { margin:10px 0 0; color:#667069; font-size:7px; }
-    .record-date { padding:14px 17px 6px; color:#69726c; font-size:8px; }
+    .record-date { padding:14px 17px 6px; display:flex; color:#69726c; font-size:8px; }
+    .record-date b { margin-left:auto; color:#535d56; font-size:7px; font-weight:520; }
     .fund-record { width:calc(100% - 34px); min-height:66px; margin:0 17px; display:flex; align-items:center; border:0; border-bottom:1px solid rgba(255,255,255,.07); background:transparent; color:inherit; text-align:left; }
     .fund-record .activity-icon { flex:none; }
     .record-main b { display:block; font-size:10px; }
@@ -462,9 +463,19 @@
     .status-pending { color:var(--warning); }
     .status-failed { color:var(--error); }
     .record-detail-status { padding:16px; margin-bottom:13px; border:1px solid var(--line); border-radius:14px; background:#0b0f0c; }
+    .record-detail-status .token-icon { width:32px; height:32px; margin:0 0 9px; }
     .record-detail-status small { color:#68716b; font-size:8px; }
     .record-detail-status h2 { margin:6px 0 3px; font-size:18px; }
-    .record-detail-status p { margin:0; color:#7b847e; font-size:9px; }
+    .record-detail-status .status-badge { margin-top:2px; }
+    .record-timeline { margin-bottom:13px; padding:3px 13px; border:1px solid var(--line); border-radius:13px; background:#090c0a; }
+    .record-timeline-step { min-height:47px; display:flex; align-items:center; position:relative; }
+    .record-timeline-step:not(:last-child)::after { content:""; position:absolute; left:10px; top:33px; bottom:-14px; width:1px; background:#2a312d; }
+    .record-timeline-step i { width:21px; height:21px; margin-right:10px; display:grid; place-items:center; position:relative; z-index:1; border:1px solid #303832; border-radius:50%; background:#121613; color:#667069; font-size:7px; font-style:normal; }
+    .record-timeline-step.done i { border-color:var(--green); background:var(--green); color:#06110a; }
+    .record-timeline-step span { flex:1; display:flex; }
+    .record-timeline-step b { font-size:8px; }
+    .record-timeline-step small { margin-left:auto; color:#626c65; font-size:7px; }
+    .record-audit { padding:0 13px 13px; border:1px solid var(--line); border-radius:13px; background:#0a0d0b; }
     .value-tabs { display:grid; grid-template-columns:repeat(3,1fr); gap:4px; margin:14px 17px 0; padding:4px; border:1px solid var(--line); border-radius:11px; background:#0c100e; }
     .value-tab { min-height:34px; border:0; border-radius:8px; background:transparent; color:#68716b; font-size:9px; }
     .value-tab[aria-selected="true"] { background:#1a211d; color:var(--text); }
@@ -473,18 +484,37 @@
     .value-header strong { display:block; margin:5px 0 3px; font-size:30px; letter-spacing:-.04em; }
     .value-header p { margin:0; color:#707972; font-size:9px; }
     .value-header p b { color:var(--green); }
-    .range-row { display:flex; gap:5px; padding:0 17px 12px; }
+    .chart-toolbar { display:flex; align-items:center; padding:0 17px 12px; }
+    .chart-modes { display:flex; padding:3px; border:1px solid var(--line); border-radius:9px; background:#0c100e; }
+    .chart-modes button { min-height:29px; padding:0 8px; border:0; border-radius:6px; background:transparent; color:#626c65; font-size:7px; }
+    .chart-modes button[aria-pressed="true"] { background:#1a211d; color:#dce4de; }
+    .range-row { margin-left:auto; display:flex; gap:1px; padding:0; }
     .range-button { min-height:29px; padding:0 9px; border:0; border-radius:8px; background:transparent; color:#68716b; font-size:8px; }
     .range-button[aria-pressed="true"] { background:#18211b; color:var(--green); }
-    .value-chart { height:230px; margin:0 17px; border:1px solid var(--line); border-radius:14px; background:linear-gradient(180deg,rgba(58,255,142,.025),transparent),#090c0a; position:relative; overflow:hidden; }
+    .value-chart { height:246px; margin:0 17px; border:1px solid var(--line); border-radius:14px; background:linear-gradient(180deg,rgba(58,255,142,.025),transparent),#090c0a; position:relative; overflow:hidden; }
     .value-chart::before { content:""; position:absolute; inset:0; background-image:linear-gradient(rgba(255,255,255,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.03) 1px,transparent 1px); background-size:100% 46px,62px 100%; }
-    .value-chart svg { position:absolute; inset:18px 12px 23px; width:calc(100% - 24px); height:calc(100% - 41px); }
+    .value-chart svg { position:absolute; inset:18px 10px 29px; width:calc(100% - 20px); height:calc(100% - 47px); }
+    .axis-y,.axis-x { position:absolute; z-index:2; color:#505953; font-size:6px; pointer-events:none; }
+    .axis-y { left:7px; }
+    .axis-y-0 { top:7px; }.axis-y-1 { top:47%; }.axis-y-2 { bottom:25px; }
+    .axis-x { bottom:8px; }.axis-x-0 { left:11%; }.axis-x-1 { left:45%; }.axis-x-2 { right:6%; }
+    .chart-point { width:32px; height:32px; min-width:32px; min-height:32px; position:absolute; z-index:4; transform:translate(-50%,-50%); border:0; border-radius:50%; background:transparent; }
+    .chart-point::after { content:""; width:5px; height:5px; display:block; margin:auto; border:1px solid #0a0d0b; border-radius:50%; background:var(--green); opacity:.34; transition:.15s ease; }
+    .chart-point:hover::after,.chart-point:focus-visible::after { width:8px; height:8px; opacity:1; box-shadow:0 0 0 4px rgba(141,250,169,.09); }
+    .chart-tooltip { min-width:102px; padding:8px 9px; position:absolute; z-index:6; border:1px solid var(--line-strong); border-radius:9px; background:#171c19; box-shadow:0 8px 24px rgba(0,0,0,.38); }
+    .chart-tooltip[hidden] { display:none; }
+    .chart-tooltip small { display:block; color:#818b84; font-size:6px; }
+    .chart-tooltip b { display:block; margin-top:4px; color:#e0e7e2; font-size:9px; }
     .chart-event { position:absolute; width:8px; height:8px; border:2px solid var(--bg); border-radius:50%; background:var(--green); box-shadow:0 0 0 1px var(--green); }
     .chart-event.deposit { left:35%; top:55%; }
     .chart-event.withdrawal { left:70%; top:33%; background:var(--error); box-shadow:0 0 0 1px var(--error); }
     .chart-event-label { position:absolute; padding:3px 5px; border-radius:5px; background:#171c19; color:#9aa39d; font-size:7px; }
     .chart-event-label.deposit { left:27%; top:64%; }
     .chart-event-label.withdrawal { left:58%; top:20%; }
+    .period-stats { display:grid; grid-template-columns:repeat(3,1fr); gap:1px; margin:12px 17px 0; overflow:hidden; border:1px solid var(--line); border-radius:13px; background:var(--line); }
+    .period-stats div { min-height:49px; padding:9px; background:#0b0e0c; }
+    .period-stats small { display:block; color:#626c65; font-size:6px; }
+    .period-stats b { display:block; margin-top:5px; overflow:hidden; color:#bac3bc; font-size:8px; font-weight:550; text-overflow:ellipsis; white-space:nowrap; }
     .value-breakdown { margin:12px 17px 25px; border-top:1px solid var(--line); }
     .breakdown-heading { display:flex; padding:12px 0 7px; }
     .breakdown-heading b { font-size:10px; }
@@ -589,7 +619,7 @@
       withdrawal:null, addressBook:[], pendingAction:null, pendingAddress:null,
       transferDraft:{ source:'funding', destination:'contract', token:'USDT', amount:'', completed:false },
       transferResult:null,
-      recordsFilter:'all', recordAdvanced:{asset:'all',network:'all',status:'all',time:'all'}, selectedRecord:null, valueAccount:'all', valueRange:'30d',
+      recordsFilter:'all', recordAdvanced:{asset:'all',network:'all',status:'all',time:'all'}, selectedRecord:null, valueAccount:'all', valueRange:'30d', valueMode:'value', selectedValuePoint:null,
       draft:{}, records:[]
     });
     let state = initialState();
@@ -962,13 +992,18 @@
       const withdrawals=effective.filter(record=>record.type==='withdrawal').reduce((sum,record)=>sum+record.amount,0);
       return { deposits, withdrawals, net:deposits-withdrawals };
     }
+    function recordSummary(records){
+      const effective=records.filter(record=>record.status!=='failed'), flow=externalFlow(records);
+      const fees=effective.filter(record=>record.type==='withdrawal').reduce((sum,record)=>sum+(record.fee||0),0);
+      return {...flow,fees};
+    }
     function signedMoney(value){ return `${value>=0?'+':'-'}$${format(Math.abs(value))}`; }
     function recordsScreen(){
       const advanced=state.recordAdvanced;
       const records=allRecords().filter(record=>(state.recordsFilter==='all'||record.type===state.recordsFilter)&&(advanced.asset==='all'||record.token===advanced.asset)&&(advanced.network==='all'||record.network===advanced.network)&&(advanced.status==='all'||record.status===advanced.status)&&recordMatchesTime(record,advanced.time));
       const activeAdvanced=Object.values(advanced).some(value=>value!=='all');
-      const flow=externalFlow(allRecords().filter(record=>recordMatchesTime(record,'month')));
-      return `<div class="app-screen subpage">${statusBar()}<header class="subpage-header"><button class="back-button" data-back type="button" aria-label="返回">‹</button><h1>资金记录</h1><button class="icon-button ${activeAdvanced?'notice':''}" id="open-record-filters" type="button" style="margin-left:auto" aria-label="更多筛选">⌁</button></header><div class="filter-row">${[['all','全部'],['deposit','充值'],['withdrawal','提现'],['transfer','划转']].map(([value,label])=>`<button class="filter-chip" data-record-filter="${value}" aria-pressed="${state.recordsFilter===value}">${label}</button>`).join('')}</div><section class="records-summary" data-record-summary><div class="records-summary-grid"><div class="summary-item"><small>资金净流入</small><b class="${flow.net>=0?'positive':''}">${flow.net>=0?'+':'-'}${format(Math.abs(flow.net))}</b></div><div class="summary-item"><small>充值</small><b>${format(flow.deposits)}</b></div><div class="summary-item"><small>提现</small><b>${format(flow.withdrawals)}</b></div></div><p class="summary-note">本月 · 账户划转不计入外部资金流</p></section><div class="record-date">最近记录${activeAdvanced?' · 已应用高级筛选':''}</div>${records.map(fundRecordMarkup).join('')||'<div class="empty-state">当前筛选条件下没有记录。</div>'}</div>`;
+      const flow=recordSummary(allRecords().filter(record=>recordMatchesTime(record,'month')));
+      return `<div class="app-screen subpage">${statusBar()}<header class="subpage-header"><button class="back-button" data-back type="button" aria-label="返回">‹</button><h1>资金记录</h1><button class="icon-button ${activeAdvanced?'notice':''}" id="open-record-filters" type="button" style="margin-left:auto" aria-label="更多筛选">${icon('filter')}</button></header><div class="filter-row">${[['all','全部'],['deposit','充值'],['withdrawal','提现'],['transfer','划转']].map(([value,label])=>`<button class="filter-chip" data-record-filter="${value}" aria-pressed="${state.recordsFilter===value}">${label}</button>`).join('')}</div><section class="records-summary" data-record-summary><div class="records-summary-grid"><div class="summary-item"><small>充值总额</small><b>${format(flow.deposits)}</b></div><div class="summary-item"><small>提现总额</small><b>${format(flow.withdrawals)}</b></div><div class="summary-item"><small>网络费用</small><b>${format(flow.fees)}</b></div><div class="summary-item net"><small>净流入 · 资金净流入</small><b class="${flow.net>=0?'positive':''}">${flow.net>=0?'+':'-'}${format(Math.abs(flow.net))}</b></div></div><p class="summary-note">本月 · 已排除失败交易 · 账户划转不计入外部资金流</p></section><div class="record-date"><span>最近记录</span><b>${records.length} 笔${activeAdvanced?' · 已应用高级筛选':''}</b></div>${records.map(fundRecordMarkup).join('')||'<div class="empty-state">当前筛选条件下没有记录。</div>'}</div>`;
     }
     function recordFiltersSheet(){
       const current=state.recordAdvanced;
@@ -982,7 +1017,9 @@
     }
     function recordDetailScreen(){
       const record=allRecords().find(item=>item.id===state.selectedRecord)||SAMPLE_RECORDS[0];
-      return `<div class="app-screen subpage">${statusBar()}<header class="subpage-header"><button class="back-button" data-back type="button" aria-label="返回">‹</button><h1>${recordTypeLabel(record.type)}详情</h1></header><div class="form-page"><section class="record-detail-status"><small>${record.token} · ${record.network||record.direction}</small><h2>${record.type==='deposit'?'+':record.type==='withdrawal'?'-':''}${format(record.amount)} ${record.token}</h2><p class="${record.status==='complete'?'status-complete':record.status==='failed'?'status-failed':'status-pending'}">${recordStatusLabel(record.status)}</p></section><div class="detail-list"><div class="detail-line"><span>类型</span><span>${recordTypeLabel(record.type)}</span></div>${record.network?`<div class="detail-line"><span>网络</span><span>${record.network}</span></div>`:''}${record.address?`<div class="detail-line"><span>${record.type==='deposit'?'充值':'目标'}地址</span><span>${record.address}</span></div>`:''}${record.type==='withdrawal'?`<div class="detail-line"><span>网络费</span><span>${format(record.fee||0)} ${record.token}</span></div><div class="detail-line"><span>预计到账</span><span>${format(record.amount-(record.fee||0))} ${record.token}</span></div>`:''}${record.type!=='transfer'?`<div class="detail-line"><span>交易哈希</span><span>${record.hash||'等待生成'}</span></div><div class="detail-line"><span>网络确认</span><span>${record.confirmations||'已完成'}</span></div>`:`<div class="detail-line"><span>手续费</span><span>0 ${record.token}</span></div>`}<div class="detail-line"><span>时间</span><span>${record.time}</span></div>${record.reason?`<div class="notice-box"><strong>失败原因：</strong>${record.reason}</div>`:''}</div></div></div>`;
+      const isTransfer=record.type==='transfer', isFailed=record.status==='failed';
+      const stages=isTransfer?['已提交','账本处理','余额更新']:record.type==='deposit'?['首次检测','网络确认','资金入账']:['安全审核','发送交易','网络确认'];
+      return `<div class="app-screen subpage">${statusBar()}<header class="subpage-header"><button class="back-button" data-back type="button" aria-label="返回">‹</button><h1>${recordTypeLabel(record.type)}详情</h1></header><div class="form-page"><section class="record-detail-status">${tokenMark(record.token)}<small>${record.token} · ${record.network||record.direction}</small><h2>${record.type==='deposit'?'+':record.type==='withdrawal'?'-':''}${format(record.amount)} ${record.token}</h2>${statusBadge(record.status)}</section><div class="record-timeline">${stages.map((label,index)=>`<div class="record-timeline-step ${isFailed&&index>0?'':'done'}" data-record-timeline-step><i>${isFailed&&index>0?index+1:'✓'}</i><span><b>${label}</b><small>${isFailed&&index>0?'未执行':index===0?record.time.slice(11):record.status==='confirming'&&index===2?'处理中':'已记录'}</small></span></div>`).join('')}</div><section class="record-audit"><div class="mini-section-title"><h2>交易信息</h2><span>${record.id}</span></div><div class="detail-list"><div class="detail-line"><span>类型</span><span>${recordTypeLabel(record.type)}</span></div>${record.network?`<div class="detail-line"><span>网络</span><span>${record.network}</span></div>`:''}${record.address?`<div class="detail-line"><span>${record.type==='deposit'?'充值':'目标'}地址</span><span>${record.address}</span></div>`:''}${record.type==='withdrawal'?`<div class="detail-line"><span>网络费</span><span>${format(record.fee||0)} ${record.token}</span></div><div class="detail-line"><span>实际到账</span><span>${format(record.amount-(record.fee||0))} ${record.token}</span></div>`:''}${!isTransfer?`<div class="detail-line"><span>交易哈希</span><span>${record.hash||'等待生成'}</span></div><div class="detail-line"><span>网络确认</span><span>${record.confirmations||'已完成'}</span></div>`:`<div class="detail-line"><span>手续费</span><span>0 ${record.token}</span></div>`}<div class="detail-line"><span>记录时间</span><span>${record.time}</span></div></div>${!isTransfer?`<div class="audit-actions"><button type="button" data-copy-record>${icon('copy')}复制交易哈希</button><button type="button" data-open-record-explorer>${icon('chart')}${NETWORKS[record.network]?.explorerLabel||'区块'} 区块浏览器</button></div>`:''}${record.reason?`<div class="notice-box"><strong>失败原因</strong>${record.reason}</div>`:''}</section></div></div>`;
     }
     function valueBreakdown(){
       const records=recordsInRange(), flow=externalFlow(records);
@@ -994,10 +1031,21 @@
       if(state.valueAccount==='funding') return { external:['资金净流入','充值减提现',signedMoney(flow.net)], returns:['资金账户其他变动','仅统计收益变动','+$0.00'], transfer:[fundingTransfer<=0?'账户划转流出':'账户划转流入','资金账户与合约账户之间',signedMoney(fundingTransfer)], amounts:[flow.net,0,fundingTransfer] };
       return { external:['外部资金流入','直接进入合约账户','+$0.00'], returns:['交易及其他收益','仅统计收益变动',signedMoney(returns)], transfer:[fundingTransfer<=0?'账户划转流入':'账户划转流出','资金账户与合约账户之间',signedMoney(-fundingTransfer)], amounts:[0,returns,-fundingTransfer] };
     }
+    function valueSeries(account=state.valueAccount,rangeKey=state.valueRange,mode=state.valueMode){
+      const breakdown=valueBreakdown(), current=accountValue(account), totalChange=breakdown.amounts.reduce((sum,value)=>sum+value,0), returnChange=breakdown.amounts[1];
+      const closing=mode==='return'?returnChange:current, change=mode==='return'?returnChange:totalChange, opening=closing-change;
+      const factors=[0,.1,.07,.24,.2,.43,.39,.63,.57,.79,.75,1], rangeIndex=['7d','30d','3m','6m','1y'].indexOf(rangeKey), wobble=[0,.018,-.014,.026,-.02,.03,-.016,.022,-.012,.018,-.01,0];
+      const scale=Math.max(Math.abs(change),mode==='return'?120:current*.04,1), values=factors.map((factor,index)=>roundMoney(opening+change*factor+scale*wobble[index]*(1+rangeIndex*.12)));
+      values[0]=roundMoney(opening); values[values.length-1]=roundMoney(closing);
+      const low=Math.min(...values), high=Math.max(...values), pad=Math.max((high-low)*.16,1), chartLow=low-pad, chartHigh=high+pad;
+      const points=values.map((value,index)=>({value,x:42+index*(268/(values.length-1)),y:18+(chartHigh-value)/(chartHigh-chartLow)*145,label:`${index+1}日`}));
+      return {opening:values[0],closing:values.at(-1),high,low,change,values,points,path:points.map((point,index)=>`${index?'L':'M'}${format(point.x,1)} ${format(point.y,1)}`).join('')};
+    }
     function valueHistoryScreen(){
       const breakdown=valueBreakdown(), current=accountValue(state.valueAccount), range=VALUE_RANGES[state.valueRange], change=breakdown.amounts.reduce((sum,value)=>sum+value,0), percent=current!==change?change/(current-change)*100:0, changeSign=change>=0?'+':'-', percentSign=percent>=0?'+':'-';
       const periodRecords=recordsInRange(), depositMarker=Math.max(0,...periodRecords.filter(record=>record.type==='deposit'&&record.status!=='failed').map(record=>record.amount)), withdrawalMarker=Math.max(0,...periodRecords.filter(record=>record.type==='withdrawal'&&record.status!=='failed').map(record=>record.amount));
-      return `<div class="app-screen subpage">${statusBar()}<header class="subpage-header"><button class="back-button" data-back type="button" aria-label="返回">‹</button><h1>账户价值</h1></header><div class="value-tabs" role="tablist">${[['all','全账户'],['funding','资金账户'],['contract','合约账户']].map(([value,label])=>`<button class="value-tab" data-value-account="${value}" role="tab" aria-selected="${state.valueAccount===value}">${label}</button>`).join('')}</div><div class="value-header"><small>当前账户价值</small><strong data-current-value data-value="${current}">$${format(current)}</strong><p>所选周期变动 <b data-value-change data-value="${change}">${changeSign}${format(Math.abs(change))}　${percentSign}${format(Math.abs(percent))}%</b></p></div><div class="range-row">${[['7d','7天'],['30d','30天'],['3m','3个月'],['6m','半年'],['1y','1年']].map(([value,label])=>`<button class="range-button" data-value-range="${value}" aria-pressed="${state.valueRange===value}">${label}</button>`).join('')}</div><div class="value-chart" data-value-chart data-range="${state.valueRange}"><svg viewBox="0 0 310 190" fill="none"><defs><linearGradient id="valueArea" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#63f6a2" stop-opacity=".25"/><stop offset="1" stop-color="#63f6a2" stop-opacity="0"/></linearGradient></defs><path d="${range.path}V190H0Z" fill="url(#valueArea)"/><path data-value-line d="${range.path}" stroke="#63f6a2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><i class="chart-event deposit" data-value-marker="deposit"></i><span class="chart-event-label deposit">充值 +${format(depositMarker,0)}</span><i class="chart-event withdrawal" data-value-marker="withdrawal"></i><span class="chart-event-label withdrawal">提现 -${format(withdrawalMarker,0)}</span></div><section class="value-breakdown" data-value-breakdown><div class="breakdown-heading"><b>价值变动来源</b><span>${state.valueRange==='30d'?'近 30 天':'所选周期'}</span></div><div class="breakdown-row"><div><b>${breakdown.external[0]}</b><small>${breakdown.external[1]}</small></div><strong data-source-value="${breakdown.amounts[0]}">${breakdown.external[2]}</strong></div><div class="breakdown-row" data-return-source><div><b>${breakdown.returns[0]}</b><small>${breakdown.returns[1]}</small></div><strong data-source-value="${breakdown.amounts[1]}" class="${breakdown.returns[2].startsWith('-')?'':'positive'}">${breakdown.returns[2]}</strong></div><div class="breakdown-row"><div><b>${breakdown.transfer[0]}</b><small>${breakdown.transfer[1]}</small></div><strong data-source-value="${breakdown.amounts[2]}">${breakdown.transfer[2]}</strong></div></section></div>`;
+      const series=valueSeries(), tooltipIndex=state.selectedValuePoint, tooltip=tooltipIndex===null?null:series.points[tooltipIndex], yTicks=[series.high,(series.high+series.low)/2,series.low], returnValue=breakdown.amounts[1], netFlow=breakdown.amounts[0];
+      return `<div class="app-screen subpage">${statusBar()}<header class="subpage-header"><button class="back-button" data-back type="button" aria-label="返回">‹</button><h1>账户价值</h1></header><div class="value-tabs" role="tablist">${[['all','全账户'],['funding','资金账户'],['contract','合约账户']].map(([value,label])=>`<button class="value-tab" data-value-account="${value}" role="tab" aria-selected="${state.valueAccount===value}">${label}</button>`).join('')}</div><div class="value-header"><small>${state.valueMode==='value'?'当前账户价值':'剔除资金流收益'}</small><strong data-current-value data-value="${current}">$${format(state.valueMode==='value'?current:returnValue)}</strong><p>所选周期变动 <b data-value-change data-value="${change}">${changeSign}${format(Math.abs(change))}　${percentSign}${format(Math.abs(percent))}%</b></p></div><div class="chart-toolbar"><div class="chart-modes">${[['value','账户价值'],['return','剔除资金流']].map(([value,label])=>`<button type="button" data-chart-mode="${value}" aria-pressed="${state.valueMode===value}">${label}</button>`).join('')}</div><div class="range-row">${[['7d','7天'],['30d','30天'],['3m','3个月'],['6m','半年'],['1y','1年']].map(([value,label])=>`<button class="range-button" data-value-range="${value}" aria-pressed="${state.valueRange===value}">${label}</button>`).join('')}</div></div><div class="value-chart" data-value-chart data-range="${state.valueRange}" data-mode="${state.valueMode}">${yTicks.map((value,index)=>`<span class="axis-y axis-y-${index}" data-axis-y>$${format(value,0)}</span>`).join('')}<span class="axis-x axis-x-0" data-axis-x>${state.valueRange==='7d'?'07/10':'期初'}</span><span class="axis-x axis-x-1" data-axis-x>区间中点</span><span class="axis-x axis-x-2" data-axis-x>今天</span><svg viewBox="0 0 340 190" fill="none"><defs><linearGradient id="valueArea" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#8dfaa9" stop-opacity=".24"/><stop offset="1" stop-color="#8dfaa9" stop-opacity="0"/></linearGradient></defs><path d="${series.path}L310 180L42 180Z" fill="url(#valueArea)"/><path data-value-line d="${series.path}" stroke="#8dfaa9" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>${series.points.map((point,index)=>`<button class="chart-point" data-chart-point="${index}" type="button" aria-label="查看第 ${index+1} 个数据点" style="left:${point.x/340*100}%;top:${point.y/190*100}%"></button>`).join('')}<i class="chart-event deposit" data-value-marker="deposit"></i><span class="chart-event-label deposit">充值 +${format(depositMarker,0)}</span><i class="chart-event withdrawal" data-value-marker="withdrawal"></i><span class="chart-event-label withdrawal">提现 -${format(withdrawalMarker,0)}</span>${tooltip?`<div class="chart-tooltip" data-chart-tooltip style="left:${Math.min(73,Math.max(6,tooltip.x/340*100-9))}%;top:${Math.max(5,tooltip.y/190*100-24)}%"><small>${tooltip.label} · ${state.valueMode==='value'?'账户价值':'累计收益'}</small><b>${signedMoney(tooltip.value)}</b></div>`:'<div class="chart-tooltip" data-chart-tooltip hidden></div>'}</div><section class="period-stats"><div><small>期初价值</small><b>${signedMoney(series.opening)}</b></div><div><small>期末价值</small><b>${signedMoney(series.closing)}</b></div><div><small>区间最高</small><b>${signedMoney(series.high)}</b></div><div><small>区间最低</small><b>${signedMoney(series.low)}</b></div><div><small>净入金</small><b>${signedMoney(netFlow)}</b></div><div><small>剔除资金流收益</small><b class="positive">${signedMoney(returnValue)}</b></div></section><section class="value-breakdown" data-value-breakdown><div class="breakdown-heading"><b>价值变动来源</b><span>${state.valueRange==='30d'?'近 30 天':'所选周期'}</span></div><div class="breakdown-row"><div><b>${breakdown.external[0]}</b><small>${breakdown.external[1]}</small></div><strong data-source-value="${breakdown.amounts[0]}">${breakdown.external[2]}</strong></div><div class="breakdown-row" data-return-source><div><b>${breakdown.returns[0]}</b><small>${breakdown.returns[1]}</small></div><strong data-source-value="${breakdown.amounts[1]}" class="${breakdown.returns[2].startsWith('-')?'':'positive'}">${breakdown.returns[2]}</strong></div><div class="breakdown-row"><div><b>${breakdown.transfer[0]}</b><small>${breakdown.transfer[1]}</small></div><strong data-source-value="${breakdown.amounts[2]}">${breakdown.transfer[2]}</strong></div></section></div>`;
     }
     function assetsScreen(){ return `<div class="app-screen">${statusBar()}${accountNav()}${state.account==='funding'?fundingHome():contractHome()}${bottomNav()}</div>`; }
     function subpage(title,routeName){ return `<div class="app-screen subpage">${statusBar()}<header class="subpage-header"><button class="back-button" data-back type="button" aria-label="返回">‹</button><h1>${title}</h1></header><div class="placeholder-page">${routeName==='deposit'?'选择 USDT 或 USDC，并选择 Ethereum、Arbitrum、Polygon、Base、Optimism、Solana 或 TRON 网络。':'页面内容将在后续步骤完成。'}</div></div>`; }
@@ -1093,8 +1141,12 @@
       if(target.id==='open-record-filters') return recordFiltersSheet();
       if(target.dataset.recordFilter){ state.recordsFilter=target.dataset.recordFilter; render(); return; }
       if(target.dataset.recordId){ state.selectedRecord=target.dataset.recordId; return navigate('record-detail'); }
-      if(target.dataset.valueAccount){ state.valueAccount=target.dataset.valueAccount; render(); announce('已切换账户价值范围'); return; }
-      if(target.dataset.valueRange){ state.valueRange=target.dataset.valueRange; render(); announce('已切换时间范围'); return; }
+      if(target.dataset.copyRecord!==undefined){ const record=allRecords().find(item=>item.id===state.selectedRecord); navigator.clipboard?.writeText(record?.hash||record?.id||'').catch(()=>{}); announce('交易信息已复制'); return; }
+      if(target.dataset.openRecordExplorer!==undefined){ const record=allRecords().find(item=>item.id===state.selectedRecord); announce(`原型模式：已准备在 ${NETWORKS[record?.network]?.explorerLabel||'区块浏览器'} 查看交易`); return; }
+      if(target.dataset.valueAccount){ state.valueAccount=target.dataset.valueAccount; state.selectedValuePoint=null; render(); announce('已切换账户价值范围'); return; }
+      if(target.dataset.valueRange){ state.valueRange=target.dataset.valueRange; state.selectedValuePoint=null; render(); announce('已切换时间范围'); return; }
+      if(target.dataset.chartMode){ state.valueMode=target.dataset.chartMode; state.selectedValuePoint=null; render(); announce(state.valueMode==='value'?'显示账户价值':'显示剔除资金流收益'); return; }
+      if(target.dataset.chartPoint!==undefined){ state.selectedValuePoint=Number(target.dataset.chartPoint); render(); return; }
       if(target.matches('.visibility-toggle')){ state.valuesHidden=!state.valuesHidden; render(); announce(state.valuesHidden?'资产金额已隐藏':'资产金额已显示'); }
     });
     root.addEventListener('input',event=>{
