@@ -27,6 +27,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import PageHeader from "../../components/PageHeader";
 import MessagePreview from "../../components/MessagePreview";
 import MarkdownEditor from "../../components/MarkdownEditor";
+import { hasUnsafeMarkdownLinks } from "../../components/MarkdownContent";
 import TranslationWorkflowPanel from "../templates/TranslationWorkflowPanel";
 import type {
   Channel,
@@ -552,6 +553,15 @@ export default function CreateTaskPage() {
     }
     if (!translationReady) {
       Message.warning("仍有目标语言未完成人工审核，不能提交业务审核");
+      return;
+    }
+    if (
+      channels.includes("站内信") &&
+      hasUnsafeMarkdownLinks(content.web.body)
+    ) {
+      Message.error(
+        "站内信 Markdown 包含不允许的链接，仅支持 http、https 和 forxfinance 协议",
+      );
       return;
     }
     if (

@@ -7,6 +7,13 @@ const allowedUrlPattern = /^(https?:\/\/|forxfinance:\/\/)/i;
 export const transformMarkdownUrl = (url: string) =>
   allowedUrlPattern.test(url.trim()) ? url : "";
 
+export const hasUnsafeMarkdownLinks = (source: string) => {
+  const linkPattern = /\[[^\]]*\]\(([^)\s]+)(?:\s+[^)]*)?\)/g;
+  return Array.from(source.matchAll(linkPattern)).some(
+    (match) => !transformMarkdownUrl(match[1]),
+  );
+};
+
 class MarkdownRenderBoundary extends Component<
   { children: ReactNode; fallback: ReactNode },
   { failed: boolean }
@@ -51,9 +58,8 @@ export default function MarkdownContent({
           skipHtml
           urlTransform={transformMarkdownUrl}
           components={{
-            a: ({ href, children, ...props }) => (
+            a: ({ href, children }) => (
               <a
-                {...props}
                 href={href || undefined}
                 target="_blank"
                 rel="noopener noreferrer"

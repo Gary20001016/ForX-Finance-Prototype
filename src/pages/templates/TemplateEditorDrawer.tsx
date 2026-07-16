@@ -14,6 +14,7 @@ import {
 } from "@arco-design/web-react";
 import MessagePreview from "../../components/MessagePreview";
 import MarkdownEditor from "../../components/MarkdownEditor";
+import { hasUnsafeMarkdownLinks } from "../../components/MarkdownContent";
 import type {
   LocalizedMessageContent,
   MessageTemplate,
@@ -140,6 +141,12 @@ export default function TemplateEditorDrawer({
         !content.push.body
       ) {
         Message.warning("请完整填写站内信与 App Push 内容");
+        return;
+      }
+      if (hasUnsafeMarkdownLinks(content.web.body)) {
+        Message.error(
+          "站内信 Markdown 包含不允许的链接，仅支持 http、https 和 forxfinance 协议",
+        );
         return;
       }
       if (translate && targetLocales.length === 0) {

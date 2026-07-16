@@ -10,7 +10,9 @@ import {
   Tag,
   Timeline,
 } from "@arco-design/web-react";
-import MarkdownContent from "../../components/MarkdownContent";
+import MarkdownContent, {
+  hasUnsafeMarkdownLinks,
+} from "../../components/MarkdownContent";
 import MarkdownEditor from "../../components/MarkdownEditor";
 import type { TranslationItem } from "../../domain/types";
 import {
@@ -89,6 +91,12 @@ export default function TranslationReviewDrawer({
     }
     if (!current.variablesValid) {
       Message.error("模板变量校验失败，禁止通过");
+      return;
+    }
+    if (hasUnsafeMarkdownLinks(body)) {
+      Message.error(
+        "Markdown 包含不允许的链接，仅支持 http、https 和 forxfinance 协议",
+      );
       return;
     }
     const values = { title, summary, body, reviewer: currentAdmin };
