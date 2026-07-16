@@ -81,7 +81,15 @@ export default function TemplateReadOnlyDetails({
       <div>
         <Typography.Title heading={6}>默认语言内容预览</Typography.Title>
         {template.content ? (
-          <MessagePreview content={template.content} />
+          <>
+            <MessagePreview content={template.content} />
+            <details className="markdown-source-disclosure">
+              <summary>查看站内信正文 Markdown 源码</summary>
+              <pre className="markdown-source">
+                {template.content.web.body}
+              </pre>
+            </details>
+          </>
         ) : (
           <Alert type="warning" showIcon content="当前模板没有可预览的内容快照。" />
         )}
