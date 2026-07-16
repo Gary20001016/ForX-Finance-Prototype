@@ -2147,7 +2147,8 @@
       {"screen":"login","title":"E01 · 登录表单错误","detail":"邮箱输入框下方","mainError":"请输入有效的邮箱地址","recovery":"重新输入邮箱","variants":[],"state":"email-invalid"},
       {"screen":"otp","title":"E02 · OTP 错误","detail":"验证码区域下方","mainError":"验证码不正确，请重试","recovery":"清空后重新输入","variants":["请输入完整的 6 位验证码","验证码已过期，请重新发送","验证码发送失败，请重试"],"state":"otp-invalid"},
       {"screen":"wallets","title":"E03 · 钱包列表提示","detail":"钱包列表上方","mainError":"未检测到 WalletConnect，请先安装钱包","recovery":"安装钱包","variants":["当前网络不匹配，请切换至 Arbitrum One","签名已取消，你可以重新选择钱包"],"state":"wallet-missing"},
-      {"screen":"wallet-guide","title":"E04 · 钱包签名错误","detail":"当前签名步骤下方","mainError":"钱包签名失败，请重试当前步骤","recovery":"重试当前步骤","variants":["用户拒绝了签名请求"],"state":"signature-failed"}
+      {"screen":"wallet-guide","title":"E04 · 钱包签名错误","detail":"当前签名步骤下方","mainError":"钱包签名失败，请重试当前步骤","recovery":"重试当前步骤","variants":["用户拒绝了签名请求"],"state":"signature-failed"},
+      {"screen":"login","title":"E05 · 条款确认错误","detail":"服务条款区域下方","mainError":"请先同意服务条款与风险披露","recovery":"勾选后继续","variants":[],"state":"consent-required"}
     ]
   </script>
 
@@ -2694,6 +2695,16 @@
         error.textContent = definition.mainError;
         phone.querySelector('.guide-current-copy').textContent = '第 1 项未完成，已完成进度已保留。';
         phone.querySelector('.guide-actions .primary').textContent = definition.recovery;
+      }
+
+      if (definition.state === 'consent-required') {
+        const consent = phone.querySelector('.legal-consent input');
+        const error = phone.querySelector('.legal-consent-error');
+        if (consent) consent.checked = false;
+        if (error) {
+          error.hidden = false;
+          error.textContent = definition.mainError;
+        }
       }
     }
 
