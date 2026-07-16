@@ -20,6 +20,17 @@
     .phone { width:390px; height:844px; overflow:hidden; border:1px solid #2b322e; border-radius:40px; background:var(--bg); box-shadow:0 38px 100px rgba(0,0,0,.55); position:relative; }
     #screen-root { min-height:100%; height:100%; overflow:hidden; }
     #sheet-root[hidden] { display:none; }
+    #sheet-root { position:absolute; inset:0; z-index:20; display:flex; align-items:flex-end; background:rgba(0,0,0,.58); backdrop-filter:blur(5px); }
+    .sheet { width:100%; max-height:82%; overflow:auto; padding:10px 20px 24px; border:1px solid var(--line); border-bottom:0; border-radius:24px 24px 0 0; background:#0b0f0c; box-shadow:0 -24px 60px rgba(0,0,0,.46); }
+    .sheet-handle { width:34px; height:4px; border-radius:4px; background:#303732; margin:0 auto 17px; }
+    .sheet-header { display:flex; align-items:flex-start; gap:12px; }
+    .sheet-header h2 { margin:0; font-size:18px; }
+    .sheet-header p { margin:5px 0 0; color:var(--muted); font-size:11px; line-height:1.55; }
+    .sheet-close { margin-left:auto; width:34px; height:34px; border:0; border-radius:10px; background:#151a17; color:#aab3ad; }
+    .sheet-list { margin-top:16px; border-top:1px solid var(--line); }
+    .sheet-option { width:100%; min-height:52px; padding:0 3px; display:flex; align-items:center; border:0; border-bottom:1px solid rgba(255,255,255,.07); background:transparent; color:var(--text); text-align:left; }
+    .sheet-option span { margin-left:auto; color:#68716b; font-size:10px; }
+    .sheet-action { width:100%; min-height:46px; margin-top:18px; border:0; border-radius:12px; background:var(--green); color:#06110a; font-weight:650; }
     .sr-only { position:absolute!important; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
     .app-screen { min-height:100%; height:100%; background:var(--bg); position:relative; overflow-y:auto; scrollbar-width:none; }
     .app-screen::-webkit-scrollbar { display:none; }
@@ -93,6 +104,76 @@
     .back-button { width:36px; height:36px; border:0; background:transparent; color:var(--text); font-size:25px; padding:0; }
     .subpage-header h1 { margin:0 0 0 5px; font-size:17px; }
     .placeholder-page { padding:28px 20px; color:var(--muted); }
+    .form-page { padding:17px 20px 36px; }
+    .field-label { display:flex; align-items:center; margin:0 0 8px; color:#7b847e; font-size:10px; }
+    .field-label span { margin-left:auto; color:#626c65; }
+    .selector-button { width:100%; min-height:54px; margin-bottom:16px; padding:0 14px; display:flex; align-items:center; border:1px solid var(--line); border-radius:13px; background:var(--surface); color:var(--text); text-align:left; }
+    .selector-button b { font-size:13px; }
+    .selector-button small { margin-left:8px; color:#69726c; }
+    .selector-button i { margin-left:auto; color:#69726c; font-style:normal; }
+    .method-tabs { display:grid; grid-template-columns:1fr 1fr; gap:4px; padding:4px; margin:3px 0 17px; border:1px solid var(--line); border-radius:12px; background:#090c0a; }
+    .method-tabs.single { grid-template-columns:1fr; }
+    .method-tab { min-height:39px; border:0; border-radius:9px; background:transparent; color:#69726c; font-size:11px; }
+    .method-tab[aria-selected="true"] { background:#1a211d; color:var(--text); }
+    .deposit-card { padding:16px; border:1px solid var(--line); border-radius:16px; background:linear-gradient(145deg,rgba(99,246,162,.035),transparent),#0b0f0c; }
+    .qr { width:132px; height:132px; margin:3px auto 16px; padding:9px; border-radius:12px; background:#f1f5f2; display:grid; grid-template-columns:repeat(9,1fr); gap:2px; }
+    .qr i { background:#07100a; border-radius:1px; }
+    .qr i:nth-child(3n+2),.qr i:nth-child(5n) { background:transparent; }
+    .prototype-badge { display:block; width:max-content; margin:-7px auto 15px; padding:4px 7px; border-radius:999px; background:#161c18; color:#7f8882; font-size:8px; }
+    .address-box { padding:12px; border:1px solid rgba(255,255,255,.08); border-radius:11px; background:#080b09; }
+    .address-box small { display:block; color:#68716b; font-size:8px; }
+    .address-line { display:flex; align-items:center; gap:8px; margin-top:5px; }
+    .address-line code { min-width:0; overflow:hidden; text-overflow:ellipsis; color:#d8dfda; font-size:10px; }
+    .text-button { margin-left:auto; border:0; background:transparent; color:var(--green); font-size:9px; }
+    .notice-box { margin-top:12px; padding:11px 12px; border-left:2px solid var(--warning); border-radius:0 9px 9px 0; background:rgba(255,196,93,.045); color:#848d87; font-size:9px; line-height:1.55; }
+    .network-facts { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:12px; }
+    .network-fact { padding:10px; border:1px solid rgba(255,255,255,.07); border-radius:10px; }
+    .network-fact small { display:block; color:#626c65; font-size:8px; }
+    .network-fact b { display:block; margin-top:4px; font-size:10px; }
+    .demo-button { width:100%; min-height:43px; margin-top:14px; border:1px dashed rgba(99,246,162,.25); border-radius:11px; background:rgba(99,246,162,.045); color:#9dd8b2; font-size:10px; }
+    .wallet-account { display:flex; align-items:center; gap:10px; margin-bottom:13px; padding:12px; border:1px solid var(--line); border-radius:12px; }
+    .wallet-mark { width:35px; height:35px; border-radius:11px; background:linear-gradient(145deg,#f29c38,#c56f24); display:grid; place-items:center; color:#171009; font-weight:800; }
+    .wallet-account b { display:block; font-size:11px; }
+    .wallet-account small { display:block; margin-top:3px; color:#69726c; font-size:8px; }
+    .wallet-account .match { margin-left:auto; color:var(--green); font-size:8px; }
+    .wallet-account .mismatch { margin-left:auto; color:var(--error); font-size:8px; }
+    .amount-input { width:100%; height:58px; padding:0 14px; border:1px solid var(--line); border-radius:13px; background:#090c0a; color:var(--text); font-size:23px; }
+    .field-help { display:flex; justify-content:space-between; margin:7px 2px 14px; color:#68716b; font-size:8px; }
+    .primary-button { width:100%; min-height:48px; border:0; border-radius:12px; background:var(--green); color:#06110a; font-weight:680; }
+    .primary-button:disabled { background:#1d2520; color:#58625b; }
+    .secondary-link { width:100%; min-height:34px; margin-top:5px; border:0; background:transparent; color:#747e77; font-size:9px; }
+    .wallet-note { margin-top:12px; color:#6d766f; font-size:8px; line-height:1.55; text-align:center; }
+    .progress-page { padding:18px 19px 30px; }
+    .deposit-amount { text-align:center; padding:7px 0 19px; }
+    .deposit-amount .token-icon { margin:0 auto 8px; }
+    .deposit-amount strong { display:block; font-size:27px; }
+    .deposit-amount small { display:block; margin-top:3px; color:#68716b; font-size:9px; }
+    .stepper { display:grid; grid-template-columns:repeat(3,1fr); position:relative; margin:0 6px 23px; }
+    .stepper::before { content:""; position:absolute; left:16.6%; right:16.6%; top:9px; height:1px; background:#28302b; }
+    .stepper-stage { position:relative; z-index:1; text-align:center; }
+    .stepper-stage i { width:19px; height:19px; margin:auto; display:grid; place-items:center; border:1px solid #313a34; border-radius:50%; background:#151a17; color:#626c65; font-style:normal; font-size:8px; }
+    .stepper-stage span { display:block; margin-top:7px; color:#656e68; font-size:8px; }
+    .stepper-stage.done i,.stepper-stage.current i { border-color:var(--green); background:var(--green); color:#06110a; }
+    .stepper-stage.current i { box-shadow:0 0 0 5px rgba(99,246,162,.08); }
+    .stepper-stage.done span,.stepper-stage.current span { color:#b9c2bc; }
+    .progress-card { padding:16px; border:1px solid var(--line); border-radius:15px; background:linear-gradient(145deg,rgba(99,246,162,.035),transparent),#0b0f0c; }
+    .progress-card.warning { border-color:rgba(255,196,93,.23); }
+    .status-heading { display:flex; gap:11px; align-items:flex-start; }
+    .status-dot { width:10px; height:10px; margin:5px 0 0 4px; border-radius:50%; background:var(--green); box-shadow:0 0 0 6px rgba(99,246,162,.08); }
+    .progress-card.warning .status-dot { background:var(--warning); box-shadow:0 0 0 6px rgba(255,196,93,.08); }
+    .status-heading h2 { margin:0 0 5px; font-size:14px; }
+    .status-heading p { margin:0; color:#828b85; font-size:9px; line-height:1.55; }
+    .confirm-row { display:flex; justify-content:space-between; margin-top:16px; color:#707972; font-size:9px; }
+    .confirm-row b { color:#c8d0ca; }
+    .progress-bar { height:4px; margin-top:8px; overflow:hidden; border-radius:4px; background:#252b27; }
+    .progress-bar i { display:block; width:56%; height:100%; border-radius:4px; background:var(--warning); }
+    .can-leave { margin-top:12px; padding:10px 11px; border-left:2px solid var(--green); background:#0e1410; color:#7d8780; font-size:8px; line-height:1.55; }
+    .detail-list { margin-top:14px; border-top:1px solid var(--line); }
+    .detail-line { display:flex; padding:9px 0; border-bottom:1px solid rgba(255,255,255,.06); font-size:8px; }
+    .detail-line span:first-child { color:#68716b; }
+    .detail-line span:last-child { margin-left:auto; color:#b8c1bb; }
+    .scenario-select { width:100%; height:38px; margin-top:13px; padding:0 10px; border:1px solid var(--line); border-radius:10px; background:var(--surface); color:#aab3ad; font-size:9px; }
+    .exception-copy { min-height:0; margin-top:9px; color:var(--warning); font-size:8px; line-height:1.55; }
     @media (prefers-reduced-motion:reduce) { *,*::before,*::after { scroll-behavior:auto!important; animation-duration:0s!important; transition-duration:0s!important; } }
     .gallery { padding:70px max(24px,calc((100vw - 1180px)/2)); border-top:1px solid var(--line); }
     .gallery h2 { font-size:32px; }
@@ -123,16 +204,28 @@
     <section class="gallery" id="error-gallery"><h2>异常状态</h2><p>网络确认、钱包连接、MFA、地址和交易异常。</p></section>
   </main>
   <script>
-    const CONFIG = Object.freeze({ tokens:['USDT','USDC'], networks:['Ethereum','Arbitrum','Polygon','Base','Optimism','Solana','TRON'] });
+    const NETWORKS = Object.freeze({
+      Ethereum:{ family:'evm', confirmations:20, eta:'约 4 分钟', min:{USDT:10,USDC:10}, address:'0x7A4F53f852bb8e9D60F121c992E192E1' },
+      Arbitrum:{ family:'evm', confirmations:32, eta:'约 2 分钟', min:{USDT:10,USDC:10}, address:'0x7A4F53f852bb8e9D60F121c992E192E1' },
+      Polygon:{ family:'evm', confirmations:64, eta:'约 3 分钟', min:{USDT:10,USDC:10}, address:'0x7A4F53f852bb8e9D60F121c992E192E1' },
+      Base:{ family:'evm', confirmations:20, eta:'约 2 分钟', min:{USDT:10,USDC:10}, address:'0x7A4F53f852bb8e9D60F121c992E192E1' },
+      Optimism:{ family:'evm', confirmations:20, eta:'约 2 分钟', min:{USDT:10,USDC:10}, address:'0x7A4F53f852bb8e9D60F121c992E192E1' },
+      Solana:{ family:'solana', confirmations:32, eta:'约 1 分钟', min:{USDT:10,USDC:10}, address:'9xQeWvG816bUx9EPfD1N4QFvKc8iPzRzA' },
+      TRON:{ family:'tron', confirmations:20, eta:'约 1 分钟', min:{USDT:10,USDC:10}, address:'TQn9Y2khEsLJW1ChVWFMSMeRDow5KcbLSE' }
+    });
+    const CONFIG = Object.freeze({ tokens:['USDT','USDC'], networks:Object.keys(NETWORKS) });
     const format = (value, digits=2) => Number(value).toLocaleString('en-US',{ minimumFractionDigits:digits, maximumFractionDigits:digits });
     const initialState = () => ({
       route:'assets', routeStack:[], routeParams:{}, account:'funding', valuesHidden:false,
       session:{ type:'wallet', mfaBound:false },
       funding:{ USDT:18240, USDC:6441.75, heldUsd:100.67 },
-      contract:{ USDT:2000, USDC:0 }, draft:{}, records:[]
+      contract:{ USDT:2000, USDC:0 },
+      depositDraft:{ token:'USDC', network:'Arbitrum', method:'address', amount:'500', walletConnected:true, walletMatches:true },
+      deposit:null, draft:{}, records:[]
     });
     let state = initialState();
     const root = document.querySelector('#screen-root');
+    const sheetRoot = document.querySelector('#sheet-root');
     const live = document.querySelector('#live-region');
     const icons = {
       bell:'<svg viewBox="0 0 24 24"><path d="M7 9a5 5 0 0 1 10 0v4l2 3H5l2-3V9Z"/><path d="M10 19h4"/></svg>',
@@ -143,6 +236,22 @@
       eye:'<svg viewBox="0 0 24 24"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"/><circle cx="12" cy="12" r="2.5"/></svg>'
     };
     function announce(message) { live.textContent=''; requestAnimationFrame(()=>{ live.textContent=message; }); }
+    function openSheet(content,trigger=document.activeElement){
+      state.sheetReturnFocus=trigger;
+      sheetRoot.innerHTML=`<section class="sheet" role="dialog" aria-modal="true"><div class="sheet-handle"></div>${content}</section>`;
+      sheetRoot.hidden=false;
+      sheetRoot.querySelector('button,input,select')?.focus();
+    }
+    function closeSheet(){
+      sheetRoot.hidden=true; sheetRoot.innerHTML='';
+      state.sheetReturnFocus?.focus?.();
+    }
+    function selectorSheet(kind){
+      const isToken=kind==='token';
+      const options=isToken?CONFIG.tokens:CONFIG.networks;
+      const attr=isToken?'data-token':'data-network';
+      openSheet(`<div class="sheet-header"><div><h2>选择${isToken?'币种':'网络'}</h2><p>${isToken?'资产中心当前支持 USDT 与 USDC。':'请确保转出平台使用完全相同的网络。'}</p></div><button class="sheet-close" data-sheet-close aria-label="关闭">×</button></div><div class="sheet-list">${options.map(item=>`<button class="sheet-option" ${attr}="${item}">${item}<span>${isToken?'稳定币':NETWORKS[item].family==='evm'?'EVM':item}</span></button>`).join('')}</div>`);
+    }
     function statusBar(){ return '<div class="status-bar"><span>9:41</span><span class="system-icons" aria-hidden="true">▥　⌁　▰</span></div>'; }
     function accountNav(){
       return `<nav class="account-nav" aria-label="资产账户">
@@ -190,8 +299,11 @@
           <div class="composition" aria-label="USDT 占 74%，USDC 占 26%"><span></span><span></span></div>
           ${assetRow('USDT','₮','73.9%','usdt')}${assetRow('USDC','$','26.1%','usdc')}
           <div class="section-heading"><h2>资金动态</h2><button id="open-records-inline" type="button">全部记录　→</button></div>
-          <div class="activity-row"><span class="activity-icon">${icons.deposit}</span><span class="activity-copy"><b>充值 · USDC</b><small>Arbitrum　12 分钟前</small></span><span class="activity-value"><b>+500.00</b><small>已完成</small></span></div>
+          ${state.records.length?state.records.slice(0,2).map(recordRow).join(''):'<div class="activity-row"><span class="activity-icon">'+icons.deposit+'</span><span class="activity-copy"><b>充值 · USDC</b><small>Arbitrum　12 分钟前</small></span><span class="activity-value"><b>+500.00</b><small>示例记录</small></span></div>'}
         </div>`;
+    }
+    function recordRow(record){
+      return `<button class="activity-row" data-record-type="${record.type}" style="width:100%;border:0;background:transparent;color:inherit;text-align:left;padding-left:0;padding-right:0" type="button"><span class="activity-icon">${record.type==='deposit'?icons.deposit:record.type==='withdrawal'?icons.withdraw:icons.transfer}</span><span class="activity-copy"><b>${record.type==='deposit'?'充值':record.type==='withdrawal'?'提现':'账户划转'} · ${record.token}</b><small>${record.network||record.direction||''}　刚刚</small></span><span class="activity-value"><b>${record.type==='deposit'?'+':'-'}${format(record.amount)}</b><small>${record.status==='complete'?'已完成':'处理中'}</small></span></button>`;
     }
     function assetRow(token,symbol,share,kind){
       const value=state.funding[token];
@@ -211,11 +323,72 @@
           <div class="metric-row"><div class="metric"><label>维持保证金</label><b>98.34 USD</b></div><div class="metric"><label>保证金率</label><b>12.80%</b></div></div>
         </div></div>`;
     }
+    function qrMarkup(){ return `<div class="qr" aria-label="原型二维码">${Array.from({length:81},()=>'<i></i>').join('')}</div><span class="prototype-badge">原型二维码 · 不可用于真实充值</span>`; }
+    function depositHeader(){ return `${statusBar()}<header class="subpage-header"><button class="back-button" data-back type="button" aria-label="返回">‹</button><h1>充值</h1></header>`; }
+    function addressDeposit(){
+      const draft=state.depositDraft, network=NETWORKS[draft.network];
+      return `<div class="deposit-card">${qrMarkup()}<div class="address-box"><small>${draft.token} · ${draft.network} 充值地址</small><div class="address-line"><code>${network.address}</code><button class="text-button" id="copy-address" type="button">复制</button></div></div><div class="network-facts"><div class="network-fact"><small>最低充值</small><b>${network.min[draft.token]} ${draft.token}</b></div><div class="network-fact"><small>预计确认</small><b>${network.confirmations} 次 · ${network.eta}</b></div></div><div class="notice-box">仅向此地址充值 ${draft.network} 网络的 ${draft.token}。使用其他网络或币种可能导致资金无法自动入账。</div><button class="demo-button" data-start-demo-deposit type="button">模拟收到一笔 500 ${draft.token} 充值</button></div>`;
+    }
+    function walletDeposit(){
+      const draft=state.depositDraft, network=NETWORKS[draft.network];
+      const address=network.family==='solana'?'9xQe...zRzA':'0x7A4F...92E1';
+      const amount=Number(draft.amount), valid=amount>=network.min[draft.token]&&draft.walletMatches;
+      return `<div class="deposit-card"><div class="wallet-account"><span class="wallet-mark">W</span><span><b>${network.family==='solana'?'Phantom':'MetaMask'}</b><small>登录钱包 ${address}</small></span><span class="${draft.walletMatches?'match':'mismatch'}">${draft.walletMatches?'地址一致':'地址不一致'}</span></div><label class="field-label" for="wallet-deposit-amount">充值金额 <span>最低 ${network.min[draft.token]} ${draft.token}</span></label><input class="amount-input" id="wallet-deposit-amount" inputmode="decimal" value="${draft.amount}" aria-describedby="wallet-amount-help"><div class="field-help" id="wallet-amount-help"><span>${draft.token} · ${draft.network}</span><span>网络费由钱包支付</span></div>${draft.walletMatches?'':`<button class="secondary-link" id="restore-wallet-address" type="button">切换回登录钱包 ${address}</button>`}<button class="primary-button" id="launch-wallet" type="button" ${valid?'':'disabled'}>打开钱包确认充值</button><button class="secondary-link" id="simulate-reconnect" type="button">模拟钱包连接已失效</button><button class="secondary-link" id="simulate-mismatch" type="button">模拟钱包账户不一致</button><p class="wallet-note">原型只模拟 Deep Link 与交易构建，不会连接钱包或发送真实交易。</p></div>`;
+    }
+    function depositScreen(){
+      const draft=state.depositDraft, network=NETWORKS[draft.network], supportsWallet=network.family!=='tron';
+      if(!supportsWallet&&draft.method==='wallet') draft.method='address';
+      return `<div class="app-screen subpage">${depositHeader()}<div class="form-page"><label class="field-label">充值资产</label><button class="selector-button" id="deposit-token" type="button"><b>${draft.token}</b><small>${draft.token==='USDT'?'Tether':'USD Coin'}</small><i>⌄</i></button><label class="field-label">充值网络</label><button class="selector-button" id="deposit-network" type="button"><b>${draft.network}</b><small>${network.family==='evm'?'EVM 网络':draft.network+' 网络'}</small><i>⌄</i></button><div class="method-tabs ${supportsWallet?'':'single'}" role="tablist"><button class="method-tab" data-deposit-method="address" role="tab" aria-selected="${draft.method==='address'}">地址充值</button>${supportsWallet?`<button class="method-tab" data-deposit-method="wallet" role="tab" aria-selected="${draft.method==='wallet'}">钱包直接充值</button>`:''}</div>${supportsWallet?'':'<div class="notice-box" style="margin:0 0 13px">TRON 暂不支持钱包直接充值，请复制地址或扫描二维码完成转账。</div>'}${draft.method==='address'?addressDeposit():walletDeposit()}</div></div>`;
+    }
+    function beginDeposit(source='address'){
+      const draft=state.depositDraft, network=NETWORKS[draft.network];
+      state.deposit={ id:'dep-'+Date.now(), token:draft.token, network:draft.network, amount:Number(draft.amount)||500, stage:source==='wallet'?'confirming':'waiting', confirmations:source==='wallet'?18:0, required:network.confirmations, hash:'0x98C2...A71D', detectedAt:'2026-07-16 09:29:08', credited:false, scenario:'normal' };
+      navigate('deposit-progress');
+    }
+    const depositCopy={
+      waiting:['等待链上转账','充值地址已准备好。完成转账后，系统会自动检测链上交易。'],
+      confirming:['正在等待网络确认','已检测到链上转账，达到所需确认数后才会进入入账处理。'],
+      crediting:['网络确认完成，正在入账','系统正在更新你的资金账户余额。'],
+      complete:['充值已到账','资金已计入资金账户，可用于划转或交易。']
+    };
+    function depositException(){
+      const dep=state.deposit;
+      return {
+        normal:'',
+        'below-minimum':`已检测到转账，但金额低于 ${NETWORKS[dep.network].min[dep.token]} ${dep.token} 的最低入账要求，该笔资金暂不会入账。`,
+        congestion:'网络确认速度慢于预期。交易仍在处理中，无需重复充值。',
+        mismatch:'币种或网络不匹配，已停止自动入账，请提交资金恢复申请。',
+        failed:'链上交易失败，不会产生有效充值记录，请返回钱包重新发起。',
+        'credit-delay':'网络确认已完成，但账本更新较慢。资金安全，无需重复充值。'
+      }[dep.scenario]||'';
+    }
+    function depositProgressScreen(){
+      const dep=state.deposit||{token:'USDC',network:'Arbitrum',amount:500,stage:'waiting',confirmations:0,required:32,scenario:'normal'};
+      const [title,description]=depositCopy[dep.stage];
+      const confirming=dep.stage==='confirming', complete=dep.stage==='complete', crediting=dep.stage==='crediting';
+      return `<div class="app-screen subpage" data-deposit-stage="${dep.stage}">${statusBar()}<header class="subpage-header"><button class="back-button" data-back type="button" aria-label="返回">‹</button><h1>充值详情</h1><span style="margin-left:auto;color:#768079;font-size:9px">${dep.network}</span></header><div class="progress-page"><div class="deposit-amount"><span class="token-icon usdc">${dep.token==='USDC'?'$':'₮'}</span><strong>${format(dep.amount)} ${dep.token}</strong><small>约 $${format(dep.amount)}</small></div><div class="stepper"><div class="stepper-stage ${dep.stage!=='waiting'?'done':'current'}"><i>${dep.stage==='waiting'?'1':'✓'}</i><span>检测到转账</span></div><div class="stepper-stage ${crediting||complete?'done':confirming?'current':''}"><i>${crediting||complete?'✓':'2'}</i><span>网络确认</span></div><div class="stepper-stage ${complete?'done':crediting?'current':''}"><i>${complete?'✓':'3'}</i><span>完成入账</span></div></div><section class="progress-card ${confirming?'warning':''}"><div class="status-heading"><i class="status-dot"></i><div><h2 data-current-status>${title}</h2><p data-status-description>${description}</p></div></div>${confirming?`<div class="confirm-row"><span>当前确认进度</span><b data-confirmations>${dep.confirmations} / ${dep.required}</b></div><div class="progress-bar"><i style="width:${Math.min(100,dep.confirmations/dep.required*100)}%"></i></div><div class="confirm-row"><span>网络状态正常</span><b>${NETWORKS[dep.network].eta}</b></div>`:''}</section><div class="can-leave">无需停留在此页面。确认完成并入账后，我们会通过 App 通知提醒你。</div><div class="detail-list"><div class="detail-line"><span>充值网络</span><span>${dep.network}</span></div><div class="detail-line"><span>充值地址</span><span>${NETWORKS[dep.network].address.slice(0,8)}...${NETWORKS[dep.network].address.slice(-4)}</span></div><div class="detail-line"><span>交易哈希</span><span>${dep.stage==='waiting'?'等待检测':dep.hash}</span></div><div class="detail-line"><span>检测时间</span><span>${dep.stage==='waiting'?'—':dep.detectedAt}</span></div></div><select id="deposit-scenario" class="scenario-select" aria-label="充值异常场景"><option value="normal" ${dep.scenario==='normal'?'selected':''}>正常流程</option><option value="below-minimum">低于最小充值金额</option><option value="congestion">网络确认较慢</option><option value="mismatch">币种或网络不匹配</option><option value="failed">链上交易失败</option><option value="credit-delay">入账延迟</option></select><p class="exception-copy" data-deposit-exception>${depositException()}</p><button class="primary-button" data-advance-deposit type="button">${dep.stage==='waiting'?'模拟检测到转账':dep.stage==='confirming'?'完成网络确认':dep.stage==='crediting'?'完成入账':'返回资产中心'}</button></div></div>`;
+    }
+    function creditDepositOnce(){
+      const dep=state.deposit; if(!dep||dep.credited) return;
+      state.funding[dep.token]+=dep.amount; dep.credited=true;
+      state.records.unshift({id:dep.id,type:'deposit',token:dep.token,network:dep.network,amount:dep.amount,status:'complete',hash:dep.hash,time:dep.detectedAt});
+    }
+    function advanceDeposit(){
+      const dep=state.deposit;
+      if(dep.stage==='waiting'){ dep.stage='confirming'; dep.confirmations=Math.min(18,dep.required); }
+      else if(dep.stage==='confirming'){ dep.stage='crediting'; dep.confirmations=dep.required; }
+      else if(dep.stage==='crediting'){ dep.stage='complete'; creditDepositOnce(); }
+      else { state.routeStack=[]; state.route='assets'; }
+      render(); announce(depositCopy[dep.stage]?.[0]||'返回资产中心');
+    }
     function assetsScreen(){ return `<div class="app-screen">${statusBar()}${accountNav()}${state.account==='funding'?fundingHome():contractHome()}${bottomNav()}</div>`; }
     function subpage(title,routeName){ return `<div class="app-screen subpage">${statusBar()}<header class="subpage-header"><button class="back-button" data-back type="button" aria-label="返回">‹</button><h1>${title}</h1></header><div class="placeholder-page">${routeName==='deposit'?'选择 USDT 或 USDC，并选择 Ethereum、Arbitrum、Polygon、Base、Optimism、Solana 或 TRON 网络。':'页面内容将在后续步骤完成。'}</div></div>`; }
     function render(){
       root.dataset.route=state.route;
-      root.innerHTML=state.route==='assets'?assetsScreen():subpage(state.route==='deposit'?'充值':state.route==='value-history'?'账户价值':'资产操作',state.route);
+      if(state.route==='assets') root.innerHTML=assetsScreen();
+      else if(state.route==='deposit') root.innerHTML=depositScreen();
+      else if(state.route==='deposit-progress') root.innerHTML=depositProgressScreen();
+      else root.innerHTML=subpage(state.route==='value-history'?'账户价值':'资产操作',state.route);
     }
     function navigate(route,params={}){ state.routeStack.push(state.route); state.route=route; state.routeParams=params; render(); }
     function goBack(){ state.route=state.routeStack.pop()||'assets'; render(); }
@@ -230,8 +403,33 @@
       if(target.id==='open-transfer'||target.id==='open-transfer-out') return navigate('transfer');
       if(target.id==='open-records'||target.id==='open-records-inline') return navigate('records');
       if(target.id==='open-value-history') return navigate('value-history');
+      if(target.id==='deposit-token') return selectorSheet('token');
+      if(target.id==='deposit-network') return selectorSheet('network');
+      if(target.dataset.depositMethod){ state.depositDraft.method=target.dataset.depositMethod; render(); return; }
+      if(target.id==='copy-address'){ navigator.clipboard?.writeText(NETWORKS[state.depositDraft.network].address).catch(()=>{}); announce('充值地址已复制'); target.textContent='已复制'; return; }
+      if(target.dataset.startDemoDeposit!==undefined) return beginDeposit('address');
+      if(target.id==='simulate-reconnect') return openSheet(`<div class="sheet-header"><div><h2>恢复钱包连接</h2><p>钱包连接可能已在外部应用中断开。重新连接后可继续构建充值交易，不会改变当前登录状态。</p></div><button class="sheet-close" data-sheet-close aria-label="关闭">×</button></div><button class="sheet-action" id="reconnect-wallet">连接 ${NETWORKS[state.depositDraft.network].family==='solana'?'Phantom':'MetaMask'}</button>`,target);
+      if(target.id==='simulate-mismatch'){ state.depositDraft.walletMatches=false; render(); return openSheet(`<div class="sheet-header"><div><h2>钱包地址不一致</h2><p>当前钱包账户与登录时记录的地址不同。请在钱包中切换回登录账户后继续。</p></div><button class="sheet-close" data-sheet-close aria-label="关闭">×</button></div><button class="sheet-action" id="acknowledge-mismatch">我知道了</button>`,document.querySelector('#simulate-mismatch')); }
+      if(target.id==='restore-wallet-address'){ state.depositDraft.walletMatches=true; render(); announce('已切换回登录钱包'); return; }
+      if(target.id==='launch-wallet') return beginDeposit('wallet');
+      if(target.dataset.advanceDeposit!==undefined) return advanceDeposit();
       if(target.matches('.visibility-toggle')){ state.valuesHidden=!state.valuesHidden; render(); announce(state.valuesHidden?'资产金额已隐藏':'资产金额已显示'); }
     });
+    root.addEventListener('input',event=>{
+      if(event.target.id==='wallet-deposit-amount'){ state.depositDraft.amount=event.target.value; const network=NETWORKS[state.depositDraft.network]; document.querySelector('#launch-wallet').disabled=!(Number(event.target.value)>=network.min[state.depositDraft.token]&&state.depositDraft.walletMatches); }
+    });
+    root.addEventListener('change',event=>{
+      if(event.target.id==='deposit-scenario'){ state.deposit.scenario=event.target.value; render(); }
+    });
+    sheetRoot.addEventListener('click',event=>{
+      const target=event.target.closest('button'); if(!target) return;
+      if(target.dataset.sheetClose!==undefined) return closeSheet();
+      if(target.id==='acknowledge-mismatch') return closeSheet();
+      if(target.dataset.token){ state.depositDraft.token=target.dataset.token; closeSheet(); render(); return; }
+      if(target.dataset.network){ state.depositDraft.network=target.dataset.network; if(NETWORKS[target.dataset.network].family==='tron') state.depositDraft.method='address'; closeSheet(); render(); return; }
+      if(target.id==='reconnect-wallet'){ state.depositDraft.walletConnected=true; closeSheet(); render(); announce('钱包连接已恢复'); }
+    });
+    document.addEventListener('keydown',event=>{ if(event.key==='Escape'&&!sheetRoot.hidden) closeSheet(); });
     document.querySelector('#reset-prototype').addEventListener('click',resetPrototype);
     document.querySelector('#session-mode').addEventListener('change',event=>{ const value=event.target.value; state.session={ type:value.startsWith('email')?'email':'wallet', mfaBound:value==='email-bound' }; render(); announce('登录状态已切换'); });
     window.assetPrototype={ getState:()=>structuredClone(state), navigate, reset:resetPrototype };

@@ -83,3 +83,83 @@ test('keeps the approved home usable at 320 and 390 pixel widths', async () => {
     }, viewport);
   }
 });
+
+async function openDeposit(page) {
+  await page.locator('#open-deposit').click();
+  await route(page, 'deposit');
+}
+
+async function chooseNetwork(page, network) {
+  await page.locator('#deposit-network').click();
+  await page.locator(`[data-network="${network}"]`).click();
+}
+
+test('offers wallet deposit on EVM and Solana but address-only deposit on TRON', async () => {
+  await withPage(async page => {
+    await openDeposit(page);
+    assert.equal(await page.locator('[data-deposit-method="wallet"]').count(), 1);
+    await chooseNetwork(page, 'TRON');
+    assert.equal(await page.locator('[data-deposit-method="wallet"]').count(), 0);
+    assert.match(await page.locator('#screen-root').textContent(), /TRON 暂不支持钱包直接充值/);
+    await chooseNetwork(page, 'Solana');
+    assert.equal(await page.locator('[data-deposit-method="wallet"]').count(), 1);
+  });
+});
+
+test('reconnects a stale wallet without login copy and blocks a mismatched account', async () => {
+  await withPage(async page => {
+    await openDeposit(page);
+    await page.locator('[data-deposit-method="wallet"]').click();
+    await page.locator('#wallet-deposit-amount').fill('500');
+    await page.locator('#simulate-reconnect').click();
+    assert.match(await page.locator('#sheet-root').textContent(), /恢复钱包连接/);
+    assert.doesNotMatch(await page.locator('#sheet-root').textContent(), /重新登录|SIWE|验证身份/);
+    await page.locator('#reconnect-wallet').click();
+    assert.equal(await page.locator('#sheet-root').isHidden(), true);
+    await page.locator('#simulate-mismatch').click();
+    assert.match(await page.locator('#sheet-root').textContent(), /钱包地址不一致/);
+    await page.locator('[data-sheet-close]').click();
+    assert.equal(await page.locator('#launch-wallet').isDisabled(), true);
+    await page.locator('#restore-wallet-address').click();
+    assert.equal(await page.locator('#launch-wallet').isEnabled(), true);
+  });
+});
+
+test('shows four honest deposit stages and credits the funding balance once', async () => {
+  await withPage(async page => {
+    const before = Number(await page.locator('[data-funding-balance="USDC"]').getAttribute('data-value'));
+    await openDeposit(page);
+    await page.locator('[data-start-demo-deposit]').click();
+    await route(page, 'deposit-progress');
+    assert.match(await page.locator('[data-current-status]').textContent(), /等待链上转账/);
+    await page.locator('[data-advance-deposit]').click();
+    assert.match(await page.locator('[data-current-status]').textContent(), /正在等待网络确认/);
+    assert.match(await page.locator('[data-status-description]').textContent(), /已检测到链上转账/);
+    assert.doesNotMatch(await page.locator('[data-current-status]').textContent(), /已到账/);
+    assert.match(await page.locator('[data-confirmations]').textContent(), /18 \/ 32/);
+    await page.locator('[data-advance-deposit]').click();
+    assert.match(await page.locator('[data-current-status]').textContent(), /正在入账/);
+    await page.locator('[data-advance-deposit]').click();
+    assert.match(await page.locator('[data-current-status]').textContent(), /充值已到账/);
+    await page.locator('[data-advance-deposit]').click();
+    await route(page, 'assets');
+    const after = Number(await page.locator('[data-funding-balance="USDC"]').getAttribute('data-value'));
+    assert.equal(after - before, 500);
+    assert.equal(await page.locator('[data-record-type="deposit"]').count(), 1);
+  });
+});
+
+test('deposit progress exposes minimum, congestion, mismatch, and failure scenarios', async () => {
+  await withPage(async page => {
+    await openDeposit(page);
+    await page.locator('[data-start-demo-deposit]').click();
+    await page.locator('#deposit-scenario').selectOption('below-minimum');
+    assert.match(await page.locator('[data-deposit-exception]').textContent(), /低于 10 USDC/);
+    await page.locator('#deposit-scenario').selectOption('congestion');
+    assert.match(await page.locator('[data-deposit-exception]').textContent(), /无需重复充值/);
+    await page.locator('#deposit-scenario').selectOption('mismatch');
+    assert.match(await page.locator('[data-deposit-exception]').textContent(), /币种或网络不匹配/);
+    await page.locator('#deposit-scenario').selectOption('failed');
+    assert.match(await page.locator('[data-deposit-exception]').textContent(), /链上交易失败/);
+  });
+});
