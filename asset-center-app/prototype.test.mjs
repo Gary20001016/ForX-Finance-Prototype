@@ -355,7 +355,7 @@ test('filters unified deposit, withdrawal, and transfer records and opens detail
   await withPage(async page => {
     await page.locator('#open-records').click();
     await route(page, 'records');
-    assert.match(await page.locator('[data-record-summary]').textContent(), /资金净流入.*\+500\.00/s);
+    assert.match(await page.locator('[data-record-summary]').textContent(), /净流入.*\+500\.00/s);
     assert.match(await page.locator('[data-record-summary]').textContent(), /账户划转不计入外部资金流/);
     assert.ok(await page.locator('[data-record-type="deposit"]').count() >= 1);
     assert.ok(await page.locator('[data-record-type="withdrawal"]').count() >= 1);
@@ -382,7 +382,7 @@ test('account value views distinguish external flow, returns, and internal trans
     await page.locator('[data-value-range="7d"]').click();
     assert.equal(await page.locator('[data-value-chart]').getAttribute('data-range'), '7d');
     assert.equal(await page.locator('[data-value-marker="deposit"]').count(), 1);
-    assert.equal(await page.locator('[data-value-marker="withdrawal"]').count(), 1);
+    assert.equal(await page.locator('[data-value-marker="withdrawal"]').count(), 0);
   });
 });
 
@@ -828,6 +828,12 @@ test('pending transactions stay out of settled net inflow', async () => {
     await page.locator('#open-records').click();
     assert.equal(Number(await page.locator('[data-record-net]').getAttribute('data-value')), 500);
     assert.doesNotMatch(await page.locator('[data-record-summary]').textContent(), /2,250\.00/);
+    await page.locator('[data-back]').click();
+    await page.locator('#open-value-history').click();
+    const depositMarker = page.locator('#screen-root .chart-event-label.deposit');
+    assert.match(await depositMarker.textContent(), /\+500/);
+    assert.doesNotMatch(await depositMarker.textContent(), /2,000/);
+    assert.equal(await page.locator('#screen-root .chart-event-label.withdrawal').count(), 0);
   });
 });
 
