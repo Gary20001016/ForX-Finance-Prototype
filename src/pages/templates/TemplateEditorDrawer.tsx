@@ -23,10 +23,8 @@ import {
   saveTemplate,
   updateTemplate,
 } from "../../store/prototypeStore";
-import {
-  APPROVED_MANUAL_TEMPLATE_LOCK_MESSAGE,
-  isApprovedManualTemplateLocked,
-} from "../../domain/templatePolicy";
+import { isApprovedManualTemplateLocked } from "../../domain/templatePolicy";
+import TemplateReadOnlyDetails from "./TemplateReadOnlyDetails";
 
 const categories = [
   "系统公告",
@@ -191,18 +189,13 @@ export default function TemplateEditorDrawer({
   if (locked) {
     return (
       <Drawer
-        width={720}
+        width={1180}
         visible={visible}
         title={`查看模板 · ${template?.name || ""}`}
         onCancel={onClose}
         footer={<Button onClick={onClose}>关闭</Button>}
       >
-        <Alert
-          type="warning"
-          showIcon
-          title="模板已锁定"
-          content={APPROVED_MANUAL_TEMPLATE_LOCK_MESSAGE}
-        />
+        {template && <TemplateReadOnlyDetails template={template} />}
       </Drawer>
     );
   }
