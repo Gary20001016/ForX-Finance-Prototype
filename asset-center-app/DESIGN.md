@@ -129,11 +129,11 @@ The fluorescent green {colors.primary} is the product's scarce signal. It appear
 
 ## Typography
 
-Use the platform sans-serif stack. Numbers are the visual anchor: keep tabular alignment where balances compare and avoid gratuitous uppercase labels. Chinese is the primary interface language. English remains only for product names, token symbols, wallet names, network names, and necessary units.
+Use the platform sans-serif stack. Numbers are the visual anchor: keep tabular alignment where balances compare and avoid gratuitous uppercase labels. Chinese is the primary interface language. English remains only for product names, token symbols, wallet names, network names, and necessary units. Required mobile copy never falls below 11px; operational labels and values use 11–12px whenever the user must compare or verify them.
 
 ## Layout
 
-Design for a 390 × 844 phone with 18–20px horizontal gutters, a 4px base grid, and an 8px row rhythm. Primary controls provide 44–48px touch targets; compact 32–36px icon controls appear only inside navigation or a larger semantic row. The status area is followed directly by the account-tabs row; there is no page-title or brand-lockup row. Network selection belongs inside deposit and withdrawal, never on the asset home.
+Design for a 390 × 844 phone with 18–20px horizontal gutters, a 4px base grid, and an 8px row rhythm. Primary controls provide 44–48px touch targets; compact 32–36px icon controls appear only inside navigation or a larger semantic row. The status area is followed directly by the account-tabs row; there is no page-title or brand-lockup row. Network selection belongs inside deposit and withdrawal, never on the asset home. Operational fact groups use at most two columns on mobile; complete information may extend the vertical scroll instead of shrinking type.
 
 ## Elevation & Depth
 
@@ -155,6 +155,9 @@ Rounded corners communicate hierarchy: 12px for controls, 16px for major panels,
 - Transaction screens expose orientation, primary value, supporting metadata, state, action hierarchy, and auditability before they are considered complete.
 - Funding uses a three-column balance strip for available, frozen, and incoming value; contract uses the same pattern for available margin, ratio, and transfer headroom.
 - Deposit and withdrawal network panels expose health, minimums, confirmations, estimates, contract or address family, and fee responsibility before submission.
+- Product information uses an 11px minimum reading size on the 390px mobile canvas; micro system glyphs may be smaller, but no operational label, status, value, or helper copy may fall below that floor.
+- Address-class values use an 11px monospaced full-address block with `overflow-wrap:anywhere`; token contracts, deposit addresses, wallet senders, withdrawal targets, address-book entries, and record addresses are never abbreviated.
+- Address rows are vertical: the semantic label appears first and the complete selectable value wraps below it.
 - Audit timelines include a text label, state icon, timestamp or progress value, and terminal result. A colored dot alone is never sufficient.
 - Records reconcile deposits, withdrawals, network fees, and net inflow. Failed records remain visible but do not contribute to effective flow totals.
 - Account-value analysis exposes axes, selectable points, event markers, period statistics, and separate value/flow-adjusted-return modes.
@@ -169,6 +172,8 @@ Rounded corners communicate hierarchy: 12px for controls, 16px for major panels,
 - Do keep notification and fund-record shortcuts in the same row as account tabs.
 - Do keep simulation, failure injection, and manual state advancement in the external demo console.
 - Don't add a page title, service-status badge, ForX lockup, or decorative brand subtitle above the account tabs.
+- Don't compress four operational facts into one mobile row or reduce required text to make a fixed-height screen fit.
+- Don't use ellipsis, middle truncation, or shortened sample data for any address-class value.
 - Don't present internal transfers as return or external fund flow.
 - Don't use ornamental English or unexplained abbreviations.
 - Don't imply any prototype wallet, signature, transaction, or blockchain state is real.

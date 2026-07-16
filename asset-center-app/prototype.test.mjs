@@ -908,3 +908,73 @@ test('mobile product view hides the demo console', async () => {
     assert.equal(await page.locator('#demo-console').isVisible(), false);
   }, { width:390, height:844 });
 });
+
+async function expectFullAddresses(page) {
+  const nodes = await page.locator('#interactive-phone [data-full-address]').all();
+  assert.ok(nodes.length > 0);
+  for (const node of nodes) {
+    const text = (await node.textContent()).trim();
+    assert.equal(text, await node.getAttribute('data-address'));
+    assert.doesNotMatch(text, /\.\.\.|…/);
+    assert.equal(await node.evaluate(element => getComputedStyle(element).overflowWrap), 'anywhere');
+    assert.equal(await node.evaluate(element => getComputedStyle(element).whiteSpace), 'normal');
+    assert.ok(await node.evaluate(element => Number.parseFloat(getComputedStyle(element).fontSize) >= 11));
+  }
+}
+
+test('required mobile copy respects the readability floor', async () => {
+  await withPage(async page => {
+    await openDeposit(page);
+    for (const selector of ['.field-label', '.operation-grid small', '.operation-grid b', '.address-column>p', '.recent-deposit small', '.deposit-selectors .selector-button small', '.prototype-badge', '.notice-box strong', '.mini-section-title span', '.recent-mark']) {
+      const size = await page.locator(`#interactive-phone ${selector}`).first().evaluate(node => Number.parseFloat(getComputedStyle(node).fontSize));
+      assert.ok(size >= 11, `${selector}: ${size}px`);
+    }
+  }, { width:390, height:844 });
+});
+
+test('network facts use a readable two-column layout', async () => {
+  await withPage(async page => {
+    await openDeposit(page);
+    const columns = await page.locator('#interactive-phone .operation-grid').evaluate(node => getComputedStyle(node).gridTemplateColumns.split(' ').length);
+    assert.equal(columns, 2);
+  });
+});
+
+test('deposit contract and destination addresses are complete', async () => {
+  await withPage(async page => {
+    await openDeposit(page);
+    await expectFullAddresses(page);
+  });
+});
+
+test('operational address surfaces preserve complete values', async () => {
+  await withPage(async page => {
+    await openDeposit(page);
+    await page.locator('#demo-console [data-start-demo-deposit]').click();
+    await page.locator('#demo-console [data-advance-deposit]').click();
+    await expectFullAddresses(page);
+
+    await page.locator('#reset-prototype').click();
+    await openWithdrawal(page);
+    await fillWithdrawal(page, '0x1234567890abcdef1234567890abcdef12345678', '100');
+    await expectFullAddresses(page);
+    await page.locator('#submit-withdrawal').click();
+    await expectFullAddresses(page);
+
+    await page.locator('#reset-prototype').click();
+    await openWithdrawal(page);
+    await page.locator('#open-address-book').click();
+    await page.locator('#add-address').click();
+    await page.locator('#address-label').fill('完整地址');
+    await page.locator('#address-value').fill('0xabcdefabcdefabcdefabcdefabcdefabcdefabcd');
+    await page.locator('#save-address').click();
+    assert.equal(await page.locator('#sheet-root [data-full-address]').textContent(), '0xabcdefabcdefabcdefabcdefabcdefabcdefabcd');
+    await page.locator('#confirm-signature').click();
+    await expectFullAddresses(page);
+
+    await page.locator('#reset-prototype').click();
+    await page.locator('#open-records').click();
+    await page.locator('[data-record-type="deposit"]').first().click();
+    await expectFullAddresses(page);
+  });
+});
