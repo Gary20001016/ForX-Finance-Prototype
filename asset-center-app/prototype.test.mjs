@@ -653,3 +653,25 @@ test('contract home derives exposure risk and transfer headroom', async () => {
     assert.equal(Number(await page.locator('[data-contract-headroom]').getAttribute('data-value')), expected);
   });
 });
+
+test('deposit entry exposes network operational detail', async () => {
+  await withPage(async page => {
+    await openDeposit(page);
+    for (const label of ['网络状态', '最低充值', '确认要求', '预计到账', '代币合约', '最近充值']) {
+      assert.match(await page.locator('#screen-root').textContent(), new RegExp(label));
+    }
+    assert.ok(await page.locator('[data-recent-deposit]').count() >= 2);
+  });
+});
+
+test('deposit confirmation provides an auditable timeline', async () => {
+  await withPage(async page => {
+    await openDeposit(page);
+    await page.locator('[data-start-demo-deposit]').click();
+    await page.locator('[data-advance-deposit]').click();
+    for (const label of ['发送地址', '充值地址', '交易哈希', '首次检测', '预计完成', '区块浏览器', '确认进度']) {
+      assert.match(await page.locator('#screen-root').textContent(), new RegExp(label));
+    }
+    assert.ok(await page.locator('[data-deposit-timeline-step]').count() >= 4);
+  });
+});
