@@ -259,3 +259,53 @@ test('saving an address uses wallet signature or email MFA without submitting a 
     assert.match(await page.locator('#screen-root').textContent(), /邮箱用户地址/);
   });
 });
+
+test('internal transfer moves balances once without changing total assets', async () => {
+  await withPage(async page => {
+    const before = await page.evaluate(() => {
+      const state = window.assetPrototype.getState();
+      return { funding: state.funding.USDT, contract: state.contract.USDT, total: state.funding.USDT + state.contract.USDT };
+    });
+    await page.locator('#open-transfer').click();
+    await route(page, 'transfer');
+    await page.locator('#transfer-amount').fill('2000');
+    await page.locator('#review-transfer').click();
+    await route(page, 'transfer-review');
+    assert.match(await page.locator('#screen-root').textContent(), /手续费.*0 USDT/s);
+    await page.locator('#confirm-transfer').click();
+    await route(page, 'transfer-status');
+    await page.locator('[data-complete-transfer]').click();
+    assert.match(await page.locator('[data-transfer-receipt]').textContent(), /划转完成/);
+    await page.locator('[data-transfer-done]').click();
+    await route(page, 'assets');
+    const after = await page.evaluate(() => {
+      const state = window.assetPrototype.getState();
+      return { funding: state.funding.USDT, contract: state.contract.USDT, total: state.funding.USDT + state.contract.USDT };
+    });
+    assert.equal(before.funding - after.funding, 2000);
+    assert.equal(after.contract - before.contract, 2000);
+    assert.equal(after.total, before.total);
+    assert.equal(await page.locator('[data-record-type="transfer"]').count(), 1);
+  });
+});
+
+test('transfer validates minimum and balance, reverses route, and supports retry', async () => {
+  await withPage(async page => {
+    await page.locator('#open-transfer').click();
+    await page.locator('#transfer-amount').fill('5');
+    assert.match(await page.locator('#transfer-error').textContent(), /最低划转 10 USDT/);
+    await page.locator('#transfer-amount').fill('999999');
+    assert.match(await page.locator('#transfer-error').textContent(), /可用余额不足/);
+    await page.locator('#swap-transfer-route').click();
+    assert.match(await page.locator('[data-transfer-source]').textContent(), /合约账户/);
+    await page.locator('[data-transfer-percentage="1"]').click();
+    assert.equal(await page.locator('#transfer-amount').inputValue(), '2000');
+    await page.locator('#review-transfer').click();
+    await page.locator('#simulate-transfer-failure').click();
+    await route(page, 'transfer-status');
+    assert.match(await page.locator('#screen-root').textContent(), /划转失败/);
+    await page.locator('#retry-transfer').click();
+    await route(page, 'transfer-review');
+    assert.equal(await page.locator('#transfer-amount-review').textContent(), '2,000.00 USDT');
+  });
+});
