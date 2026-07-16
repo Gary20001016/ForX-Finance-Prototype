@@ -51,6 +51,7 @@
     .account-hero { min-height:216px; padding:24px 21px 18px; position:relative; overflow:hidden; border-bottom:1px solid var(--line); }
     .account-hero::after { content:""; position:absolute; width:190px; height:190px; right:-70px; top:-40px; border-radius:50%; background:rgba(99,246,162,.06); filter:blur(55px); pointer-events:none; }
     .hero-label { display:flex; align-items:center; gap:7px; color:#78817b; font-size:11px; }
+    .hero-label time { margin-left:auto; color:#4f5852; font-size:8px; font-variant-numeric:tabular-nums; }
     .visibility-toggle { width:32px; height:32px; border:0; background:transparent; color:#657069; padding:7px; }
     .visibility-toggle svg { width:16px; fill:none; stroke:currentColor; }
     .hero-value { margin:7px 0 4px; font-size:38px; font-weight:570; line-height:1.1; letter-spacing:-.04em; font-variant-numeric:tabular-nums; }
@@ -67,6 +68,14 @@
     .home-action.primary { border-color:var(--green); background:var(--green); color:#041009; box-shadow:0 8px 25px rgba(48,224,126,.16); }
     .home-action svg { width:16px; height:16px; fill:none; stroke:currentColor; stroke-width:1.8; }
     .home-body { padding:3px 21px 88px; }
+    .balance-strip { display:grid; grid-template-columns:1fr 1fr 1fr; min-height:68px; margin-top:-17px; padding:0 21px; position:relative; z-index:2; }
+    .balance-cell { min-width:0; padding:13px 11px; border:1px solid var(--line); border-right:0; background:rgba(13,16,15,.96); }
+    .balance-cell:first-child { border-radius:13px 0 0 13px; }
+    .balance-cell:last-child { border-right:1px solid var(--line); border-radius:0 13px 13px 0; }
+    .balance-cell small { display:block; color:#667069; font-size:8px; white-space:nowrap; }
+    .balance-cell b { display:block; margin-top:5px; overflow:hidden; color:#dce3de; font-size:11px; font-weight:590; font-variant-numeric:tabular-nums; text-overflow:ellipsis; }
+    .balance-cell em { display:block; margin-top:3px; overflow:hidden; color:var(--warning); font-size:6px; font-style:normal; text-overflow:ellipsis; white-space:nowrap; }
+    .section-unit { margin-left:auto; color:#59635c; font-size:8px; }
     .section-heading { height:40px; display:flex; align-items:center; }
     .section-heading h2 { margin:0; font-size:14px; font-weight:650; }
     .section-heading small { margin-left:7px; color:#5f6962; font-size:9px; }
@@ -75,28 +84,50 @@
     .composition { height:3px; display:flex; overflow:hidden; border-radius:4px; background:#222824; }
     .composition span:first-child { width:74%; background:var(--green); }
     .composition span:last-child { width:26%; background:#407ce4; }
-    .asset-row { min-height:66px; display:flex; align-items:center; border-bottom:1px solid rgba(230,255,239,.075); }
+    .asset-item { border-bottom:1px solid rgba(230,255,239,.075); }
+    .asset-row { width:100%; min-height:72px; padding:0; display:flex; align-items:center; border:0; background:transparent; color:inherit; text-align:left; }
+    .asset-row:hover { background:rgba(255,255,255,.018); }
     .token-icon { width:35px; height:35px; border-radius:50%; display:grid; place-items:center; margin-right:11px; background:linear-gradient(145deg,#20b987,#0c7252); color:white; font-size:13px; font-weight:750; box-shadow:inset 0 0 0 1px rgba(255,255,255,.14); overflow:hidden; }
     .token-icon svg { width:100%; height:100%; }
     .token-icon.usdc { background:linear-gradient(145deg,#4d96f0,#2364bf); }
-    .asset-copy b,.activity-copy b { display:block; font-size:13px; }
+    .asset-copy { min-width:80px; }
+    .asset-copy b,.activity-copy b { display:block; font-size:12px; }
+    .asset-copy b em { display:block; margin-top:2px; color:#606a63; font-size:7px; font-style:normal; font-weight:520; }
     .asset-copy small,.activity-copy small { display:block; margin-top:2px; color:#626c65; font-size:9px; }
+    .asset-copy small i { margin-left:4px; font-style:normal; }
+    .asset-share { margin-left:auto; text-align:right; }
+    .asset-share small { display:block; color:#555f58; font-size:7px; }
+    .asset-share b { display:block; margin-top:3px; color:#929c95; font-size:9px; font-weight:540; }
     .asset-amount { margin-left:auto; text-align:right; font-variant-numeric:tabular-nums; }
     .asset-amount b { display:block; font-size:13px; font-weight:590; }
     .asset-amount small { display:block; margin-top:2px; color:#626c65; font-size:9px; }
     .row-chevron { margin-left:10px; color:#58615b; }
     .row-chevron svg { width:14px; height:14px; }
+    .row-chevron { transition:transform .18s ease; }
+    .row-chevron.is-open { transform:rotate(90deg); }
+    .asset-detail { margin:0 0 11px 46px; padding:13px; border:1px solid rgba(141,250,169,.12); border-radius:12px; background:linear-gradient(145deg,rgba(141,250,169,.035),transparent),#090c0a; }
+    .asset-detail-head { display:flex; align-items:center; }
+    .asset-detail-head b { font-size:10px; }
+    .asset-detail-head span { margin-left:auto; color:#5f6862; font-size:8px; }
+    .asset-detail-grid { display:grid; grid-template-columns:.9fr 1.1fr 1.3fr; gap:8px; margin-top:12px; }
+    .asset-detail-grid small { display:block; color:#5d675f; font-size:7px; }
+    .asset-detail-grid b { display:block; margin-top:4px; color:#c6cfc8; font-size:9px; font-weight:560; }
+    .network-pills { display:flex; gap:4px; margin-top:11px; overflow:hidden; }
+    .network-pills span { flex:0 0 auto; padding:4px 6px; border:1px solid rgba(255,255,255,.07); border-radius:6px; color:#69736c; font-size:6px; }
     .network-mark { display:grid; place-items:center; width:28px; height:28px; border:1px solid var(--line-strong); border-radius:9px; color:var(--muted-strong); background:var(--surface); font-size:8px; font-weight:750; }
     .status-badge { display:inline-flex; align-items:center; gap:5px; min-height:22px; padding:0 7px; border-radius:999px; color:var(--muted-strong); background:rgba(255,255,255,.045); font-size:8px; font-weight:650; }
     .status-badge i { width:5px; height:5px; border-radius:50%; background:currentColor; box-shadow:0 0 7px currentColor; }
     .status-badge.is-complete { color:var(--green); background:rgba(141,250,169,.07); }
     .status-badge.is-failed { color:var(--error); background:rgba(255,122,122,.07); }
-    .activity-row { display:flex; align-items:center; padding:10px 0 3px; }
+    .activity-list { overflow:hidden; border-top:1px solid rgba(255,255,255,.07); }
+    .activity-row { width:100%; min-height:58px; display:flex; align-items:center; padding:8px 0; border:0; border-bottom:1px solid rgba(255,255,255,.06); background:transparent; color:inherit; text-align:left; }
+    .activity-row:hover { background:rgba(255,255,255,.018); }
     .activity-icon { width:31px; height:31px; border:1px solid rgba(255,255,255,.06); border-radius:9px; background:#101512; color:var(--green); display:grid; place-items:center; margin-right:10px; }
     .activity-icon svg { width:14px; fill:none; stroke:currentColor; }
     .activity-value { margin-left:auto; text-align:right; }
-    .activity-value b { color:var(--green); display:block; font-size:10px; }
-    .activity-value small { color:#606a63; font-size:8px; }
+    .activity-value b { color:var(--green); display:block; margin-bottom:3px; font-size:10px; }
+    .activity-value b.negative { color:#dfe5e0; }
+    .activity-value .status-badge { min-height:16px; padding:0 5px; font-size:6px; }
     .contract-grid { margin-top:17px; border-top:1px solid var(--line); }
     .metric-row { display:grid; grid-template-columns:1fr 1fr; border-bottom:1px solid rgba(255,255,255,.07); }
     .metric { padding:13px 0; }
@@ -104,6 +135,22 @@
     .metric label { display:block; color:#68716b; font-size:9px; }
     .metric b { display:block; margin-top:4px; font-size:13px; font-weight:570; }
     .positive { color:var(--green)!important; }
+    .negative { color:var(--error)!important; }
+    .exposure-heading { margin-top:8px; }
+    .exposure-panel { padding:14px; border:1px solid var(--line); border-radius:14px; background:linear-gradient(145deg,rgba(141,250,169,.025),transparent),#0a0d0b; }
+    .exposure-top { display:flex; align-items:center; gap:9px; }
+    .position-side { width:24px; height:24px; display:grid; place-items:center; border-radius:7px; background:rgba(141,250,169,.1); color:var(--green); font-size:9px; font-weight:700; }
+    .exposure-top b { display:block; font-size:11px; }
+    .exposure-top small { display:block; margin-top:2px; color:#626c65; font-size:7px; }
+    .exposure-top strong { margin-left:auto; font-size:11px; font-weight:580; }
+    .exposure-metrics { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:14px; }
+    .exposure-metrics span { color:#606a63; font-size:7px; }
+    .exposure-metrics span:nth-child(n+2) { text-align:right; }
+    .exposure-metrics b { display:block; margin-top:4px; color:#bfc8c1; font-size:8px; font-weight:550; }
+    .risk-track { height:3px; margin-top:14px; overflow:hidden; border-radius:3px; background:#242b27; }
+    .risk-track i { display:block; height:100%; border-radius:inherit; background:linear-gradient(90deg,var(--green),var(--warning)); }
+    .risk-caption { display:flex; margin-top:6px; color:#5f6862; font-size:7px; }
+    .risk-caption b { margin-left:auto; color:var(--green); font-weight:550; }
     .bottom-nav { position:absolute; left:0; right:0; bottom:0; z-index:5; height:72px; padding:9px 10px 5px; display:grid; grid-template-columns:repeat(5,1fr); background:rgba(5,7,6,.95); border-top:1px solid var(--line); backdrop-filter:blur(18px); }
     .bottom-item { border:0; background:transparent; color:#515a54; font-size:8px; position:relative; }
     .bottom-item svg { width:19px; height:19px; margin:0 auto 5px; display:block; fill:none; stroke:currentColor; stroke-width:1.6; }
@@ -362,6 +409,10 @@
     });
     const WITHDRAW_FEES = Object.freeze({ Ethereum:0.8, Arbitrum:0.2, Polygon:0.1, Base:0.1, Optimism:0.1, Solana:0.05, TRON:1 });
     const CONFIG = Object.freeze({ tokens:['USDT','USDC'], networks:Object.keys(NETWORKS) });
+    const TOKEN_META = Object.freeze({
+      USDT:{ name:'Tether USD', price:.9999, change24h:.02 },
+      USDC:{ name:'USD Coin', price:1, change24h:.01 }
+    });
     const PROTOTYPE_NOW = Date.parse('2026-07-16T12:00:00+08:00');
     const VALUE_RANGES = Object.freeze({
       '7d':{ change:2332.18, path:'M0 151L23 148L48 154L74 139L100 143L127 117L154 121L180 91L207 97L233 66L260 72L286 43L310 48' },
@@ -382,7 +433,7 @@
     const roundMoney = value => Math.round((Number(value)+Number.EPSILON)*100)/100;
     const escapeHtml = value => String(value).replace(/[&<>'"]/g, character => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[character]));
     const initialState = () => ({
-      route:'assets', routeStack:[], routeParams:{}, account:'funding', valuesHidden:false,
+      route:'assets', routeStack:[], routeParams:{}, account:'funding', valuesHidden:false, expandedAsset:null,
       session:{ type:'wallet', mfaBound:false },
       funding:{ USDT:18240, USDC:6441.75, heldUsd:100.67 },
       contract:{ USDT:2000, USDC:0 },
@@ -406,7 +457,7 @@
       deposit:'<path d="M12 3v12m0 0 4-4m-4 4-4-4M5 19h14"/>',
       withdraw:'<path d="M12 16V4m0 0 4 4m-4-4L8 8M5 20h14"/>',
       transfer:'<path d="M4 8h14m0 0-3-3m3 3-3 3M20 16H6m0 0 3-3m-3 3 3 3"/>',
-      eye:'<path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6Z"/><circle cx="12" cy="12" r="2.5"/>',
+      eye:'<path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"/><circle cx="12" cy="12" r="2.5"/>',
       home:'<path d="m4 11 8-7 8 7v9H4v-9Z"/><path d="M9 20v-6h6v6"/>',
       market:'<path d="M4 17V9m5 11V4m5 13V8m5 12V6"/>',
       trade:'<path d="M4 8h14m0 0-3-3m3 3-3 3M20 16H6m0 0 3-3m-3 3 3 3"/>',
@@ -475,54 +526,74 @@
     }
     function fundingHome(){
       const hidden = state.valuesHidden;
-      const totalValue=fundingTotal(), available=Math.max(0,totalValue-state.funding.heldUsd);
+      const snapshot=fundingSnapshot(), totalValue=snapshot.total, available=snapshot.available;
       const total = hidden ? '••••••' : format(totalValue);
       return `<section class="account-hero">
-          <div class="hero-label">总资产估值 <button class="visibility-toggle" type="button" aria-label="${hidden?'显示':'隐藏'}资产">${icons.eye}</button></div>
+          <div class="hero-label"><span>总资产估值</span><button class="visibility-toggle" type="button" aria-label="${hidden?'显示':'隐藏'}资产">${icons.eye}</button><time>最后更新 10:24:18</time></div>
           <div class="hero-value" data-funding-total data-value="${totalValue}">${total} <small>USD⌄</small></div>
           <div class="hero-change">今日收益 <strong>+$182.36　+0.74%</strong></div>
-          <div class="hero-metrics"><span>可用资产<b>${hidden?'••••': '$'+format(available)}</b></span><span>冻结资产<b>${hidden?'••••':'$'+format(state.funding.heldUsd)}</b></span></div>
           ${miniChart()}
         </section>
+        <div class="balance-strip" aria-label="资金账户余额拆分">
+          ${balanceCell('可用资产',available,hidden)}${balanceCell('冻结资产',snapshot.held,hidden)}${balanceCell('待入账',snapshot.incoming,hidden,'等待网络确认')}
+        </div>
         <div class="home-actions">
           <button class="home-action primary" id="open-deposit" type="button">${icons.deposit}充值</button>
           <button class="home-action" id="open-withdraw" type="button">${icons.withdraw}提现</button>
           <button class="home-action" id="open-transfer" type="button">${icons.transfer}划转</button>
         </div>
         <div class="home-body">
-          <div class="section-heading"><h2>资产组合</h2><small>2 项资产</small><button type="button">隐藏零余额　○</button></div>
+          <div class="section-heading"><h2>资产配置</h2><small>2 项资产</small><span class="section-unit">24h 变化</span></div>
           <div class="composition" aria-label="${assetShare('USDT')}，${assetShare('USDC')}"><span style="width:${fundingTotal()?state.funding.USDT/fundingTotal()*100:0}%"></span><span style="width:${fundingTotal()?state.funding.USDC/fundingTotal()*100:0}%"></span></div>
-          ${assetRow('USDT','₮','usdt')}${assetRow('USDC','$','usdc')}
+          ${assetRow('USDT')}${assetRow('USDC')}
           <div class="section-heading"><h2>资金动态</h2><button id="open-records-inline" type="button">全部记录 ${icon('chevron')}</button></div>
-          ${state.records.length?state.records.slice(0,2).map(recordRow).join(''):'<div class="activity-row"><span class="activity-icon">'+icons.deposit+'</span><span class="activity-copy"><b>充值 · USDC</b><small>Arbitrum　12 分钟前</small></span><span class="activity-value"><b>+500.00</b><small>示例记录</small></span></div>'}
+          <div class="activity-list">${allRecords().slice(0,3).map(recordRow).join('')}</div>
         </div>`;
     }
+    function balanceCell(label,value,hidden,note=''){
+      return `<div class="balance-cell"><small>${label}</small><b>${hidden?'••••':'$'+format(value)}</b>${note?`<em>${note}</em>`:''}</div>`;
+    }
     function recordRow(record){
-      return `<button class="activity-row" data-record-type="${record.type}" style="width:100%;border:0;background:transparent;color:inherit;text-align:left;padding-left:0;padding-right:0" type="button"><span class="activity-icon">${record.type==='deposit'?icons.deposit:record.type==='withdrawal'?icons.withdraw:icons.transfer}</span><span class="activity-copy"><b>${record.type==='deposit'?'充值':record.type==='withdrawal'?'提现':'账户划转'} · ${record.token}</b><small>${record.network||record.direction||''}　刚刚</small></span><span class="activity-value"><b>${record.type==='deposit'?'+':'-'}${format(record.amount)}</b><small>${record.status==='complete'?'已完成':'处理中'}</small></span></button>`;
+      const sign=record.type==='deposit'?'+':record.type==='withdrawal'?'-':'';
+      const liveRecord=record.id.startsWith('sample-')?'':` data-record-type="${record.type}"`;
+      return `<button class="activity-row" data-activity-row${liveRecord} data-record-id="${record.id}" type="button"><span class="activity-icon">${record.type==='deposit'?icons.deposit:record.type==='withdrawal'?icons.withdraw:icons.transfer}</span><span class="activity-copy"><b>${record.type==='deposit'?'充值':record.type==='withdrawal'?'提现':'账户划转'} · ${record.token}</b><small>${record.network||record.direction||''} · ${record.time.slice(5,16)}</small></span><span class="activity-value"><b class="${record.type==='withdrawal'?'negative':''}">${sign}${format(record.amount)}</b>${statusBadge(record.status)}</span><span class="row-chevron">${icon('chevron')}</span></button>`;
     }
     function fundingTotal(){ return CONFIG.tokens.reduce((total,token)=>total+state.funding[token],0); }
     function contractBalance(){ return CONFIG.tokens.reduce((total,token)=>total+state.contract[token],0); }
     function contractEquity(){ return roundMoney(contractBalance()+state.contractMeta.unrealizedPnl); }
     function accountValue(account='all'){ return account==='funding'?fundingTotal():account==='contract'?contractEquity():fundingTotal()+contractEquity(); }
     function assetShare(token){ const total=fundingTotal(); return `${token} 占 ${total?format(state.funding[token]/total*100,1):'0.0'}%`; }
-    function assetRow(token,symbol,kind){
-      const value=state.funding[token];
-      return `<button class="asset-row" type="button" data-asset="${token}" style="width:100%;border-left:0;border-right:0;border-top:0;background:transparent;color:inherit;padding:0;text-align:left">${tokenMark(token)}<span class="asset-copy"><b>${token}</b><small>资产占比 ${assetShare(token).replace(token+' 占 ','')}</small></span><span class="asset-amount"><b data-funding-balance="${token}" data-value="${value}">${format(value)}</b><small>≈ $${format(token==='USDT'?value*.9999:value)}</small></span><span class="row-chevron">${icon('chevron')}</span></button>`;
+    function fundingSnapshot(){
+      const incoming=allRecords().filter(item=>item.type==='deposit'&&item.status==='confirming').reduce((total,item)=>total+item.amount,0);
+      return { total:fundingTotal(), held:state.funding.heldUsd, incoming:roundMoney(incoming), available:Math.max(0,roundMoney(fundingTotal()-state.funding.heldUsd)) };
+    }
+    function contractSnapshot(){
+      const balance=contractBalance(), equity=contractEquity(), headroom=Math.max(0,roundMoney(equity-state.contractMeta.usedMargin));
+      return { balance,equity,headroom,marginRate:equity?state.contractMeta.maintenanceMargin/equity*100:0,pnlRate:balance?state.contractMeta.unrealizedPnl/balance*100:0 };
+    }
+    function assetDetail(token){
+      const value=state.funding[token], recent=allRecords().find(item=>item.token===token);
+      return `<div class="asset-detail" data-asset-detail><div class="asset-detail-head"><b>${token} 资产明细</b><span>${TOKEN_META[token].name}</span></div><div class="asset-detail-grid"><div><small>支持网络</small><b>7 个</b></div><div><small>最近变动</small><b>${recent?recent.time.slice(5,16):'暂无'}</b></div><div><small>可用余额</small><b>${format(value)} ${token}</b></div></div><div class="network-pills">${CONFIG.networks.map(network=>`<span>${network}</span>`).join('')}</div></div>`;
+    }
+    function assetRow(token){
+      const value=state.funding[token], meta=TOKEN_META[token], expanded=state.expandedAsset===token;
+      return `<div class="asset-item"><button class="asset-row" type="button" data-asset="${token}" data-asset-row="${token}" aria-expanded="${expanded}">${tokenMark(token)}<span class="asset-copy"><b>${token}<em>${meta.name}</em></b><small>$${format(meta.price,4)} <i class="positive">+${format(meta.change24h)}%</i></small></span><span class="asset-share"><small>占比</small><b>${assetShare(token).replace(token+' 占 ','')}</b></span><span class="asset-amount"><b data-funding-balance="${token}" data-value="${value}">${format(value)}</b><small>≈ $${format(value*meta.price)}</small></span><span class="row-chevron ${expanded?'is-open':''}">${icon('chevron')}</span></button>${expanded?assetDetail(token):''}</div>`;
     }
     function contractHome(){
-      const hidden=state.valuesHidden, balance=contractBalance(), equity=contractEquity(), available=Math.max(0,equity-state.contractMeta.usedMargin), marginRate=equity?state.contractMeta.maintenanceMargin/equity*100:0, pnlRate=balance?state.contractMeta.unrealizedPnl/balance*100:0, riskHigh=equity?available/equity<=.2:true;
+      const hidden=state.valuesHidden, snapshot=contractSnapshot(), {balance,equity,headroom:available,marginRate,pnlRate}=snapshot, riskHigh=equity?available/equity<=.2:true;
       return `<section class="account-hero">
-          <div class="hero-label">账户权益 <button class="visibility-toggle" type="button" aria-label="${hidden?'显示':'隐藏'}资产">${icons.eye}</button></div>
+          <div class="hero-label"><span>账户权益</span><button class="visibility-toggle" type="button" aria-label="${hidden?'显示':'隐藏'}资产">${icons.eye}</button><time>最后更新 10:24:18</time></div>
           <div class="hero-value" data-contract-total data-value="${equity}">${hidden?'••••••':format(equity)} <small>USD⌄</small></div>
           <div class="hero-change">未实现盈亏 <strong>+$${format(state.contractMeta.unrealizedPnl)}　<span data-pnl-rate data-value="${pnlRate}">+${format(pnlRate)}%</span></strong></div>
-          <div class="hero-metrics"><span>可用保证金<b>${hidden?'••••':'$'+format(available)}</b></span><span>保证金率<b>${format(marginRate)}%</b></span></div>${miniChart()}
+          ${miniChart()}
         </section>
+        <div class="balance-strip contract-balance-strip"><div class="balance-cell"><small>可用保证金</small><b>${hidden?'••••':'$'+format(available)}</b></div><div class="balance-cell"><small>保证金率</small><b>${format(marginRate)}%</b></div><div class="balance-cell"><small>可划转</small><b data-contract-headroom data-value="${available}">${hidden?'••••':'$'+format(available)}</b></div></div>
         <div class="home-actions"><button class="home-action primary" id="open-transfer" type="button">${icons.deposit}划入资金</button><button class="home-action" id="open-transfer-out" type="button">${icons.withdraw}划出</button><button class="home-action" id="open-records-inline" type="button">${icons.history}记录</button></div>
-        <div class="home-body"><div class="section-heading"><h2>合约资产</h2><small data-risk-status class="${riskHigh?'status-pending':'positive'}">${riskHigh?'风险状态偏高':'风险状态正常'}</small></div><div class="contract-grid">
+        <div class="home-body"><div class="section-heading"><h2>账户明细</h2><small data-risk-status class="${riskHigh?'status-pending':'positive'}">${riskHigh?'风险状态偏高':'风险状态正常'}</small><span class="section-unit">USDT 本位</span></div><div class="contract-grid">
           <div class="metric-row"><div class="metric"><label>账户余额</label><b>${format(balance)} USD</b></div><div class="metric"><label>未实现盈亏</label><b class="positive">+${format(state.contractMeta.unrealizedPnl)} USD</b></div></div>
           <div class="metric-row"><div class="metric"><label>占用保证金</label><b>${format(state.contractMeta.usedMargin)} USD</b></div><div class="metric"><label>可用保证金</label><b>${format(available)} USD</b></div></div>
           <div class="metric-row"><div class="metric"><label>维持保证金</label><b>${format(state.contractMeta.maintenanceMargin)} USD</b></div><div class="metric"><label>保证金率</label><b>${format(marginRate)}%</b></div></div>
-        </div></div>`;
+        </div><div class="section-heading exposure-heading"><h2>持仓敞口</h2><small>1 个仓位</small><span class="section-unit">可划转 $${format(available)}</span></div><div class="exposure-panel"><div class="exposure-top"><span class="position-side">多</span><div><b>BTC-PERP</b><small>全仓 · 3.0x</small></div><strong>0.082 BTC</strong></div><div class="exposure-metrics"><span>标记价格<b>$66,982.40</b></span><span>仓位价值<b>$5,492.56</b></span><span>未实现盈亏<b class="positive">+$124.80</b></span></div><div class="risk-track"><i style="width:${Math.min(100,marginRate*10)}%"></i></div><div class="risk-caption"><span>距强平价 $41,280</span><b>${riskHigh?'需要关注':'风险充足'}</b></div></div></div>`;
     }
     function qrMarkup(){ return `<div class="qr" aria-label="原型二维码">${Array.from({length:81},()=>'<i></i>').join('')}</div><span class="prototype-badge">原型二维码 · 不可用于真实充值</span>`; }
     function depositHeader(){ return `${statusBar()}<header class="subpage-header"><button class="back-button" data-back type="button" aria-label="返回">‹</button><h1>充值</h1></header>`; }
@@ -783,6 +854,7 @@
     root.addEventListener('click',event=>{
       const target=event.target.closest('button'); if(!target) return;
       if(target.dataset.accountTab) return setAccount(target.dataset.accountTab);
+      if(target.dataset.assetRow){ state.expandedAsset=state.expandedAsset===target.dataset.assetRow?null:target.dataset.assetRow; render(); return; }
       if(target.matches('[data-back]')) return goBack();
       if(target.id==='open-deposit') return navigate('deposit');
       if(target.id==='open-withdraw') return navigate('withdraw');

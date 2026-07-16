@@ -629,3 +629,27 @@ test('matches the reference shell at desktop and mobile sizes', async () => {
     }, viewport);
   }
 });
+
+test('funding home exposes professional balance and asset detail', async () => {
+  await withPage(async page => {
+    for (const label of ['可用资产', '冻结资产', '待入账', '最后更新', '资产配置', '24h 变化', '资金动态']) {
+      assert.match(await page.locator('#screen-root').textContent(), new RegExp(label));
+    }
+    assert.equal(await page.locator('[data-asset-row]').count(), 2);
+    await page.locator('[data-asset-row="USDT"]').click();
+    assert.match(await page.locator('[data-asset-detail]').textContent(), /支持网络.*最近变动.*可用余额/s);
+    assert.ok(await page.locator('[data-activity-row]').count() >= 3);
+  });
+});
+
+test('contract home derives exposure risk and transfer headroom', async () => {
+  await withPage(async page => {
+    await page.locator('[data-account-tab="contract"]').click();
+    for (const label of ['账户权益', '未实现盈亏', '可用保证金', '占用保证金', '维持保证金', '保证金率', '持仓敞口', '可划转']) {
+      assert.match(await page.locator('#screen-root').textContent(), new RegExp(label));
+    }
+    const state = await page.evaluate(() => window.assetPrototype.getState());
+    const expected = Math.round((state.contract.USDT + state.contract.USDC + state.contractMeta.unrealizedPnl - state.contractMeta.usedMargin) * 100) / 100;
+    assert.equal(Number(await page.locator('[data-contract-headroom]').getAttribute('data-value')), expected);
+  });
+});
