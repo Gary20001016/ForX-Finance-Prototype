@@ -143,7 +143,7 @@ test('shows four honest deposit stages and credits the funding balance once', as
     assert.match(await page.locator('[data-current-status]').textContent(), /正在入账/);
     await page.locator('[data-advance-deposit]').click();
     assert.match(await page.locator('[data-current-status]').textContent(), /充值已到账/);
-    await page.locator('[data-advance-deposit]').click();
+    await page.locator('[data-return-assets]').click();
     await route(page, 'assets');
     const after = Number(await page.locator('[data-funding-balance="USDC"]').getAttribute('data-value'));
     assert.equal(after - before, 500);
@@ -191,7 +191,8 @@ test('wallet-login withdrawal does not request MFA and completes once', async ()
     await page.locator('#submit-withdrawal').click();
     await route(page, 'withdraw-status');
     assert.doesNotMatch(await page.locator('#screen-root').textContent(), /MFA 验证/);
-    for (let i = 0; i < 4; i += 1) await page.locator('[data-advance-withdrawal]').click();
+    for (let i = 0; i < 3; i += 1) await page.locator('[data-advance-withdrawal]').click();
+    await page.locator('[data-return-assets]').click();
     await route(page, 'assets');
     const after = Number(await page.locator('[data-funding-balance="USDT"]').getAttribute('data-value'));
     assert.equal(Math.round((before - after) * 100) / 100, 250);
@@ -212,7 +213,8 @@ test('terminal deposit exceptions never credit funding and show an honest amount
       if (scenario === 'below-minimum') {
         assert.equal(await page.locator('[data-deposit-amount]').getAttribute('data-value'), '5');
       }
-      assert.equal(await page.locator('[data-advance-deposit]').count(), 0);
+      assert.equal(await page.locator('#interactive-phone [data-advance-deposit]').count(), 0);
+      assert.equal(await page.locator('#demo-console [data-advance-deposit]').isDisabled(), true);
       await page.locator('[data-return-deposit]').click();
       const after = await page.evaluate(() => window.assetPrototype.getState().funding.USDC);
       assert.equal(after, before, scenario);
@@ -504,7 +506,8 @@ test('account totals and value history follow balance mutations and time ranges'
     const initialFunding = Number(await page.locator('[data-funding-total]').getAttribute('data-value'));
     await openDeposit(page);
     await page.locator('[data-start-demo-deposit]').click();
-    for (let i = 0; i < 4; i += 1) await page.locator('[data-advance-deposit]').click();
+    for (let i = 0; i < 3; i += 1) await page.locator('[data-advance-deposit]').click();
+    await page.locator('[data-return-assets]').click();
     const updatedFunding = Number(await page.locator('[data-funding-total]').getAttribute('data-value'));
     assert.equal(updatedFunding - initialFunding, 500);
 
@@ -845,4 +848,63 @@ test('recent deposits follow the selected token', async () => {
     await page.locator('[data-token="USDT"]').click();
     for (const row of await page.locator('[data-recent-deposit]').all()) assert.match(await row.textContent(), /USDT/);
   });
+});
+
+test('prototype-only controls live outside the phone', async () => {
+  await withPage(async page => {
+    await openDeposit(page);
+    assert.equal(await page.locator('#interactive-phone [data-start-demo-deposit]').count(), 0);
+    assert.equal(await page.locator('#demo-console [data-start-demo-deposit]').count(), 1);
+    await page.locator('[data-deposit-method="wallet"]').click();
+    assert.equal(await page.locator('#interactive-phone #simulate-reconnect').count(), 0);
+    assert.equal(await page.locator('#demo-console #simulate-reconnect').count(), 1);
+    assert.equal(await page.locator('#demo-console #simulate-mismatch').count(), 1);
+  });
+});
+
+test('deposit processing controls stay in the demo console', async () => {
+  await withPage(async page => {
+    await openDeposit(page);
+    await page.locator('#demo-console [data-start-demo-deposit]').click();
+    assert.equal(await page.locator('#interactive-phone #deposit-scenario').count(), 0);
+    assert.equal(await page.locator('#interactive-phone [data-advance-deposit]').count(), 0);
+    assert.equal(await page.locator('#demo-console #deposit-scenario').count(), 1);
+    assert.equal(await page.locator('#demo-console [data-advance-deposit]').count(), 1);
+  });
+});
+
+test('withdrawal and transfer simulation controls stay outside the phone', async () => {
+  await withPage(async page => {
+    await openWithdrawal(page);
+    await fillWithdrawal(page, undefined, '100');
+    await page.locator('#submit-withdrawal').click();
+    await route(page, 'withdraw-status');
+    assert.equal(await page.locator('#interactive-phone #withdrawal-scenario').count(), 0);
+    assert.equal(await page.locator('#interactive-phone [data-advance-withdrawal]').count(), 0);
+    assert.equal(await page.locator('#demo-console #withdrawal-scenario').count(), 1);
+    assert.equal(await page.locator('#demo-console [data-advance-withdrawal]').count(), 1);
+
+    await page.locator('#reset-prototype').click();
+    await page.locator('#open-transfer').click();
+    await page.locator('#transfer-amount').fill('100');
+    await page.locator('#review-transfer').click();
+    assert.equal(await page.locator('#interactive-phone #simulate-transfer-failure').count(), 0);
+    assert.equal(await page.locator('#demo-console #simulate-transfer-failure').count(), 1);
+    await page.locator('#confirm-transfer').click();
+    assert.equal(await page.locator('#interactive-phone [data-complete-transfer]').count(), 0);
+    assert.equal(await page.locator('#demo-console [data-complete-transfer]').count(), 1);
+  });
+});
+
+test('phone never exposes prototype state copy', async () => {
+  await withPage(async page => {
+    await openDeposit(page);
+    assert.doesNotMatch(await page.locator('#interactive-phone').textContent(), /模拟收到|模拟钱包|推进演示状态|完成演示处理/);
+  });
+});
+
+test('mobile product view hides the demo console', async () => {
+  await withPage(async page => {
+    assert.equal(await page.locator('#demo-console').isVisible(), false);
+  }, { width:390, height:844 });
 });

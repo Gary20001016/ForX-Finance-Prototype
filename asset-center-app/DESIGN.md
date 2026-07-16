@@ -103,6 +103,11 @@ components:
     backgroundColor: "{colors.surface}"
     textColor: "{colors.primary-strong}"
     rounded: "{rounded.full}"
+  demo-console:
+    backgroundColor: "{colors.panel}"
+    textColor: "{colors.muted-strong}"
+    rounded: "{rounded.lg}"
+    padding: 20px
 ---
 
 # ForX Quiet Capital
@@ -153,6 +158,7 @@ Rounded corners communicate hierarchy: 12px for controls, 16px for major panels,
 - Audit timelines include a text label, state icon, timestamp or progress value, and terminal result. A colored dot alone is never sufficient.
 - Records reconcile deposits, withdrawals, network fees, and net inflow. Failed records remain visible but do not contribute to effective flow totals.
 - Account-value analysis exposes axes, selectable points, event markers, period statistics, and separate value/flow-adjusted-return modes.
+- The desktop-only demo console is a sibling of the phone, never a child of the product UI. It exposes only contextual prototype state controls; no real user action may depend exclusively on it.
 - Desktop galleries freeze the real mobile renderers, disable interactions, and pair every screen with entry, action, response, next-state, and implementation notes.
 
 ## Do's and Don'ts
@@ -161,10 +167,12 @@ Rounded corners communicate hierarchy: 12px for controls, 16px for major panels,
 - Do distinguish detected, confirmed, crediting, and credited deposit stages.
 - Do separate net external flow, trading returns, and internal transfer flow.
 - Do keep notification and fund-record shortcuts in the same row as account tabs.
+- Do keep simulation, failure injection, and manual state advancement in the external demo console.
 - Don't add a page title, service-status badge, ForX lockup, or decorative brand subtitle above the account tabs.
 - Don't present internal transfers as return or external fund flow.
 - Don't use ornamental English or unexplained abbreviations.
 - Don't imply any prototype wallet, signature, transaction, or blockchain state is real.
+- Don't place “模拟” or “演示处理” buttons inside the phone UI.
 - Don't use empty space to compensate for missing operational content.
 - Don't wrap every metric in a separate rounded card; use tonal sections, aligned columns, and dividers.
 

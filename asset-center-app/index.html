@@ -13,12 +13,36 @@
     button { min-width:32px; min-height:32px; cursor:pointer; }
     button,select,input { font:inherit; }
     button:focus-visible,select:focus-visible,input:focus-visible { outline:2px solid var(--green); outline-offset:2px; }
-    .prototype-shell { min-height:100svh; display:grid; grid-template-columns:minmax(250px,330px) 390px; align-items:center; justify-content:center; gap:64px; padding:32px; }
+    .prototype-shell { min-height:100svh; display:grid; grid-template-columns:minmax(220px,290px) 390px minmax(240px,290px); align-items:center; justify-content:center; gap:32px; padding:32px; }
     .prototype-meta h1 { margin:0; font-size:52px; line-height:.95; letter-spacing:-.05em; font-weight:580; }
     .prototype-meta h1 em { color:var(--green); font-style:normal; }
     .prototype-meta p { color:var(--muted); line-height:1.7; }
     .controls { display:grid; gap:10px; margin-top:24px; }
     .controls button,.controls select { min-height:42px; border:1px solid var(--line); border-radius:12px; background:var(--surface); color:var(--text); padding:0 12px; }
+    .demo-console { width:100%; min-height:342px; align-self:center; overflow:hidden; border:1px solid rgba(141,250,169,.14); border-radius:22px; background:linear-gradient(155deg,rgba(141,250,169,.055),transparent 42%),rgba(8,12,9,.94); box-shadow:0 28px 70px rgba(0,0,0,.34); }
+    .demo-console-header { padding:20px 20px 17px; border-bottom:1px solid var(--line); }
+    .demo-console-eyebrow { display:flex; align-items:center; gap:7px; color:#69736d; font-size:9px; letter-spacing:.08em; }
+    .demo-console-eyebrow i { width:6px; height:6px; border-radius:50%; background:var(--green); box-shadow:0 0 10px rgba(141,250,169,.75); }
+    .demo-console-header h2 { margin:9px 0 0; font-size:20px; font-weight:620; letter-spacing:-.02em; }
+    .demo-console-route { display:flex; align-items:center; gap:7px; margin-top:9px; color:#89938d; font-size:10px; }
+    .demo-console-route b { color:#c7d0ca; font-weight:590; }
+    .demo-console-body { padding:17px 20px 20px; }
+    .demo-console-note { margin:0; color:#68716b; font-size:9px; line-height:1.65; }
+    .demo-console-section + .demo-console-section { margin-top:18px; padding-top:17px; border-top:1px solid var(--line); }
+    .demo-console-section h3 { margin:0; font-size:11px; font-weight:620; }
+    .demo-console-section>p { margin:6px 0 12px; color:#68716b; font-size:9px; line-height:1.55; }
+    .demo-console-actions { display:grid; gap:8px; }
+    .demo-console-button { width:100%; min-height:42px; padding:0 12px; border:1px solid var(--line); border-radius:11px; background:#111713; color:#d4ddd7; font-size:10px; font-weight:590; text-align:left; }
+    .demo-console-button:hover { border-color:rgba(141,250,169,.3); background:#141d17; }
+    .demo-console-button.primary { border-color:rgba(141,250,169,.26); background:var(--green); color:var(--green-ink); text-align:center; }
+    .demo-console-button.danger { color:#ff9c9c; background:rgba(255,122,122,.045); }
+    .demo-console-button:disabled { cursor:not-allowed; opacity:.38; }
+    .demo-console-field { display:block; margin-bottom:11px; color:#78827b; font-size:8px; }
+    .demo-console-field select { width:100%; height:42px; margin-top:7px; padding:0 11px; border:1px solid var(--line); border-radius:11px; background:#111713; color:#d4ddd7; font-size:10px; }
+    .demo-console-state { display:flex; align-items:flex-start; gap:9px; padding:12px; border:1px solid rgba(141,250,169,.12); border-radius:12px; background:rgba(141,250,169,.035); }
+    .demo-console-state i { flex:0 0 auto; width:7px; height:7px; margin-top:3px; border-radius:50%; background:var(--green); }
+    .demo-console-state b { display:block; font-size:10px; }
+    .demo-console-state small { display:block; margin-top:4px; color:#69726c; font-size:8px; line-height:1.5; }
     .phone { width:390px; height:min(844px,calc(100svh - 32px)); min-height:680px; overflow:hidden; border:1px solid var(--line-strong); border-radius:34px; background:var(--bg); box-shadow:var(--shadow),inset 0 0 0 5px rgba(255,255,255,.018); position:relative; isolation:isolate; }
     .phone::after { content:""; position:absolute; inset:0; z-index:30; border-radius:inherit; box-shadow:inset 0 0 0 1px rgba(0,0,0,.56); pointer-events:none; }
     #screen-root { min-height:100%; height:100%; overflow:hidden; }
@@ -555,7 +579,8 @@
     .error-facts b { display:block; margin-top:5px; font-size:10px; }
     .error-state-body .notice-box { text-align:left; }
     .error-state-body .primary-button { margin-top:18px; }
-    @media (max-width:800px) { .prototype-shell { grid-template-columns:1fr; min-height:100svh; padding:0; gap:0; } .prototype-meta { display:none; } .phone { width:100%; max-width:390px; height:100svh; min-height:0; max-height:844px; margin:auto; border-radius:0; border:0; box-shadow:none; } .gallery { display:none; } }
+    @media (max-width:1080px) { .prototype-meta { display:none; } .prototype-shell { grid-template-columns:390px minmax(240px,290px); } }
+    @media (max-width:800px) { .prototype-shell { grid-template-columns:1fr; min-height:100svh; padding:0; gap:0; } .prototype-meta,.demo-console { display:none; } .phone { width:100%; max-width:390px; height:100svh; min-height:0; max-height:844px; margin:auto; border-radius:0; border:0; box-shadow:none; } .gallery { display:none; } }
   </style>
 </head>
 <body>
@@ -576,6 +601,9 @@
         <div id="sheet-root" hidden></div>
         <div id="live-region" class="sr-only" aria-live="polite"></div>
       </section>
+      <aside class="demo-console" id="demo-console" aria-label="原型演示控制台">
+        <div id="demo-console-root"></div>
+      </aside>
     </section>
     <section class="gallery" id="page-gallery"><h2>页面拆解</h2><p>资金账户、合约账户、充值、提现、地址簿、账户划转、资金记录与账户价值。</p><div class="gallery-grid" id="page-gallery-grid"></div></section>
     <section class="gallery" id="error-gallery"><h2>异常状态</h2><p>网络确认、钱包连接、MFA、地址和交易异常。</p><div class="gallery-grid" id="error-gallery-grid"></div></section>
@@ -632,6 +660,7 @@
     });
     let state = initialState();
     const root = document.querySelector('#screen-root');
+    const demoConsoleRoot = document.querySelector('#demo-console-root');
     const sheetRoot = document.querySelector('#sheet-root');
     const live = document.querySelector('#live-region');
     let sheetReturnFocus=null;
@@ -790,14 +819,14 @@
     }
     function addressDeposit(){
       const draft=state.depositDraft, network=NETWORKS[draft.network];
-      return `${networkOperations(draft.network,draft.token)}<div class="deposit-card address-deposit-card"><div class="qr-column">${qrMarkup()}</div><div class="address-column"><div class="address-kicker">${draft.token} · ${draft.network}</div><h2>充值地址</h2><p>从其他平台或钱包向此地址转入</p><div class="address-box"><div class="address-line"><code>${network.address}</code><button class="text-button" id="copy-address" type="button">${icon('copy')}复制</button></div></div><div class="address-meta"><span>地址已专属分配</span><b>长期有效</b></div></div></div><div class="notice-box"><strong>重要提示</strong>仅充值 ${draft.network} 网络的 ${draft.token}。币种或网络不一致时，资产可能无法自动入账。</div><button class="demo-button" data-start-demo-deposit type="button">模拟收到一笔 500 ${draft.token} 充值</button>${recentDeposits(draft.token)}`;
+      return `${networkOperations(draft.network,draft.token)}<div class="deposit-card address-deposit-card"><div class="qr-column">${qrMarkup()}</div><div class="address-column"><div class="address-kicker">${draft.token} · ${draft.network}</div><h2>充值地址</h2><p>从其他平台或钱包向此地址转入</p><div class="address-box"><div class="address-line"><code>${network.address}</code><button class="text-button" id="copy-address" type="button">${icon('copy')}复制</button></div></div><div class="address-meta"><span>地址已专属分配</span><b>长期有效</b></div></div></div><div class="notice-box"><strong>重要提示</strong>仅充值 ${draft.network} 网络的 ${draft.token}。币种或网络不一致时，资产可能无法自动入账。</div>${recentDeposits(draft.token)}`;
     }
     function walletDeposit(){
       const draft=state.depositDraft, network=NETWORKS[draft.network];
       const address=network.family==='solana'?'9xQe...zRzA':'0x7A4F...92E1';
       const amount=Number(draft.amount), valid=amount>=network.min[draft.token]&&draft.walletMatches&&draft.walletConnected;
       const connectionLabel=!draft.walletConnected?'连接失效':draft.walletMatches?'地址一致':'地址不一致';
-      return `${networkOperations(draft.network,draft.token)}<div class="deposit-card wallet-deposit-card"><div class="wallet-account"><span class="wallet-mark">W</span><span><b>${network.family==='solana'?'Phantom':'MetaMask'}</b><small>预填登录钱包 ${address}</small></span><span class="${draft.walletMatches&&draft.walletConnected?'match':'mismatch'}">${connectionLabel}</span></div><div class="wallet-route"><div><small>发送地址</small><b>${address}</b><em>钱包余额 8,520.40 ${draft.token}</em></div><span>${icon('transfer')}</span><div><small>充值至</small><b>ForX 资金账户</b><em>${draft.network} · ${draft.token}</em></div></div><label class="field-label" for="wallet-deposit-amount">充值金额 <span>最低 ${network.min[draft.token]} ${draft.token}</span></label><input class="amount-input" id="wallet-deposit-amount" inputmode="decimal" value="${draft.amount}" aria-describedby="wallet-amount-help"><div class="wallet-quote" id="wallet-amount-help"><div><small>预计到账</small><b>${format(amount||0)} ${draft.token}</b></div><div><small>预计网络费</small><b>${network.gasEstimate}</b></div><div><small>费用承担</small><b>由外部钱包支付</b></div></div>${draft.walletMatches?'':`<button class="secondary-link" id="restore-wallet-address" type="button">切换回登录钱包 ${address}</button>`}<button class="primary-button" id="launch-wallet" type="button" ${valid?'':'disabled'}>${draft.walletConnected?'打开钱包确认充值':'恢复连接后继续'}</button><button class="secondary-link" id="simulate-reconnect" type="button">模拟钱包连接已失效</button><button class="secondary-link" id="simulate-mismatch" type="button">模拟钱包账户不一致</button><p class="wallet-note">将通过 Deep Link 构建转账。若连接失效，仅恢复钱包连接，不会重新登录。</p></div>${recentDeposits(draft.token)}`;
+      return `${networkOperations(draft.network,draft.token)}<div class="deposit-card wallet-deposit-card"><div class="wallet-account"><span class="wallet-mark">W</span><span><b>${network.family==='solana'?'Phantom':'MetaMask'}</b><small>预填登录钱包 ${address}</small></span><span class="${draft.walletMatches&&draft.walletConnected?'match':'mismatch'}">${connectionLabel}</span></div><div class="wallet-route"><div><small>发送地址</small><b>${address}</b><em>钱包余额 8,520.40 ${draft.token}</em></div><span>${icon('transfer')}</span><div><small>充值至</small><b>ForX 资金账户</b><em>${draft.network} · ${draft.token}</em></div></div><label class="field-label" for="wallet-deposit-amount">充值金额 <span>最低 ${network.min[draft.token]} ${draft.token}</span></label><input class="amount-input" id="wallet-deposit-amount" inputmode="decimal" value="${draft.amount}" aria-describedby="wallet-amount-help"><div class="wallet-quote" id="wallet-amount-help"><div><small>预计到账</small><b>${format(amount||0)} ${draft.token}</b></div><div><small>预计网络费</small><b>${network.gasEstimate}</b></div><div><small>费用承担</small><b>由外部钱包支付</b></div></div>${draft.walletMatches?'':`<button class="secondary-link" id="restore-wallet-address" type="button">切换回登录钱包 ${address}</button>`}<button class="primary-button" id="launch-wallet" type="button" ${valid?'':'disabled'}>${draft.walletConnected?'打开钱包确认充值':'恢复连接后继续'}</button><p class="wallet-note">将通过 Deep Link 构建转账。若连接失效，仅恢复钱包连接，不会重新登录。</p></div>${recentDeposits(draft.token)}`;
     }
     function depositScreen(){
       const draft=state.depositDraft, network=NETWORKS[draft.network], supportsWallet=network.family!=='tron';
@@ -832,14 +861,14 @@
       const [title,description]=depositCopy[dep.stage];
       const confirming=dep.stage==='confirming', complete=dep.stage==='complete', crediting=dep.stage==='crediting';
       const terminal=['below-minimum','mismatch','failed'].includes(dep.scenario), delayed=dep.scenario==='credit-delay'&&dep.stage==='crediting';
-      const action=terminal?'<button class="primary-button" data-return-deposit type="button">返回充值</button>':`<button class="primary-button" data-advance-deposit type="button" ${delayed?'disabled':''}>${delayed?'等待系统入账':dep.stage==='waiting'?'模拟检测到转账':dep.stage==='confirming'?'完成网络确认':dep.stage==='crediting'?'完成入账':'返回资产中心'}</button>`;
+      const action=terminal?'<button class="primary-button" data-return-deposit type="button">返回充值</button>':complete?'<button class="primary-button" data-return-assets type="button">返回资产中心</button>':'';
       const timeline=[
         {label:'地址已准备',time:dep.submittedAt.slice(11),done:true,current:false},
         {label:'检测到链上转账',time:dep.stage==='waiting'?'等待中':dep.firstSeenAt.slice(11),done:dep.stage!=='waiting',current:dep.stage==='waiting'},
         {label:'网络确认',time:confirming?`${dep.confirmations} / ${dep.required}`:crediting||complete?'已满足':'等待中',done:crediting||complete,current:confirming},
         {label:'资金入账',time:complete?dep.creditedAt.slice(11):crediting?'处理中':'等待中',done:complete,current:crediting}
       ];
-      return `<div class="app-screen subpage" data-deposit-stage="${dep.stage}">${statusBar()}<header class="subpage-header"><button class="back-button" data-back type="button" aria-label="返回">‹</button><h1>充值详情</h1><span class="header-network">${networkMark(dep.network)}${dep.network}</span></header><div class="progress-page"><div class="deposit-amount">${tokenMark(dep.token)}<strong data-deposit-amount data-value="${dep.amount}">${format(dep.amount)} ${dep.token}</strong><small>约 $${format(dep.amount)} · ${dep.network}</small></div><section class="progress-card ${confirming?'warning':''}"><div class="status-heading"><i class="status-dot"></i><div><h2 data-current-status>${title}</h2><p data-status-description>${description}</p></div>${statusBadge(complete?'complete':terminal?'failed':'confirming')}</div>${confirming?`<div class="confirm-row"><span>确认进度</span><b data-confirmations>${dep.confirmations} / ${dep.required}</b></div><div class="progress-bar"><i style="width:${Math.min(100,dep.confirmations/dep.required*100)}%"></i></div><div class="confirm-row"><span>预计完成</span><b>${NETWORKS[dep.network].eta}</b></div>`:''}</section><div class="deposit-timeline" aria-label="充值处理时间线">${timeline.map((item,index)=>`<div class="timeline-step ${item.done?'done':''} ${item.current?'current':''}" data-deposit-timeline-step><i>${item.done?'✓':index+1}</i><span><b>${item.label}</b><small>${item.time}</small></span></div>`).join('')}</div><div class="can-leave"><b>可以安全离开此页面</b>系统会持续跟踪这笔充值；确认完成并入账后，通过 App 通知你。</div><section class="audit-card"><div class="mini-section-title"><h2>链上信息</h2><span>更新于 ${dep.updatedAt.slice(11)}</span></div><div class="detail-list"><div class="detail-line"><span>发送地址</span><span>${dep.stage==='waiting'?'等待检测':dep.senderAddress}</span></div><div class="detail-line"><span>充值地址</span><span>${NETWORKS[dep.network].address.slice(0,8)}...${NETWORKS[dep.network].address.slice(-4)}</span></div><div class="detail-line"><span>交易哈希</span><span>${dep.stage==='waiting'?'等待检测':dep.hash}</span></div><div class="detail-line"><span>首次检测</span><span>${dep.stage==='waiting'?'—':dep.firstSeenAt}</span></div><div class="detail-line"><span>确认进度</span><span>${dep.stage==='waiting'?'0':dep.confirmations} / ${dep.required}</span></div></div><div class="audit-actions"><button type="button" data-copy-deposit-hash>${icon('copy')}复制哈希</button><button type="button" data-open-explorer>${icon('chart')}${NETWORKS[dep.network].explorerLabel} 区块浏览器</button></div></section><select id="deposit-scenario" class="scenario-select" aria-label="充值异常场景" ${complete?'disabled':''}><option value="normal" ${dep.scenario==='normal'?'selected':''}>正常流程</option><option value="below-minimum" ${dep.scenario==='below-minimum'?'selected':''}>低于最小充值金额</option><option value="congestion" ${dep.scenario==='congestion'?'selected':''}>网络确认较慢</option><option value="mismatch" ${dep.scenario==='mismatch'?'selected':''}>币种或网络不匹配</option><option value="failed" ${dep.scenario==='failed'?'selected':''}>链上交易失败</option><option value="credit-delay" ${dep.scenario==='credit-delay'?'selected':''}>入账延迟</option></select><p class="exception-copy" data-deposit-exception>${depositException()}</p>${action}</div></div>`;
+      return `<div class="app-screen subpage" data-deposit-stage="${dep.stage}">${statusBar()}<header class="subpage-header"><button class="back-button" data-back type="button" aria-label="返回">‹</button><h1>充值详情</h1><span class="header-network">${networkMark(dep.network)}${dep.network}</span></header><div class="progress-page"><div class="deposit-amount">${tokenMark(dep.token)}<strong data-deposit-amount data-value="${dep.amount}">${format(dep.amount)} ${dep.token}</strong><small>约 $${format(dep.amount)} · ${dep.network}</small></div><section class="progress-card ${confirming?'warning':''}"><div class="status-heading"><i class="status-dot"></i><div><h2 data-current-status>${title}</h2><p data-status-description>${description}</p></div>${statusBadge(complete?'complete':terminal?'failed':'confirming')}</div>${confirming?`<div class="confirm-row"><span>确认进度</span><b data-confirmations>${dep.confirmations} / ${dep.required}</b></div><div class="progress-bar"><i style="width:${Math.min(100,dep.confirmations/dep.required*100)}%"></i></div><div class="confirm-row"><span>预计完成</span><b>${NETWORKS[dep.network].eta}</b></div>`:''}</section><div class="deposit-timeline" aria-label="充值处理时间线">${timeline.map((item,index)=>`<div class="timeline-step ${item.done?'done':''} ${item.current?'current':''}" data-deposit-timeline-step><i>${item.done?'✓':index+1}</i><span><b>${item.label}</b><small>${item.time}</small></span></div>`).join('')}</div><div class="can-leave"><b>可以安全离开此页面</b>系统会持续跟踪这笔充值；确认完成并入账后，通过 App 通知你。</div><section class="audit-card"><div class="mini-section-title"><h2>链上信息</h2><span>更新于 ${dep.updatedAt.slice(11)}</span></div><div class="detail-list"><div class="detail-line"><span>发送地址</span><span>${dep.stage==='waiting'?'等待检测':dep.senderAddress}</span></div><div class="detail-line"><span>充值地址</span><span>${NETWORKS[dep.network].address.slice(0,8)}...${NETWORKS[dep.network].address.slice(-4)}</span></div><div class="detail-line"><span>交易哈希</span><span>${dep.stage==='waiting'?'等待检测':dep.hash}</span></div><div class="detail-line"><span>首次检测</span><span>${dep.stage==='waiting'?'—':dep.firstSeenAt}</span></div><div class="detail-line"><span>确认进度</span><span>${dep.stage==='waiting'?'0':dep.confirmations} / ${dep.required}</span></div></div><div class="audit-actions"><button type="button" data-copy-deposit-hash>${icon('copy')}复制哈希</button><button type="button" data-open-explorer>${icon('chart')}${NETWORKS[dep.network].explorerLabel} 区块浏览器</button></div></section><p class="exception-copy" data-deposit-exception>${depositException()}</p>${action}</div></div>`;
     }
     function creditDepositOnce(){
       const dep=state.deposit; if(!dep||dep.credited) return;
@@ -930,7 +959,8 @@
     function withdrawalStatusScreen(){
       const wd=state.withdrawal, index=Math.max(0,withdrawalStages.indexOf(wd.stage));
       const copy={reviewing:['提现申请已提交','平台正在执行提现安全审核。'],broadcasting:['正在发送链上交易','审核已通过，系统正在构建并发送交易。'],confirming:['等待网络确认','交易已发送到链上，正在等待网络确认。'],complete:['提现已完成','交易已获得网络确认，资金已发送到目标地址。']}[wd.stage];
-      return `<div class="app-screen subpage">${statusBar()}<header class="subpage-header"><button class="back-button" data-back type="button" aria-label="返回">‹</button><h1>提现详情</h1><span class="header-network">${networkMark(wd.network)}${wd.network}</span></header><div class="progress-page"><div class="deposit-amount">${tokenMark(wd.token)}<strong>${format(wd.amount)} ${wd.token}</strong><small>预计到账 ${format(wd.amount-wd.fee)} · 网络费 ${format(wd.fee)} ${wd.token}</small></div><section class="withdraw-status-card"><div class="withdraw-status-head"><span><h2>${copy[0]}</h2><p>${copy[1]}</p></span>${statusBadge(wd.stage==='complete'?'complete':wd.scenario==='normal'?'reviewing':'failed')}</div><div class="status-list">${withdrawalStages.map((stage,i)=>`<div class="status-line ${i<index?'done':i===index?'current':''}"><i>${i<index?'✓':i+1}</i><b>${{reviewing:'平台审核',broadcasting:'发送交易',confirming:'网络确认',complete:'完成'}[stage]}</b><span>${i<index?'已完成':i===index?'进行中':'等待中'}</span></div>`).join('')}</div></section><section class="audit-card withdrawal-audit"><div class="mini-section-title"><h2>处理信息</h2><span>${wd.referenceId}</span></div><div class="detail-list"><div class="detail-line"><span>提现地址</span><span>${wd.address.slice(0,8)}...${wd.address.slice(-6)}</span></div><div class="detail-line"><span>提现网络</span><span>${wd.network}</span></div><div class="detail-line"><span>交易哈希</span><span>${index<2?'等待生成':wd.hash}</span></div><div class="detail-line"><span>提交时间</span><span>${wd.submittedAt}</span></div><div class="detail-line"><span>预计到账</span><span class="positive">${format(wd.amount-wd.fee)} ${wd.token}</span></div></div></section><select id="withdrawal-scenario" class="scenario-select" aria-label="提现异常场景" ${wd.stage==='complete'?'disabled':''}><option value="normal">正常流程</option><option value="rejected" ${wd.scenario==='rejected'?'selected':''}>安全审核拒绝</option><option value="failed" ${wd.scenario==='failed'?'selected':''}>链上发送失败</option></select><p class="exception-copy" data-withdrawal-exception>${withdrawalExceptionCopy()}</p><button class="primary-button" data-advance-withdrawal type="button" ${wd.scenario!=='normal'?'disabled':''}>${wd.stage==='complete'?'返回资产中心':'推进演示状态'}</button></div></div>`;
+      const action=wd.stage==='complete'?'<button class="primary-button" data-return-assets type="button">返回资产中心</button>':wd.scenario!=='normal'?'<button class="primary-button" data-return-withdraw type="button">返回提现</button>':'';
+      return `<div class="app-screen subpage">${statusBar()}<header class="subpage-header"><button class="back-button" data-back type="button" aria-label="返回">‹</button><h1>提现详情</h1><span class="header-network">${networkMark(wd.network)}${wd.network}</span></header><div class="progress-page"><div class="deposit-amount">${tokenMark(wd.token)}<strong>${format(wd.amount)} ${wd.token}</strong><small>预计到账 ${format(wd.amount-wd.fee)} · 网络费 ${format(wd.fee)} ${wd.token}</small></div><section class="withdraw-status-card"><div class="withdraw-status-head"><span><h2>${copy[0]}</h2><p>${copy[1]}</p></span>${statusBadge(wd.stage==='complete'?'complete':wd.scenario==='normal'?'reviewing':'failed')}</div><div class="status-list">${withdrawalStages.map((stage,i)=>`<div class="status-line ${i<index?'done':i===index?'current':''}"><i>${i<index?'✓':i+1}</i><b>${{reviewing:'平台审核',broadcasting:'发送交易',confirming:'网络确认',complete:'完成'}[stage]}</b><span>${i<index?'已完成':i===index?'进行中':'等待中'}</span></div>`).join('')}</div></section><section class="audit-card withdrawal-audit"><div class="mini-section-title"><h2>处理信息</h2><span>${wd.referenceId}</span></div><div class="detail-list"><div class="detail-line"><span>提现地址</span><span>${wd.address.slice(0,8)}...${wd.address.slice(-6)}</span></div><div class="detail-line"><span>提现网络</span><span>${wd.network}</span></div><div class="detail-line"><span>交易哈希</span><span>${index<2?'等待生成':wd.hash}</span></div><div class="detail-line"><span>提交时间</span><span>${wd.submittedAt}</span></div><div class="detail-line"><span>预计到账</span><span class="positive">${format(wd.amount-wd.fee)} ${wd.token}</span></div></div></section><p class="exception-copy" data-withdrawal-exception>${withdrawalExceptionCopy()}</p>${action}</div></div>`;
     }
     function debitWithdrawalOnce(){
       const wd=state.withdrawal; if(wd.debited) return;
@@ -967,7 +997,7 @@
       const d=state.transferDraft, amount=Number(d.amount);
       const sourceBefore=state[d.source][d.token], destinationBefore=state[d.destination][d.token], sourceAfter=roundMoney(sourceBefore-amount), destinationAfter=roundMoney(destinationBefore+amount);
       const riskImpact=d.source==='contract'?`合约可用保证金预计减少 ${format(amount)} USD`:`合约账户保证金缓冲预计增加 ${format(amount)} USD`;
-      return `<div class="app-screen subpage">${statusBar()}<header class="subpage-header"><button class="back-button" data-back type="button" aria-label="返回">‹</button><h1>确认划转</h1></header><div class="form-page"><div class="review-card transfer-review-card"><div class="review-amount">${tokenMark(d.token)}<small>划转金额</small><strong id="transfer-amount-review">${format(amount)} ${d.token}</strong><span>${accountName(d.source)} → ${accountName(d.destination)}</span></div><section class="balance-comparison"><h2>划转前</h2><div><span>${accountName(d.source)}<b>${format(sourceBefore)} ${d.token}</b></span><span>${accountName(d.destination)}<b>${format(destinationBefore)} ${d.token}</b></span></div><h2>划转后</h2><div><span>${accountName(d.source)}<b>${format(sourceAfter)} ${d.token}</b></span><span>${accountName(d.destination)}<b class="positive">${format(destinationAfter)} ${d.token}</b></span></div><h2>风险影响</h2><p>${icon('shield')}<span><b>${riskImpact}</b><small>内部划转不改变总资产，不产生链上网络费。</small></span></p></section><div class="detail-list"><div class="detail-line"><span>资金方向</span><span>${accountName(d.source)} → ${accountName(d.destination)}</span></div><div class="detail-line"><span>手续费</span><span>0 ${d.token}</span></div><div class="detail-line"><span>预计完成</span><span>即时</span></div></div></div><button class="primary-button" id="confirm-transfer" type="button" style="margin-top:15px">确认划转</button><button class="secondary-link" id="simulate-transfer-failure" type="button">模拟本次划转失败</button></div></div>`;
+      return `<div class="app-screen subpage">${statusBar()}<header class="subpage-header"><button class="back-button" data-back type="button" aria-label="返回">‹</button><h1>确认划转</h1></header><div class="form-page"><div class="review-card transfer-review-card"><div class="review-amount">${tokenMark(d.token)}<small>划转金额</small><strong id="transfer-amount-review">${format(amount)} ${d.token}</strong><span>${accountName(d.source)} → ${accountName(d.destination)}</span></div><section class="balance-comparison"><h2>划转前</h2><div><span>${accountName(d.source)}<b>${format(sourceBefore)} ${d.token}</b></span><span>${accountName(d.destination)}<b>${format(destinationBefore)} ${d.token}</b></span></div><h2>划转后</h2><div><span>${accountName(d.source)}<b>${format(sourceAfter)} ${d.token}</b></span><span>${accountName(d.destination)}<b class="positive">${format(destinationAfter)} ${d.token}</b></span></div><h2>风险影响</h2><p>${icon('shield')}<span><b>${riskImpact}</b><small>内部划转不改变总资产，不产生链上网络费。</small></span></p></section><div class="detail-list"><div class="detail-line"><span>资金方向</span><span>${accountName(d.source)} → ${accountName(d.destination)}</span></div><div class="detail-line"><span>手续费</span><span>0 ${d.token}</span></div><div class="detail-line"><span>预计完成</span><span>即时</span></div></div></div><button class="primary-button" id="confirm-transfer" type="button" style="margin-top:15px">确认划转</button></div></div>`;
     }
     function completeTransferOnce(){
       const d=state.transferDraft; if(d.completed) return;
@@ -977,7 +1007,7 @@
     }
     function transferStatusScreen(){
       const d=state.transferDraft, result=state.transferResult;
-      if(result==='processing') return `<div class="app-screen subpage">${statusBar()}<header class="subpage-header"><button class="back-button" data-back type="button" aria-label="返回">‹</button><h1>账户划转</h1></header><div class="receipt"><div class="receipt-mark">↻</div><h2>正在更新账户余额</h2><p>ForX 正在处理内部账本划转，请勿重复提交。</p><button class="primary-button" data-complete-transfer type="button">完成演示处理</button></div></div>`;
+      if(result==='processing') return `<div class="app-screen subpage">${statusBar()}<header class="subpage-header"><button class="back-button" data-back type="button" aria-label="返回">‹</button><h1>账户划转</h1></header><div class="receipt"><div class="receipt-mark">↻</div><h2>正在更新账户余额</h2><p>ForX 正在处理内部账本划转，请勿重复提交。</p></div></div>`;
       if(result==='failed') return `<div class="app-screen subpage">${statusBar()}<header class="subpage-header"><button class="back-button" data-back type="button" aria-label="返回">‹</button><h1>账户划转</h1></header><div class="receipt error"><div class="receipt-mark">×</div><h2>划转失败</h2><p>账户余额没有发生变化。你可以保留当前金额与方向后重试。</p><button class="primary-button" id="retry-transfer" type="button">返回重试</button></div></div>`;
       return `<div class="app-screen subpage">${statusBar()}<header class="subpage-header"><button class="back-button" data-back type="button" aria-label="返回">‹</button><h1>账户划转</h1></header><div class="receipt transfer-receipt" data-transfer-receipt><div class="receipt-mark">✓</div><h2>划转完成</h2><p>${format(d.amount)} ${d.token} 已从${accountName(d.source)}划入${accountName(d.destination)}。手续费 0 ${d.token}。</p><div class="receipt-details"><div><small>参考编号</small><b>${d.referenceId||'FXTR-DEMO'}</b></div><div><small>完成时间</small><b>${d.completedAt||'2026-07-16 10:22:41'}</b></div><div><small>划转方向</small><b>${accountName(d.source)} → ${accountName(d.destination)}</b></div><div><small>处理方式</small><b>ForX 内部账本</b></div></div><button class="primary-button" id="open-transfer-records" type="button">查看资金记录</button><button class="secondary-link" data-transfer-done type="button">返回资产中心</button></div></div>`;
     }
@@ -1079,7 +1109,42 @@
       if(route==='value-history') return valueHistoryScreen();
       return subpage(route==='value-history'?'账户价值':'资产操作',route);
     }
-    function render(){ root.dataset.route=state.route; root.innerHTML=screenHtml(); }
+    function demoConsoleState(title,copy){
+      return `<div class="demo-console-state"><i></i><span><b>${title}</b><small>${copy}</small></span></div>`;
+    }
+    function depositScenarioControl(){
+      const dep=state.deposit;
+      return `<label class="demo-console-field">流程场景<select id="deposit-scenario" aria-label="充值异常场景" ${dep.credited?'disabled':''}><option value="normal" ${dep.scenario==='normal'?'selected':''}>正常流程</option><option value="below-minimum" ${dep.scenario==='below-minimum'?'selected':''}>低于最小充值金额</option><option value="congestion" ${dep.scenario==='congestion'?'selected':''}>网络确认较慢</option><option value="mismatch" ${dep.scenario==='mismatch'?'selected':''}>币种或网络不匹配</option><option value="failed" ${dep.scenario==='failed'?'selected':''}>链上交易失败</option><option value="credit-delay" ${dep.scenario==='credit-delay'?'selected':''}>入账延迟</option></select></label>`;
+    }
+    function withdrawalScenarioControl(){
+      const wd=state.withdrawal;
+      return `<label class="demo-console-field">流程场景<select id="withdrawal-scenario" aria-label="提现异常场景" ${wd.stage==='complete'?'disabled':''}><option value="normal" ${wd.scenario==='normal'?'selected':''}>正常流程</option><option value="rejected" ${wd.scenario==='rejected'?'selected':''}>安全审核拒绝</option><option value="failed" ${wd.scenario==='failed'?'selected':''}>链上发送失败</option></select></label>`;
+    }
+    function demoConsoleActions(){
+      if(state.route==='deposit'){
+        const draft=state.depositDraft;
+        if(draft.method==='address') return `<section class="demo-console-section"><h3>生成充值事件</h3><p>模拟链上监控服务发现一笔转入当前地址的交易。</p><div class="demo-console-actions"><button class="demo-console-button primary" data-start-demo-deposit type="button">收到 500 ${draft.token}</button></div></section>`;
+        return `<section class="demo-console-section"><h3>钱包连接状态</h3><p>用于验证外部钱包连接失效和账户不一致时的恢复流程。</p><div class="demo-console-actions"><button class="demo-console-button" id="simulate-reconnect" type="button">连接失效</button><button class="demo-console-button danger" id="simulate-mismatch" type="button">账户不一致</button></div></section>`;
+      }
+      if(state.route==='deposit-progress'&&state.deposit){
+        const dep=state.deposit, terminal=['below-minimum','mismatch','failed'].includes(dep.scenario), delayed=dep.scenario==='credit-delay'&&dep.stage==='crediting', complete=dep.stage==='complete';
+        const stageLabel={waiting:'等待检测',confirming:'网络确认',crediting:'资金入账',complete:'已完成'}[dep.stage];
+        return `<section class="demo-console-section">${demoConsoleState(stageLabel,`${dep.confirmations} / ${dep.required} 次确认`)}</section><section class="demo-console-section"><h3>充值处理</h3><p>选择场景后推进当前交易的处理阶段。</p>${depositScenarioControl()}<div class="demo-console-actions"><button class="demo-console-button primary" data-advance-deposit type="button" ${terminal||delayed||complete?'disabled':''}>推进下一阶段</button></div></section>`;
+      }
+      if(state.route==='withdraw-status'&&state.withdrawal){
+        const wd=state.withdrawal, complete=wd.stage==='complete';
+        const stageLabel={reviewing:'安全审核',broadcasting:'发送交易',confirming:'网络确认',complete:'已完成'}[wd.stage];
+        return `<section class="demo-console-section">${demoConsoleState(stageLabel,wd.referenceId)}</section><section class="demo-console-section"><h3>提现处理</h3><p>模拟平台审核和链上发送结果。</p>${withdrawalScenarioControl()}<div class="demo-console-actions"><button class="demo-console-button primary" data-advance-withdrawal type="button" ${wd.scenario!=='normal'||complete?'disabled':''}>推进下一阶段</button></div></section>`;
+      }
+      if(state.route==='transfer-review') return `<section class="demo-console-section"><h3>划转结果</h3><p>手机内“确认划转”执行正常流程；此处可直接触发失败分支。</p><div class="demo-console-actions"><button class="demo-console-button danger" id="simulate-transfer-failure" type="button">下一次处理失败</button></div></section>`;
+      if(state.route==='transfer-status'&&state.transferResult==='processing') return `<section class="demo-console-section">${demoConsoleState('账本处理中','余额尚未变更')}</section><section class="demo-console-section"><h3>完成异步处理</h3><p>模拟内部账本服务返回成功结果。</p><div class="demo-console-actions"><button class="demo-console-button primary" data-complete-transfer type="button">完成处理</button></div></section>`;
+      return `<p class="demo-console-note">当前页面没有专用模拟动作。产品操作请直接在手机界面中完成。</p>`;
+    }
+    function demoConsoleHtml(){
+      const routeName={assets:'资产中心',deposit:'充值入口','deposit-progress':'充值详情',withdraw:'提现入口','withdraw-review':'提现确认','withdraw-status':'提现详情',transfer:'账户划转','transfer-review':'划转确认','transfer-status':'划转结果',records:'资金记录','value-history':'账户价值'}[state.route]||'产品页面';
+      return `<header class="demo-console-header"><span class="demo-console-eyebrow"><i></i>不属于产品界面</span><h2>演示控制台</h2><div class="demo-console-route">当前页面 <b>${routeName}</b></div></header><div class="demo-console-body">${demoConsoleActions()}</div>`;
+    }
+    function render(){ root.dataset.route=state.route; root.innerHTML=screenHtml(); demoConsoleRoot.innerHTML=demoConsoleHtml(); }
     function navigate(route,params={}){ state.routeStack.push(state.route); state.route=route; state.routeParams=params; render(); }
     function goBack(){ state.route=state.routeStack.pop()||'assets'; render(); }
     function setAccount(account){ state.account=account; render(); announce(account==='funding'?'已切换到资金账户':'已切换到合约账户'); }
@@ -1108,6 +1173,8 @@
       if(target.id==='launch-wallet') return beginDeposit('wallet');
       if(target.dataset.advanceDeposit!==undefined) return advanceDeposit();
       if(target.dataset.returnDeposit!==undefined){ state.routeStack=[]; state.route='deposit'; render(); return; }
+      if(target.dataset.returnAssets!==undefined){ state.routeStack=[]; state.route='assets'; render(); return; }
+      if(target.dataset.returnWithdraw!==undefined){ state.routeStack=[]; state.route='withdraw'; state.withdrawal=null; render(); return; }
       if(target.id==='withdraw-token') return simpleSelectionSheet('选择提现币种',CONFIG.tokens,'data-withdraw-token');
       if(target.id==='withdraw-network') return simpleSelectionSheet('选择提现网络',CONFIG.networks,'data-withdraw-network');
       if(target.id==='paste-demo-address'||target.id==='scan-address'){ state.withdrawalDraft.address=NETWORKS[state.withdrawalDraft.network].address; render(); announce(target.id==='scan-address'?'已模拟扫描地址':'已填入示例地址'); return; }
@@ -1159,6 +1226,33 @@
       if(target.dataset.chartMode){ state.valueMode=target.dataset.chartMode; state.selectedValuePoint=null; render(); announce(state.valueMode==='value'?'显示账户价值':'显示剔除资金流收益'); return; }
       if(target.dataset.chartPoint!==undefined){ state.selectedValuePoint=Number(target.dataset.chartPoint); render(); return; }
       if(target.matches('.visibility-toggle')){ state.valuesHidden=!state.valuesHidden; render(); announce(state.valuesHidden?'资产金额已隐藏':'资产金额已显示'); }
+    });
+    demoConsoleRoot.addEventListener('click',event=>{
+      const target=event.target.closest('button'); if(!target) return;
+      if(target.dataset.startDemoDeposit!==undefined) return beginDeposit('address');
+      if(target.id==='simulate-reconnect'){
+        state.depositDraft.walletConnected=false; render();
+        return openSheet(`<div class="sheet-header"><div><h2>恢复钱包连接</h2><p>钱包连接可能已在外部应用中断开。重新连接后可继续构建充值交易，不会改变当前登录状态。</p></div><button class="sheet-close" data-sheet-close aria-label="关闭">×</button></div><button class="sheet-action" id="reconnect-wallet">连接 ${NETWORKS[state.depositDraft.network].family==='solana'?'Phantom':'MetaMask'}</button>`,document.querySelector('#simulate-reconnect'));
+      }
+      if(target.id==='simulate-mismatch'){
+        state.depositDraft.walletMatches=false; render();
+        return openSheet(`<div class="sheet-header"><div><h2>钱包地址不一致</h2><p>当前钱包账户与登录时记录的地址不同。请在钱包中切换回登录账户后继续。</p></div><button class="sheet-close" data-sheet-close aria-label="关闭">×</button></div><button class="sheet-action" id="acknowledge-mismatch">我知道了</button>`,document.querySelector('#simulate-mismatch'));
+      }
+      if(target.dataset.advanceDeposit!==undefined) return advanceDeposit();
+      if(target.dataset.advanceWithdrawal!==undefined) return advanceWithdrawal();
+      if(target.id==='simulate-transfer-failure'){ state.transferResult='failed'; return navigate('transfer-status'); }
+      if(target.dataset.completeTransfer!==undefined){ completeTransferOnce(); state.transferResult='complete'; render(); announce('划转完成'); }
+    });
+    demoConsoleRoot.addEventListener('change',event=>{
+      if(event.target.id==='deposit-scenario'){
+        const dep=state.deposit; if(dep.credited){ render(); return; } dep.scenario=event.target.value; dep.amount=dep.baseAmount;
+        if(dep.scenario==='below-minimum') dep.amount=NETWORKS[dep.network].min[dep.token]/2;
+        render();
+      }
+      if(event.target.id==='withdrawal-scenario'){
+        if(state.withdrawal.stage==='complete'||state.withdrawal.debited){ state.withdrawal.scenario='normal'; render(); return; }
+        state.withdrawal.scenario=event.target.value; render();
+      }
     });
     root.addEventListener('input',event=>{
       if(event.target.id==='wallet-deposit-amount'){ state.depositDraft.amount=event.target.value; const network=NETWORKS[state.depositDraft.network]; document.querySelector('#launch-wallet').disabled=!(Number(event.target.value)>=network.min[state.depositDraft.token]&&state.depositDraft.walletMatches&&state.depositDraft.walletConnected); }
