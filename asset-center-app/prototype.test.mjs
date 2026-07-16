@@ -344,3 +344,127 @@ test('account value views distinguish external flow, returns, and internal trans
     assert.equal(await page.locator('[data-value-marker="withdrawal"]').count(), 1);
   });
 });
+
+test('page and error galleries cover the complete approved prototype', async () => {
+  await withPage(async page => {
+    for (const label of ['资产主页','地址充值','钱包充值','网络确认','提现','地址簿','账户划转','资金记录','账户价值']) {
+      assert.equal(await page.locator('#page-gallery .gallery-copy h3').getByText(label, { exact: true }).count(), 1, label);
+    }
+    for (const label of ['低于最小金额','钱包地址不一致','MFA 验证失败','网络不匹配','提现失败']) {
+      assert.equal(await page.locator('#error-gallery .gallery-copy h3').getByText(label, { exact: true }).count(), 1, label);
+    }
+  });
+});
+
+test('Escape closes a sheet and restores focus to its trigger', async () => {
+  await withPage(async page => {
+    await openDeposit(page);
+    await page.locator('#deposit-network').focus();
+    await page.locator('#deposit-network').click();
+    assert.equal(await page.locator('#sheet-root').isVisible(), true);
+    await page.keyboard.press('Escape');
+    assert.equal(await page.locator('#sheet-root').isHidden(), true);
+    assert.equal(await page.evaluate(() => document.activeElement?.id), 'deposit-network');
+  });
+});
+
+test('email address save binds MFA and returns to the preserved address draft', async () => {
+  await withPage(async page => {
+    await setSession(page, 'email-unbound');
+    await openWithdrawal(page);
+    await page.locator('#open-address-book').click();
+    await page.locator('#add-address').click();
+    await page.locator('#address-label').fill('待验证地址');
+    await page.locator('#address-value').fill('0xabcdefabcdefabcdefabcdefabcdefabcdefabcd');
+    await page.locator('#save-address').click();
+    await route(page, 'mfa-setup');
+    await page.locator('#mfa-secret-confirmed').check();
+    await page.locator('#mfa-code').fill('123456');
+    await page.locator('#confirm-mfa-setup').click();
+    await route(page, 'add-address');
+    assert.equal(await page.locator('#address-label').inputValue(), '待验证地址');
+    await page.locator('#save-address').click();
+    assert.match(await page.locator('#sheet-root').textContent(), /MFA 验证/);
+  });
+});
+
+test('withdrawal details include rejected and failed demonstration states', async () => {
+  await withPage(async page => {
+    await setSession(page, 'wallet');
+    await openWithdrawal(page);
+    await fillWithdrawal(page);
+    await page.locator('#submit-withdrawal').click();
+    await page.locator('#withdrawal-scenario').selectOption('rejected');
+    assert.match(await page.locator('[data-withdrawal-exception]').textContent(), /提现已被拒绝/);
+    await page.locator('#withdrawal-scenario').selectOption('failed');
+    assert.match(await page.locator('[data-withdrawal-exception]').textContent(), /链上发送失败/);
+  });
+});
+
+test('reset restores balances, session, routes, and prototype records', async () => {
+  await withPage(async page => {
+    await setSession(page, 'email-bound');
+    await page.locator('#open-transfer').click();
+    await page.locator('#reset-prototype').click();
+    await route(page, 'assets');
+    const snapshot = await page.evaluate(() => window.assetPrototype.getState());
+    assert.equal(snapshot.session.type, 'wallet');
+    assert.equal(snapshot.funding.USDT, 18240);
+    assert.equal(snapshot.records.length, 0);
+    assert.equal(await page.locator('#session-mode').inputValue(), 'wallet');
+  });
+});
+
+test('standalone prototype performs no network requests and logs no errors', async () => {
+  const context = await browser.newContext({ viewport: { width: 1280, height: 1000 } });
+  const page = await context.newPage();
+  const requests = [];
+  const errors = [];
+  page.on('request', request => { if (!request.url().startsWith('file:')) requests.push(request.url()); });
+  page.on('console', message => { if (message.type() === 'error') errors.push(message.text()); });
+  page.on('pageerror', error => errors.push(error.message));
+  await page.goto(htmlPath.href);
+  for (const target of ['deposit','withdraw','transfer','records','value-history']) {
+    await page.evaluate(routeName => window.assetPrototype.navigate(routeName), target);
+  }
+  assert.deepEqual(requests, []);
+  assert.deepEqual(errors, []);
+  await context.close();
+});
+
+test('advanced record filters combine asset, network, status, and time', async () => {
+  await withPage(async page => {
+    await page.locator('#open-records').click();
+    await page.locator('#open-record-filters').click();
+    await page.locator('#record-asset-filter').selectOption('USDC');
+    await page.locator('#record-network-filter').selectOption('Base');
+    await page.locator('#record-status-filter').selectOption('failed');
+    await page.locator('#record-time-filter').selectOption('month');
+    await page.locator('#apply-record-filters').click();
+    assert.equal(await page.locator('[data-record-type]:visible').count(), 1);
+    assert.match(await page.locator('[data-record-type]:visible').textContent(), /提现 · USDC/);
+    assert.match(await page.locator('[data-record-type]:visible').textContent(), /Base/);
+  });
+});
+
+test('bottom sheet traps keyboard focus between its first and last controls', async () => {
+  await withPage(async page => {
+    await openDeposit(page);
+    await page.locator('#deposit-network').click();
+    const first = page.locator('#sheet-root button').first();
+    const last = page.locator('#sheet-root button').last();
+    await first.focus();
+    await page.keyboard.press('Shift+Tab');
+    assert.equal(await last.evaluate(node => node === document.activeElement), true);
+    await page.keyboard.press('Tab');
+    assert.equal(await first.evaluate(node => node === document.activeElement), true);
+  });
+});
+
+test('notification shortcut explains prototype-only account events', async () => {
+  await withPage(async page => {
+    await page.getByRole('button', { name: '通知' }).click();
+    assert.match(await page.locator('#sheet-root').textContent(), /充值已到账/);
+    assert.match(await page.locator('#sheet-root').textContent(), /原型通知/);
+  });
+});

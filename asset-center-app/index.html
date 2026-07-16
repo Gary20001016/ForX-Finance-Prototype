@@ -294,6 +294,26 @@
     .gallery { padding:70px max(24px,calc((100vw - 1180px)/2)); border-top:1px solid var(--line); }
     .gallery h2 { font-size:32px; }
     .gallery p { color:var(--muted); }
+    .gallery-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:16px; margin-top:24px; }
+    .gallery-card { overflow:hidden; border:1px solid var(--line); border-radius:16px; background:#0b0e0c; }
+    .gallery-preview { height:330px; padding:19px 14px; background:linear-gradient(160deg,rgba(99,246,162,.035),transparent 40%),var(--bg); position:relative; }
+    .gallery-preview::before { content:"9:41"; display:block; margin-bottom:20px; color:#dfe6e1; font-size:9px; font-weight:650; }
+    .gallery-preview .mini-tabs { display:flex; gap:15px; padding-bottom:9px; border-bottom:1px solid var(--line); color:#68716b; font-size:8px; }
+    .gallery-preview .mini-tabs b { color:var(--text); border-bottom:2px solid var(--green); padding-bottom:8px; }
+    .gallery-preview .mini-value { margin:19px 0 5px; font-size:23px; }
+    .gallery-preview .mini-copy { color:#707972; font-size:7px; line-height:1.55; }
+    .gallery-preview .mini-actions { display:grid; grid-template-columns:repeat(3,1fr); gap:5px; margin-top:20px; }
+    .gallery-preview .mini-actions i { height:30px; border:1px solid var(--line); border-radius:8px; background:#111613; }
+    .gallery-preview .mini-actions i:first-child { background:var(--green); }
+    .gallery-preview .mini-line { height:1px; margin:15px 0 10px; background:var(--line); }
+    .gallery-preview .mini-row { height:34px; margin-top:5px; border-bottom:1px solid rgba(255,255,255,.07); position:relative; }
+    .gallery-preview .mini-row::before { content:""; position:absolute; top:6px; width:21px; height:21px; border-radius:50%; background:#188a67; }
+    .gallery-preview .mini-row::after { content:""; position:absolute; top:8px; left:30px; width:90px; height:6px; border-radius:4px; background:#d8dfda; box-shadow:0 11px #38403b; }
+    .gallery-preview .mini-status { margin:23px 0 0; padding:13px; border:1px solid rgba(99,246,162,.18); border-radius:11px; color:#b8c2bb; font-size:8px; }
+    .gallery-preview.error .mini-status { border-color:rgba(255,116,125,.2); color:#ff9ba1; }
+    .gallery-copy { padding:13px 14px 15px; border-top:1px solid var(--line); }
+    .gallery-copy h3 { margin:0; font-size:13px; }
+    .gallery-copy p { margin:5px 0 0; font-size:9px; line-height:1.5; }
     @media (max-width:800px) { .prototype-shell { grid-template-columns:1fr; padding:0; gap:0; } .prototype-meta { display:none; } .phone { width:100%; max-width:390px; margin:auto; border-radius:0; border:0; } .gallery { display:none; } }
   </style>
 </head>
@@ -316,8 +336,8 @@
         <div id="live-region" class="sr-only" aria-live="polite"></div>
       </section>
     </section>
-    <section class="gallery" id="page-gallery"><h2>页面拆解</h2><p>资金账户、合约账户、充值、提现、地址簿、账户划转、资金记录与账户价值。</p></section>
-    <section class="gallery" id="error-gallery"><h2>异常状态</h2><p>网络确认、钱包连接、MFA、地址和交易异常。</p></section>
+    <section class="gallery" id="page-gallery"><h2>页面拆解</h2><p>资金账户、合约账户、充值、提现、地址簿、账户划转、资金记录与账户价值。</p><div class="gallery-grid" id="page-gallery-grid"></div></section>
+    <section class="gallery" id="error-gallery"><h2>异常状态</h2><p>网络确认、钱包连接、MFA、地址和交易异常。</p><div class="gallery-grid" id="error-gallery-grid"></div></section>
   </main>
   <script>
     const NETWORKS = Object.freeze({
@@ -350,7 +370,7 @@
       withdrawal:null, addressBook:[], pendingAction:null, pendingAddress:null,
       transferDraft:{ source:'funding', destination:'contract', token:'USDT', amount:'', completed:false },
       transferResult:null,
-      recordsFilter:'all', selectedRecord:null, valueAccount:'all', valueRange:'30d',
+      recordsFilter:'all', recordAdvanced:{asset:'all',network:'all',status:'all',time:'all'}, selectedRecord:null, valueAccount:'all', valueRange:'30d',
       draft:{}, records:[]
     });
     let state = initialState();
@@ -393,7 +413,7 @@
           <button class="account-tab" data-account-tab="contract" role="tab" aria-selected="${state.account==='contract'}">合约账户</button>
         </div>
         <div class="nav-tools">
-          <button class="icon-button notice" type="button" aria-label="通知">${icons.bell}</button>
+          <button class="icon-button notice" id="open-notifications" type="button" aria-label="通知">${icons.bell}</button>
           <button class="icon-button" id="open-records" type="button" aria-label="资金记录">${icons.history}</button>
         </div>
       </nav>`;
@@ -568,10 +588,15 @@
       navigate('withdraw-status');
     }
     const withdrawalStages=['reviewing','broadcasting','confirming','complete'];
+    function withdrawalExceptionCopy(){
+      if(state.withdrawal.scenario==='rejected') return '提现已被拒绝：安全审核未通过。资金未扣减，请核对地址或联系支持。';
+      if(state.withdrawal.scenario==='failed') return '链上发送失败：交易没有成功广播，资金已保留在资金账户，可稍后重试。';
+      return '';
+    }
     function withdrawalStatusScreen(){
       const wd=state.withdrawal, index=Math.max(0,withdrawalStages.indexOf(wd.stage));
       const copy={reviewing:['提现申请已提交','平台正在执行提现安全审核。'],broadcasting:['正在发送链上交易','审核已通过，系统正在构建并发送交易。'],confirming:['等待网络确认','交易已发送到链上，正在等待网络确认。'],complete:['提现已完成','交易已获得网络确认，资金已发送到目标地址。']}[wd.stage];
-      return `<div class="app-screen subpage">${statusBar()}<header class="subpage-header"><button class="back-button" data-back type="button" aria-label="返回">‹</button><h1>提现详情</h1></header><div class="progress-page"><div class="deposit-amount"><span class="token-icon">₮</span><strong>${format(wd.amount)} ${wd.token}</strong><small>${wd.network} · 手续费 ${format(wd.fee)} ${wd.token}</small></div><section class="withdraw-status-card"><h2>${copy[0]}</h2><p>${copy[1]}</p><div class="status-list">${withdrawalStages.map((stage,i)=>`<div class="status-line ${i<index?'done':i===index?'current':''}"><i>${i<index?'✓':i+1}</i><b>${{reviewing:'平台审核',broadcasting:'发送交易',confirming:'网络确认',complete:'完成'}[stage]}</b><span>${i<index?'已完成':i===index?'进行中':'等待中'}</span></div>`).join('')}</div></section><div class="detail-list"><div class="detail-line"><span>提现地址</span><span>${wd.address.slice(0,8)}...${wd.address.slice(-6)}</span></div><div class="detail-line"><span>预计到账</span><span>${format(wd.amount-wd.fee)} ${wd.token}</span></div></div><button class="primary-button" data-advance-withdrawal type="button">${wd.stage==='complete'?'返回资产中心':'推进演示状态'}</button></div></div>`;
+      return `<div class="app-screen subpage">${statusBar()}<header class="subpage-header"><button class="back-button" data-back type="button" aria-label="返回">‹</button><h1>提现详情</h1></header><div class="progress-page"><div class="deposit-amount"><span class="token-icon">₮</span><strong>${format(wd.amount)} ${wd.token}</strong><small>${wd.network} · 手续费 ${format(wd.fee)} ${wd.token}</small></div><section class="withdraw-status-card"><h2>${copy[0]}</h2><p>${copy[1]}</p><div class="status-list">${withdrawalStages.map((stage,i)=>`<div class="status-line ${i<index?'done':i===index?'current':''}"><i>${i<index?'✓':i+1}</i><b>${{reviewing:'平台审核',broadcasting:'发送交易',confirming:'网络确认',complete:'完成'}[stage]}</b><span>${i<index?'已完成':i===index?'进行中':'等待中'}</span></div>`).join('')}</div></section><div class="detail-list"><div class="detail-line"><span>提现地址</span><span>${wd.address.slice(0,8)}...${wd.address.slice(-6)}</span></div><div class="detail-line"><span>预计到账</span><span>${format(wd.amount-wd.fee)} ${wd.token}</span></div></div><select id="withdrawal-scenario" class="scenario-select" aria-label="提现异常场景"><option value="normal">正常流程</option><option value="rejected" ${wd.scenario==='rejected'?'selected':''}>安全审核拒绝</option><option value="failed" ${wd.scenario==='failed'?'selected':''}>链上发送失败</option></select><p class="exception-copy" data-withdrawal-exception>${withdrawalExceptionCopy()}</p><button class="primary-button" data-advance-withdrawal type="button" ${wd.scenario!=='normal'?'disabled':''}>${wd.stage==='complete'?'返回资产中心':'推进演示状态'}</button></div></div>`;
     }
     function debitWithdrawalOnce(){
       const wd=state.withdrawal; if(wd.debited) return;
@@ -617,8 +642,15 @@
     function recordTypeLabel(type){ return type==='deposit'?'充值':type==='withdrawal'?'提现':'账户划转'; }
     function recordStatusLabel(status){ return status==='complete'?'已完成':status==='confirming'?'确认中':status==='reviewing'?'审核中':status==='failed'?'失败':'处理中'; }
     function recordsScreen(){
-      const records=allRecords().filter(record=>state.recordsFilter==='all'||record.type===state.recordsFilter);
-      return `<div class="app-screen subpage">${statusBar()}<header class="subpage-header"><button class="back-button" data-back type="button" aria-label="返回">‹</button><h1>资金记录</h1><button class="icon-button" style="margin-left:auto" aria-label="更多筛选">⌁</button></header><div class="filter-row">${[['all','全部'],['deposit','充值'],['withdrawal','提现'],['transfer','划转']].map(([value,label])=>`<button class="filter-chip" data-record-filter="${value}" aria-pressed="${state.recordsFilter===value}">${label}</button>`).join('')}</div><section class="records-summary" data-record-summary><div class="records-summary-grid"><div class="summary-item"><small>资金净流入</small><b class="positive">+2,250.00</b></div><div class="summary-item"><small>充值</small><b>2,500.00</b></div><div class="summary-item"><small>提现</small><b>250.00</b></div></div><p class="summary-note">本月 · 账户划转不计入外部资金流</p></section><div class="record-date">最近记录</div>${records.map(fundRecordMarkup).join('')||'<div class="empty-state">当前筛选条件下没有记录。</div>'}</div>`;
+      const advanced=state.recordAdvanced;
+      const records=allRecords().filter(record=>(state.recordsFilter==='all'||record.type===state.recordsFilter)&&(advanced.asset==='all'||record.token===advanced.asset)&&(advanced.network==='all'||record.network===advanced.network)&&(advanced.status==='all'||record.status===advanced.status));
+      const activeAdvanced=Object.values(advanced).some(value=>value!=='all');
+      return `<div class="app-screen subpage">${statusBar()}<header class="subpage-header"><button class="back-button" data-back type="button" aria-label="返回">‹</button><h1>资金记录</h1><button class="icon-button ${activeAdvanced?'notice':''}" id="open-record-filters" type="button" style="margin-left:auto" aria-label="更多筛选">⌁</button></header><div class="filter-row">${[['all','全部'],['deposit','充值'],['withdrawal','提现'],['transfer','划转']].map(([value,label])=>`<button class="filter-chip" data-record-filter="${value}" aria-pressed="${state.recordsFilter===value}">${label}</button>`).join('')}</div><section class="records-summary" data-record-summary><div class="records-summary-grid"><div class="summary-item"><small>资金净流入</small><b class="positive">+2,250.00</b></div><div class="summary-item"><small>充值</small><b>2,500.00</b></div><div class="summary-item"><small>提现</small><b>250.00</b></div></div><p class="summary-note">本月 · 账户划转不计入外部资金流</p></section><div class="record-date">最近记录${activeAdvanced?' · 已应用高级筛选':''}</div>${records.map(fundRecordMarkup).join('')||'<div class="empty-state">当前筛选条件下没有记录。</div>'}</div>`;
+    }
+    function recordFiltersSheet(){
+      const current=state.recordAdvanced;
+      const options=(values,selected)=>values.map(([value,label])=>`<option value="${value}" ${selected===value?'selected':''}>${label}</option>`).join('');
+      openSheet(`<div class="sheet-header"><div><h2>筛选资金记录</h2><p>类型筛选在页面顶部；这里可叠加币种、网络、状态和时间。</p></div><button class="sheet-close" data-sheet-close aria-label="关闭">×</button></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:17px"><label class="field-label" style="display:block">币种<select class="scenario-select" id="record-asset-filter">${options([['all','全部币种'],['USDT','USDT'],['USDC','USDC']],current.asset)}</select></label><label class="field-label" style="display:block">网络<select class="scenario-select" id="record-network-filter">${options([['all','全部网络'],...CONFIG.networks.map(item=>[item,item])],current.network)}</select></label><label class="field-label" style="display:block">状态<select class="scenario-select" id="record-status-filter">${options([['all','全部状态'],['complete','已完成'],['confirming','确认中'],['failed','失败']],current.status)}</select></label><label class="field-label" style="display:block">时间<select class="scenario-select" id="record-time-filter">${options([['all','全部时间'],['week','近 7 天'],['month','本月'],['quarter','近 3 个月']],current.time)}</select></label></div><button class="sheet-action" id="apply-record-filters">应用筛选</button><button class="secondary-link" id="clear-record-filters">清除高级筛选</button>`);
     }
     function fundRecordMarkup(record){
       const signed=record.type==='deposit'?'+':record.type==='withdrawal'?'-':'';
@@ -698,7 +730,7 @@
       if(target.id==='confirm-mfa-setup'){
         const confirmed=document.querySelector('#mfa-secret-confirmed').checked, code=document.querySelector('#mfa-code').value;
         if(!confirmed||code!=='123456'){ document.querySelector('#mfa-setup-error').textContent='请确认已保存密钥，并输入示例验证码 123456。'; return; }
-        state.session.mfaBound=true; document.querySelector('#session-mode').value='email-bound'; state.routeStack.pop(); state.route='withdraw-review'; render(); announce('MFA 已绑定'); return;
+        state.session.mfaBound=true; document.querySelector('#session-mode').value='email-bound'; state.routeStack.pop(); state.route=state.pendingAction==='save-address'?'add-address':'withdraw-review'; render(); announce('MFA 已绑定'); return;
       }
       if(target.id==='confirm-mfa-verify'){
         if(document.querySelector('#mfa-verify-code').value!=='123456'){ document.querySelector('#mfa-verify-error').textContent='验证码错误，请输入示例验证码 123456。'; return; }
@@ -723,6 +755,8 @@
       if(target.dataset.completeTransfer!==undefined){ completeTransferOnce(); state.transferResult='complete'; render(); announce('划转完成'); return; }
       if(target.id==='retry-transfer'){ state.routeStack.pop(); state.route='transfer-review'; state.transferResult=null; render(); return; }
       if(target.dataset.transferDone!==undefined){ state.routeStack=[]; state.route='assets'; render(); return; }
+      if(target.id==='open-notifications') return openSheet(`<div class="sheet-header"><div><h2>原型通知</h2><p>这里展示与账户资金直接相关的状态提醒。</p></div><button class="sheet-close" data-sheet-close aria-label="关闭">×</button></div><div class="sheet-list"><div class="sheet-option" style="font-size:10px">充值已到账 · 500 USDC<span>12 分钟前</span></div><div class="sheet-option" style="font-size:10px">提现正在等待网络确认<span>今天 08:46</span></div></div>`);
+      if(target.id==='open-record-filters') return recordFiltersSheet();
       if(target.dataset.recordFilter){ state.recordsFilter=target.dataset.recordFilter; render(); return; }
       if(target.dataset.recordId){ state.selectedRecord=target.dataset.recordId; return navigate('record-detail'); }
       if(target.dataset.valueAccount){ state.valueAccount=target.dataset.valueAccount; render(); announce('已切换账户价值范围'); return; }
@@ -750,6 +784,7 @@
     });
     root.addEventListener('change',event=>{
       if(event.target.id==='deposit-scenario'){ state.deposit.scenario=event.target.value; render(); }
+      if(event.target.id==='withdrawal-scenario'){ state.withdrawal.scenario=event.target.value; render(); }
       if(event.target.id==='withdraw-risk'){ state.withdrawalDraft.acknowledged=event.target.checked; document.querySelector('#submit-withdrawal').disabled=!event.target.checked; }
     });
     sheetRoot.addEventListener('click',event=>{
@@ -769,11 +804,52 @@
         if(code!=='123456'){ sheetRoot.querySelector('#address-mfa-error').textContent='验证码错误，请输入示例验证码 123456。'; return; }
         closeSheet(); savePendingAddress();
       }
+      if(target.id==='apply-record-filters'){
+        state.recordAdvanced={asset:sheetRoot.querySelector('#record-asset-filter').value,network:sheetRoot.querySelector('#record-network-filter').value,status:sheetRoot.querySelector('#record-status-filter').value,time:sheetRoot.querySelector('#record-time-filter').value};
+        closeSheet(); render(); announce('已应用资金记录筛选'); return;
+      }
+      if(target.id==='clear-record-filters'){ state.recordAdvanced={asset:'all',network:'all',status:'all',time:'all'}; closeSheet(); render(); announce('已清除高级筛选'); }
     });
-    document.addEventListener('keydown',event=>{ if(event.key==='Escape'&&!sheetRoot.hidden) closeSheet(); });
+    document.addEventListener('keydown',event=>{
+      if(sheetRoot.hidden) return;
+      if(event.key==='Escape'){ event.preventDefault(); closeSheet(); return; }
+      if(event.key!=='Tab') return;
+      const focusable=[...sheetRoot.querySelectorAll('button:not([disabled]),input:not([disabled]),select:not([disabled]),[tabindex]:not([tabindex="-1"])')];
+      if(!focusable.length) return;
+      const first=focusable[0], last=focusable[focusable.length-1];
+      if(event.shiftKey&&document.activeElement===first){ event.preventDefault(); last.focus(); }
+      else if(!event.shiftKey&&document.activeElement===last){ event.preventDefault(); first.focus(); }
+    });
+    function galleryPreview(item,isError=false){
+      const status=isError?`<div class="mini-status">${item.status}</div>`:`<div class="mini-tabs"><b>${item.tab||'资金账户'}</b><span>${item.alt||'合约账户'}</span></div><div class="mini-value">${item.value||'24,680.42'}</div><div class="mini-copy">${item.meta||'总资产估值 · 今日收益 +0.74%'}</div><div class="mini-actions"><i></i><i></i><i></i></div><div class="mini-line"></div><div class="mini-row"></div><div class="mini-row"></div>`;
+      return `<article class="gallery-card"><div class="gallery-preview ${isError?'error':''}">${status}</div><div class="gallery-copy"><h3>${item.title}</h3><p>${item.copy}</p></div></article>`;
+    }
+    function renderGalleries(){
+      const pages=[
+        {title:'资产主页',copy:'资金与合约账户切换、资产价值、操作与组合。'},
+        {title:'地址充值',copy:'网络选择、二维码、地址与最低金额。',tab:'地址充值',alt:'钱包充值',value:'500 USDC',meta:'Arbitrum 充值地址'},
+        {title:'钱包充值',copy:'预填登录钱包并通过 Deep Link 构建交易。',tab:'钱包充值',alt:'地址充值',value:'500 USDC',meta:'MetaMask · 地址一致'},
+        {title:'网络确认',copy:'区分检测、确认、入账与到账。',tab:'充值详情',alt:'18 / 32',value:'网络确认中',meta:'已检测到链上转账'},
+        {title:'提现',copy:'地址、费用、预计到账与安全验证。',tab:'提现',alt:'Ethereum',value:'250 USDT',meta:'预计到账 249.20 USDT'},
+        {title:'地址簿',copy:'钱包签名或 MFA 授权保存。',tab:'提现地址簿',alt:'新增',value:'常用钱包',meta:'Ethereum · 0x1234...5678'},
+        {title:'账户划转',copy:'资金账户与合约账户之间零费率划转。',tab:'资金账户',alt:'合约账户',value:'2,000 USDT',meta:'手续费 0 USDT'},
+        {title:'资金记录',copy:'充值、提现与划转统一筛选和详情。',tab:'全部',alt:'充值　提现　划转',value:'+2,250.00',meta:'本月资金净流入'},
+        {title:'账户价值',copy:'外部资金流、收益与内部划转分开计算。',tab:'全账户',alt:'资金　合约',value:'$24,680.42',meta:'近 30 天 +10.93%'}
+      ];
+      const errors=[
+        {title:'低于最小金额',copy:'检测到转账，但未满足最低入账门槛。',status:'充值金额低于 10 USDC，暂不会自动入账。'},
+        {title:'钱包地址不一致',copy:'阻止构建交易并引导切回登录钱包。',status:'当前钱包账户与登录时记录的地址不同。'},
+        {title:'MFA 验证失败',copy:'保留提现或地址草稿并允许重试。',status:'验证码错误，请重新输入 6 位动态验证码。'},
+        {title:'网络不匹配',copy:'阻止提交并明确所选网络地址规则。',status:'地址格式与 Ethereum 网络不匹配。'},
+        {title:'提现失败',copy:'展示审核拒绝与链上发送失败的资金结果。',status:'交易没有成功广播，资金仍保留在资金账户。'}
+      ];
+      document.querySelector('#page-gallery-grid').innerHTML=pages.map(item=>galleryPreview(item)).join('');
+      document.querySelector('#error-gallery-grid').innerHTML=errors.map(item=>galleryPreview(item,true)).join('');
+    }
     document.querySelector('#reset-prototype').addEventListener('click',resetPrototype);
     document.querySelector('#session-mode').addEventListener('change',event=>{ const value=event.target.value; state.session={ type:value.startsWith('email')?'email':'wallet', mfaBound:value==='email-bound' }; render(); announce('登录状态已切换'); });
     window.assetPrototype={ getState:()=>structuredClone(state), navigate, reset:resetPrototype };
+    renderGalleries();
     render();
   </script>
 </body>
