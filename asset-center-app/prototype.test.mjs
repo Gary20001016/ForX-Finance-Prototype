@@ -355,7 +355,7 @@ test('filters unified deposit, withdrawal, and transfer records and opens detail
   await withPage(async page => {
     await page.locator('#open-records').click();
     await route(page, 'records');
-    assert.match(await page.locator('[data-record-summary]').textContent(), /资金净流入.*\+2,250\.00/s);
+    assert.match(await page.locator('[data-record-summary]').textContent(), /资金净流入.*\+500\.00/s);
     assert.match(await page.locator('[data-record-summary]').textContent(), /账户划转不计入外部资金流/);
     assert.ok(await page.locator('[data-record-type="deposit"]').count() >= 1);
     assert.ok(await page.locator('[data-record-type="withdrawal"]').count() >= 1);
@@ -660,7 +660,9 @@ test('deposit entry exposes network operational detail', async () => {
     for (const label of ['网络状态', '最低充值', '确认要求', '预计到账', '代币合约', '最近充值']) {
       assert.match(await page.locator('#screen-root').textContent(), new RegExp(label));
     }
-    assert.ok(await page.locator('[data-recent-deposit]').count() >= 2);
+    assert.ok(await page.locator('[data-recent-deposit]').count() >= 1);
+    const token = (await page.evaluate(() => window.assetPrototype.getState())).depositDraft.token;
+    for (const row of await page.locator('[data-recent-deposit]').all()) assert.match(await row.textContent(), new RegExp(token));
   });
 });
 
@@ -766,5 +768,75 @@ test('error gallery documents trigger blocking and recovery', async () => {
     for (const card of cards) {
       assert.match(await card.textContent(), /触发条件.*提示位置.*阻断范围.*恢复操作.*实现规则/s);
     }
+  });
+});
+
+test('deposit contracts follow the selected token on every network', async () => {
+  await withPage(async page => {
+    await openDeposit(page);
+    const usdcContract = await page.locator('[data-token-contract]').getAttribute('data-address');
+    await page.locator('#deposit-token').click();
+    await page.locator('[data-token="USDT"]').click();
+    const usdtContract = await page.locator('[data-token-contract]').getAttribute('data-address');
+    assert.notEqual(usdcContract, usdtContract);
+  });
+});
+
+test('closing reconnect leaves wallet deposit safely disconnected', async () => {
+  await withPage(async page => {
+    await openDeposit(page);
+    await page.locator('[data-deposit-method="wallet"]').click();
+    await page.locator('#simulate-reconnect').click();
+    await page.locator('[data-sheet-close]').click();
+    assert.equal(await page.locator('#launch-wallet').isDisabled(), true);
+    assert.equal(await page.evaluate(() => window.assetPrototype.getState().depositDraft.walletConnected), false);
+  });
+});
+
+test('completed withdrawal cannot be rewritten as a failed terminal state', async () => {
+  await withPage(async page => {
+    await setSession(page, 'wallet');
+    await openWithdrawal(page);
+    await fillWithdrawal(page, undefined, '100');
+    await page.locator('#submit-withdrawal').click();
+    for (let index = 0; index < 3; index += 1) await page.locator('[data-advance-withdrawal]').click();
+    assert.equal(await page.locator('#withdrawal-scenario').isDisabled(), true);
+    await page.locator('#withdrawal-scenario').evaluate(node => {
+      node.value = 'failed';
+      node.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    const withdrawal = await page.evaluate(() => window.assetPrototype.getState().withdrawal);
+    assert.equal(withdrawal.stage, 'complete');
+    assert.equal(withdrawal.scenario, 'normal');
+    assert.equal(withdrawal.debited, true);
+    assert.equal((await page.locator('[data-withdrawal-exception]').textContent()).trim(), '');
+  });
+});
+
+test('return mode keeps headline chart and period change on one measure', async () => {
+  await withPage(async page => {
+    await page.locator('#open-value-history').click();
+    await page.locator('[data-chart-mode="return"]').click();
+    assert.equal(Number(await page.locator('[data-current-value]').getAttribute('data-value')), 182.36);
+    assert.equal(Number(await page.locator('[data-value-change]').getAttribute('data-value')), 182.36);
+    assert.doesNotMatch(await page.locator('#screen-root .value-header').textContent(), /2,432\.36/);
+  });
+});
+
+test('pending transactions stay out of settled net inflow', async () => {
+  await withPage(async page => {
+    await page.locator('#open-records').click();
+    assert.equal(Number(await page.locator('[data-record-net]').getAttribute('data-value')), 500);
+    assert.doesNotMatch(await page.locator('[data-record-summary]').textContent(), /2,250\.00/);
+  });
+});
+
+test('recent deposits follow the selected token', async () => {
+  await withPage(async page => {
+    await openDeposit(page);
+    for (const row of await page.locator('[data-recent-deposit]').all()) assert.match(await row.textContent(), /USDC/);
+    await page.locator('#deposit-token').click();
+    await page.locator('[data-token="USDT"]').click();
+    for (const row of await page.locator('[data-recent-deposit]').all()) assert.match(await row.textContent(), /USDT/);
   });
 });
