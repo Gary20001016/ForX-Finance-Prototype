@@ -153,6 +153,7 @@ Rounded corners communicate hierarchy: 12px for controls, 16px for major panels,
 - Asset and record rows align amounts to the trailing edge and use small muted metadata below.
 - Collapsed funding asset rows show only token identity, token balance, approximate fiat value, and disclosure; price, 24-hour change, allocation share, and the English token name belong in the expanded detail.
 - The asset home uses a fixed three-row shell: `.home-header` contains the status and account controls, `.home-scroll` owns vertical content scrolling, and the bottom navigation is their non-scrolling sibling.
+- Every secondary product screen uses a fixed two-row shell: `.subpage-fixed-header` contains the status and page-title controls, while `.subpage-scroll` is the only element that owns vertical content scrolling.
 - Icons come from one 1.75px outline SVG family. Token and network marks use consistent containers; no emoji or improvised symbol acts as a control.
 - Transaction screens expose orientation, primary value, supporting metadata, state, action hierarchy, and auditability before they are considered complete.
 - Funding uses a three-column balance strip for available, frozen, and incoming value; contract uses the same pattern for available margin, ratio, and transfer headroom.
@@ -183,6 +184,7 @@ Rounded corners communicate hierarchy: 12px for controls, 16px for major panels,
 - Don't place “模拟” or “演示处理” buttons inside the phone UI.
 - Don't use empty space to compensate for missing operational content.
 - Don't place status, account navigation, or bottom navigation inside the element that owns vertical scrolling.
+- Don't move tabs, form labels, section headings, or other content-level controls into the fixed secondary-screen header.
 - Don't wrap every metric in a separate rounded card; use tonal sections, aligned columns, and dividers.
 
 ## Motion

@@ -1038,3 +1038,52 @@ test('asset header stays fixed while home content scrolls', async () => {
     assert.equal(await scroller.locator('.status-bar,.account-nav').count(), 0);
   }, { width:390, height:844 });
 });
+
+test('secondary page headers stay fixed while their content scrolls', async () => {
+  const secondaryRoutes = [
+    'deposit', 'deposit-progress', 'withdraw', 'withdraw-review',
+    'mfa-setup', 'mfa-verify', 'address-book', 'add-address',
+    'withdraw-status', 'transfer', 'transfer-review', 'transfer-status',
+    'records', 'record-detail', 'value-history', 'asset-operation'
+  ];
+
+  await withPage(async page => {
+    for (const routeName of secondaryRoutes) {
+      if (routeName === 'deposit-progress') {
+        await page.evaluate(() => window.assetPrototype.reset());
+        await page.locator('#open-deposit').click();
+        await page.locator('#demo-console [data-start-demo-deposit]').evaluate(node => node.click());
+      } else if (routeName === 'withdraw-status') {
+        await page.evaluate(() => window.assetPrototype.reset());
+        await openWithdrawal(page);
+        await fillWithdrawal(page, undefined, '100');
+        await page.locator('#submit-withdrawal').click();
+      } else {
+        await page.evaluate(value => window.assetPrototype.navigate(value), routeName);
+      }
+      await route(page, routeName);
+
+      const screen = page.locator('#interactive-phone .app-screen.subpage');
+      const fixedHeader = screen.locator(':scope > .subpage-fixed-header');
+      const scroller = screen.locator(':scope > .subpage-scroll');
+      assert.equal(await fixedHeader.count(), 1, `${routeName} has one fixed header`);
+      assert.equal(await scroller.count(), 1, `${routeName} has one content scroller`);
+      assert.equal(await scroller.locator('.status-bar,.subpage-header').count(), 0, `${routeName} keeps its page header outside the scroller`);
+
+      const status = fixedHeader.locator('.status-bar');
+      const title = fixedHeader.locator('.subpage-header');
+      const beforeStatus = await status.boundingBox();
+      const beforeTitle = await title.boundingBox();
+      assert.ok(beforeStatus && beforeTitle, `${routeName} header is visible`);
+
+      await scroller.evaluate(node => node.scrollTo(0, node.scrollHeight));
+
+      const afterStatus = await status.boundingBox();
+      const afterTitle = await title.boundingBox();
+      assert.ok(afterStatus && afterTitle, `${routeName} header remains visible`);
+      assert.equal(Math.round(afterStatus.y), Math.round(beforeStatus.y), `${routeName} status row does not move`);
+      assert.equal(Math.round(afterTitle.y), Math.round(beforeTitle.y), `${routeName} title row does not move`);
+      assert.equal(await screen.evaluate(node => node.scrollTop), 0, `${routeName} shell itself does not scroll`);
+    }
+  }, { width:390, height:844 });
+});

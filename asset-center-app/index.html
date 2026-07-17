@@ -184,7 +184,10 @@
     .bottom-item[aria-current="page"] { color:var(--text); }
     .bottom-item[aria-current="page"] svg { color:var(--green); }
     .bottom-item[aria-current="page"]::before { content:""; position:absolute; top:-10px; left:50%; width:18px; height:2px; transform:translateX(-50%); background:var(--green); box-shadow:0 0 10px var(--green); }
-    .subpage { min-height:100%; padding-bottom:30px; }
+    .subpage { min-height:0; padding-bottom:0; display:grid; grid-template-rows:auto minmax(0,1fr); overflow:hidden; }
+    .subpage-fixed-header { min-height:0; position:relative; z-index:6; background:var(--bg); }
+    .subpage-scroll { min-height:0; padding-bottom:30px; overflow-y:auto; overscroll-behavior-y:contain; scrollbar-width:none; }
+    .subpage-scroll::-webkit-scrollbar { display:none; }
     .subpage-header { height:56px; padding:0 18px; display:flex; align-items:center; border-bottom:1px solid var(--line); }
     .back-button { width:36px; height:36px; border:0; background:transparent; color:var(--text); font-size:25px; padding:0; }
     .subpage-header h1 { margin:0 0 0 5px; font-size:17px; }
@@ -1183,24 +1186,44 @@
     }
     function assetsScreen(){ return `<div class="app-screen home-screen"><div class="home-header">${statusBar()}${accountNav()}</div><div class="home-scroll">${state.account==='funding'?fundingHome():contractHome()}</div>${bottomNav()}</div>`; }
     function subpage(title,routeName){ return `<div class="app-screen subpage">${statusBar()}<header class="subpage-header"><button class="back-button" data-back type="button" aria-label="返回">‹</button><h1>${title}</h1></header><div class="placeholder-page">${routeName==='deposit'?'选择 USDT 或 USDC，并选择 Ethereum、Arbitrum、Polygon、Base、Optimism、Solana 或 TRON 网络。':'页面内容将在后续步骤完成。'}</div></div>`; }
+    function fixedSubpageShell(markup){
+      const template=document.createElement('template');
+      template.innerHTML=markup.trim();
+      const screen=template.content.firstElementChild;
+      if(!screen?.classList.contains('subpage')) return markup;
+      const status=screen.querySelector(':scope > .status-bar');
+      const header=screen.querySelector(':scope > .subpage-header');
+      if(!status||!header) return markup;
+      const bodyNodes=[...screen.childNodes].filter(node=>node!==status&&node!==header);
+      const fixedHeader=document.createElement('div');
+      fixedHeader.className='subpage-fixed-header';
+      fixedHeader.append(status,header);
+      const scroller=document.createElement('div');
+      scroller.className='subpage-scroll';
+      scroller.append(...bodyNodes);
+      screen.replaceChildren(fixedHeader,scroller);
+      return screen.outerHTML;
+    }
     function screenHtml(route=state.route){
-      if(route==='assets') return assetsScreen();
-      if(route==='deposit') return depositScreen();
-      if(route==='deposit-progress') return depositProgressScreen();
-      if(route==='withdraw') return withdrawalScreen();
-      if(route==='withdraw-review') return withdrawalReviewScreen();
-      if(route==='mfa-setup') return mfaSetupScreen();
-      if(route==='mfa-verify') return mfaVerifyScreen();
-      if(route==='address-book') return addressBookScreen();
-      if(route==='add-address') return addAddressScreen();
-      if(route==='withdraw-status') return withdrawalStatusScreen();
-      if(route==='transfer') return transferScreen();
-      if(route==='transfer-review') return transferReviewScreen();
-      if(route==='transfer-status') return transferStatusScreen();
-      if(route==='records') return recordsScreen();
-      if(route==='record-detail') return recordDetailScreen();
-      if(route==='value-history') return valueHistoryScreen();
-      return subpage(route==='value-history'?'账户价值':'资产操作',route);
+      let markup;
+      if(route==='assets') markup=assetsScreen();
+      else if(route==='deposit') markup=depositScreen();
+      else if(route==='deposit-progress') markup=depositProgressScreen();
+      else if(route==='withdraw') markup=withdrawalScreen();
+      else if(route==='withdraw-review') markup=withdrawalReviewScreen();
+      else if(route==='mfa-setup') markup=mfaSetupScreen();
+      else if(route==='mfa-verify') markup=mfaVerifyScreen();
+      else if(route==='address-book') markup=addressBookScreen();
+      else if(route==='add-address') markup=addAddressScreen();
+      else if(route==='withdraw-status') markup=withdrawalStatusScreen();
+      else if(route==='transfer') markup=transferScreen();
+      else if(route==='transfer-review') markup=transferReviewScreen();
+      else if(route==='transfer-status') markup=transferStatusScreen();
+      else if(route==='records') markup=recordsScreen();
+      else if(route==='record-detail') markup=recordDetailScreen();
+      else if(route==='value-history') markup=valueHistoryScreen();
+      else markup=subpage(route==='value-history'?'账户价值':'资产操作',route);
+      return fixedSubpageShell(markup);
     }
     function demoConsoleState(title,copy){
       return `<div class="demo-console-state"><i></i><span><b>${title}</b><small>${copy}</small></span></div>`;
