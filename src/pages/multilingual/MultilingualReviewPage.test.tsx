@@ -37,7 +37,7 @@ it("lists only special-language review items with source and SLA", async () => {
   expect(screen.getByText("8 小时")).toBeInTheDocument();
   expect(screen.queryByText("en-US")).not.toBeInTheDocument();
 
-  await user.click(screen.getAllByRole("button", { name: "开始专项审核" })[0]);
+  await user.click(screen.getAllByRole("button", { name: "审核译文" })[0]);
   expect(screen.getByText("默认语言源文案")).toBeVisible();
   expect(screen.getByRole("button", { name: "专项审核通过" })).toBeEnabled();
 });

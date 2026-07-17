@@ -58,9 +58,9 @@ export default function TranslationReviewDrawer({
   const [reason, setReason] = useState("");
 
   useEffect(() => {
-    setTitle(current?.machineTitle || "");
-    setSummary(current?.machineSummary || "");
-    setBody(current?.machineBody || "");
+    setTitle(current?.humanDraft?.title || current?.machineTitle || "");
+    setSummary(current?.humanDraft?.summary || current?.machineSummary || "");
+    setBody(current?.humanDraft?.body || current?.machineBody || "");
     setReason("");
   }, [current?.id]);
 
@@ -79,7 +79,7 @@ export default function TranslationReviewDrawer({
       return;
     }
     rejectTranslation(current.id, reason);
-    Message.success(`${current.targetLocale} 已驳回，可从多语言流程单独重翻`);
+    Message.success(`${current.targetLocale} 已驳回，保留在待审核状态`);
     onClose();
   };
 
@@ -137,7 +137,7 @@ export default function TranslationReviewDrawer({
               disabled={reviewMode !== "ordinary" && isSelf}
               onClick={reject}
             >
-              驳回重翻
+              驳回
             </Button>
             <Button
               type="primary"
@@ -261,8 +261,8 @@ export default function TranslationReviewDrawer({
           </div>
           <Form layout="vertical">
             <Form.Item
-              label="驳回重翻原因"
-              extra="驳回时必填，原因将传入新的单语言外部任务"
+              label="驳回原因"
+              extra="驳回时必填；状态仍为“翻译返回待审核”，可继续修改后复审"
             >
               <Input.TextArea value={reason} onChange={setReason} />
             </Form.Item>
@@ -276,7 +276,7 @@ export default function TranslationReviewDrawer({
               <Timeline.Item>
                 {current.translatedAt} 外部服务回调成功
               </Timeline.Item>
-              <Timeline.Item>当前 · 等待人工审核</Timeline.Item>
+              <Timeline.Item>当前 · 翻译返回待审核</Timeline.Item>
             </Timeline>
           </div>
         </div>

@@ -12,13 +12,6 @@ import {
   usePrototypeStore,
 } from "../../store/prototypeStore";
 
-const editableOrdinaryStatuses = new Set([
-  "待普通确认",
-  "待人工审核",
-  "修改中",
-  "审核驳回",
-]);
-
 const hasContent = (content?: TranslationContentLayer) =>
   Boolean(content?.title || content?.summary || content?.body);
 
@@ -79,22 +72,23 @@ export default function MultilingualResultPanel({
     setBody(currentContent.body || "");
   }, [currentContent.body, currentContent.summary, currentContent.title, item.id]);
 
-  const canEdit = !item.specialReviewRequired && editableOrdinaryStatuses.has(item.status);
+  const canEdit =
+    !item.specialReviewRequired && item.status === "翻译返回待审核";
   const canEnterSpecialReview =
-    item.specialReviewRequired && ["待小语种专审", "专审中"].includes(item.status);
+    item.specialReviewRequired && item.status === "翻译返回待审核";
   const machineResultReady = hasContent(machineContent);
 
   if (!machineResultReady) {
     return (
       <div className="multilingual-result-panel">
         <Alert
-          type={item.status === "翻译失败" ? "error" : "info"}
+          type={item.errorMessage ? "error" : "info"}
           showIcon
-          title={item.status === "翻译失败" ? "暂无可查看的译文" : "翻译结果尚未返回"}
+          title="暂无可查看的译文"
           content={
-            item.status === "翻译失败"
+            item.errorMessage
               ? `${item.errorCode || "TRANSLATION_FAILED"} · ${item.errorMessage || "外部机翻任务失败"}`
-              : `当前状态：${item.status}`
+              : "外部机器翻译尚未返回结果"
           }
         />
       </div>

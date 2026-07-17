@@ -23,7 +23,6 @@ export default function MultilingualReviewPage() {
   const [locale, setLocale] = useState<string>();
   const [group, setGroup] = useState<string>();
   const [selected, setSelected] = useState<TranslationItem>();
-  const pendingStatuses = new Set(["待小语种专审", "专审中", "审核驳回", "待人工审核"]);
   const data = useMemo(
     () =>
       store.translationBatches
@@ -31,7 +30,7 @@ export default function MultilingualReviewPage() {
         .filter(
           (item) =>
             item.specialReviewRequired &&
-            pendingStatuses.has(item.status) &&
+            item.status === "翻译返回待审核" &&
             `${item.subjectName || item.templateName}${item.targetLocale}${item.externalTaskId}`
               .toLowerCase()
               .includes(keyword.toLowerCase()) &&
@@ -104,7 +103,7 @@ export default function MultilingualReviewPage() {
             setSelected(item);
           }}
         >
-          {item.status === "专审中" ? "继续专项审核" : "开始专项审核"}
+          审核译文
         </Button>
       ),
     },
