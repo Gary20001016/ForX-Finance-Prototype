@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Button, Drawer, Progress, Space, Steps, Tag } from "@arco-design/web-react";
+import { Button, Drawer, Progress, Space, Tag } from "@arco-design/web-react";
 import { useNavigate } from "react-router-dom";
 import type { TranslationBatch, TranslationItemStatus } from "../../domain/types";
 import { usePrototypeStore } from "../../store/prototypeStore";
@@ -9,13 +9,8 @@ import MultilingualResultPanel from "./MultilingualResultPanel";
 
 const statusColor: Partial<Record<TranslationItemStatus, string>> = {
   已通过: "green",
-  审核通过: "green",
-  翻译失败: "red",
-  审核驳回: "orangered",
-  待小语种专审: "purple",
-  专审中: "purple",
-  待普通确认: "orange",
-  待人工审核: "orange",
+  无结果: "red",
+  翻译返回待审核: "orange",
 };
 
 export default function MultilingualProgressDrawer({
@@ -35,15 +30,6 @@ export default function MultilingualProgressDrawer({
   const [expandedItemId, setExpandedItemId] = useState<string>();
   useEffect(() => setExpandedItemId(undefined), [batch?.id]);
   const progress = liveBatch ? deriveMultilingualProgress(liveBatch) : undefined;
-  const current = !progress
-    ? 0
-    : progress.stage === "全部语言通过"
-      ? 4
-      : progress.stage === "小语种专审"
-        ? 3
-        : progress.stage === "普通语言确认"
-          ? 2
-          : 1;
 
   return (
     <Drawer
@@ -58,17 +44,10 @@ export default function MultilingualProgressDrawer({
           <div className="multilingual-drawer-summary">
             <div>
               <strong>{progress.approved}/{progress.total} 个目标语言已通过</strong>
-              <span>当前阶段：{progress.stage}</span>
+              <span>当前状态：{progress.status}</span>
             </div>
             <Progress percent={progress.percent} size="small" />
           </div>
-          <Steps current={current} size="small">
-            <Steps.Step title="源文案完成" />
-            <Steps.Step title="生成机器翻译" />
-            <Steps.Step title="普通语言确认" />
-            <Steps.Step title="小语种专项审核" />
-            <Steps.Step title="全部语言通过" />
-          </Steps>
           <div className="multilingual-drawer-list">
             {liveBatch.items.map((item) => (
               <div className="multilingual-drawer-item" key={item.id}>
@@ -78,7 +57,13 @@ export default function MultilingualProgressDrawer({
                     <span>{item.targetLocale}</span>
                   </div>
                   <Tag color={statusColor[item.status] || "gray"}>{item.status}</Tag>
-                  <span>{item.specialReviewRequired ? item.reviewGroup || "专项审核组" : "进度内校对"}</span>
+                  <span>
+                    {item.specialReviewRequired ? (
+                      <Tag color="purple">需专项审核</Tag>
+                    ) : (
+                      "进度内校对"
+                    )}
+                  </span>
                   <span>{item.reviewSlaHours ? `SLA ${item.reviewSlaHours} 小时` : "—"}</span>
                   <Space>
                     <Button
@@ -87,7 +72,7 @@ export default function MultilingualProgressDrawer({
                     >
                       {expandedItemId === item.id ? "收起译文" : "查看译文"}
                     </Button>
-                    {(item.status === "待小语种专审" || item.status === "专审中") && (
+                    {item.status === "翻译返回待审核" && item.specialReviewRequired && (
                       <Button
                         size="small"
                         type="primary"

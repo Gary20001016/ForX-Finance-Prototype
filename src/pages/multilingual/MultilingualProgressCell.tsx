@@ -1,8 +1,7 @@
 import { Button, Progress, Tag } from "@arco-design/web-react";
-import type { TranslationBatch, TranslationItemStatus } from "../../domain/types";
+import type { TranslationBatch } from "../../domain/types";
 import {
   deriveMultilingualProgress,
-  unfinishedLocales,
 } from "./multilingualProgress";
 
 export const localeName: Record<string, string> = {
@@ -16,11 +15,8 @@ export const localeName: Record<string, string> = {
   "ru-RU": "俄语",
 };
 
-const compactStatus: Partial<Record<TranslationItemStatus, string>> = {
-  待小语种专审: "待专审",
-  待普通确认: "待确认",
-  待人工审核: "待确认",
-};
+const namesFor = (locales: string[]) =>
+  locales.map((locale) => localeName[locale] || locale).join("、");
 
 export default function MultilingualProgressCell({
   batch,
@@ -37,23 +33,31 @@ export default function MultilingualProgressCell({
     );
 
   const progress = deriveMultilingualProgress(batch);
-  const unfinished = unfinishedLocales(batch);
   return (
     <div className="multilingual-progress-cell">
       <div className="multilingual-progress-heading">
         <strong>{progress.approved}/{progress.total} 已通过</strong>
-        <Tag color={progress.stage === "全部语言通过" ? "green" : "arcoblue"}>
-          {progress.stage}
+        <Tag
+          color={
+            progress.status === "已通过"
+              ? "green"
+              : progress.status === "无结果"
+                ? "red"
+                : "orange"
+          }
+        >
+          {progress.status}
         </Tag>
       </div>
       <Progress percent={progress.percent} size="small" showText={false} />
       <div className="multilingual-unfinished">
-        {unfinished.slice(0, 3).map((item) => (
-          <span key={item.locale}>
-            {localeName[item.locale] || item.locale} · {compactStatus[item.status] || item.status}
-          </span>
-        ))}
-        {unfinished.length > 3 && <span>其余 {unfinished.length - 3} 种</span>}
+        {progress.missingResultLocales.length > 0 && (
+          <span>无结果：{namesFor(progress.missingResultLocales)}</span>
+        )}
+        {progress.pendingReviewLocales.length > 0 && (
+          <span>待审核：{namesFor(progress.pendingReviewLocales)}</span>
+        )}
+        {progress.status === "已通过" && <span>全部目标语言均已通过</span>}
       </div>
       <Button type="text" size="mini" onClick={onOpen}>
         查看多语言进度

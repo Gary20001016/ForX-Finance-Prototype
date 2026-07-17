@@ -16,7 +16,11 @@ const batchWith = (statuses: Array<[string, TranslationItemStatus]>): Translatio
   templateVersion: "draft-1",
   sourceLocale: "zh-CN",
   targetLocales: statuses.map(([locale]) => locale),
-  status: "待人工审核",
+  status: statuses.some(([, status]) => status === "无结果")
+    ? "无结果"
+    : statuses.every(([, status]) => status === "已通过")
+      ? "已通过"
+      : "翻译返回待审核",
   createdBy: "operator-01",
   createdAt: "刚刚",
   updatedAt: "刚刚",
@@ -42,43 +46,41 @@ const batchWith = (statuses: Array<[string, TranslationItemStatus]>): Translatio
 });
 
 describe("multilingual progress", () => {
-  it("derives approval ratio and special-language review stage", () => {
+  it("derives the single aggregate status and separates missing results from pending review", () => {
     const batch = batchWith([
       ["en-US", "已通过"],
       ["fr-FR", "已通过"],
-      ["zh-TW", "待普通确认"],
-      ["ja-JP", "待小语种专审"],
-      ["tr-TR", "专审中"],
+      ["zh-TW", "翻译返回待审核"],
+      ["ja-JP", "翻译返回待审核"],
+      ["tr-TR", "无结果"],
     ]);
 
     expect(deriveMultilingualProgress(batch)).toMatchObject({
       approved: 2,
       total: 5,
       percent: 40,
-      stage: "小语种专审",
-      blockingStatus: "待小语种专审",
+      status: "无结果",
+      missingResultLocales: ["tr-TR"],
+      pendingReviewLocales: ["zh-TW", "ja-JP"],
     });
   });
 
-  it("uses the highest-priority unfinished status and excludes canceled locales", () => {
+  it("uses returned-for-review when every language has a translation result", () => {
     const batch = batchWith([
       ["en-US", "已通过"],
-      ["ru-RU", "翻译失败"],
-      ["ja-JP", "待小语种专审"],
-      ["tr-TR", "专审中"],
-      ["ko-KR", "已取消"],
+      ["ru-RU", "翻译返回待审核"],
+      ["ja-JP", "翻译返回待审核"],
     ]);
 
     expect(deriveMultilingualProgress(batch)).toMatchObject({
       approved: 1,
-      total: 4,
-      percent: 25,
-      blockingStatus: "翻译失败",
+      total: 3,
+      percent: 33,
+      status: "翻译返回待审核",
     });
     expect(unfinishedLocales(batch)).toEqual([
-      { locale: "ru-RU", status: "翻译失败" },
-      { locale: "ja-JP", status: "待小语种专审" },
-      { locale: "tr-TR", status: "专审中" },
+      { locale: "ru-RU", status: "翻译返回待审核" },
+      { locale: "ja-JP", status: "翻译返回待审核" },
     ]);
   });
 });
