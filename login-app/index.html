@@ -2872,6 +2872,14 @@
         </div>`;
     }
 
+    function activateLiveEmailEntry() {
+      showScreen('login');
+      const livePhone = document.querySelector('.phone:not(.gallery-phone)');
+      const emailInput = document.getElementById('email-input');
+      livePhone?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      emailInput.focus();
+    }
+
     function buildStaticGallery() {
       const sourcePhone = document.querySelector('.phone');
       const grid = document.getElementById('gallery-grid');
@@ -2893,6 +2901,16 @@
         if (definition.guide) applyGuideGalleryState(phone, definition.guide);
 
         freezeGalleryScreen(phone);
+        if (definition.screen === 'login') {
+          const galleryEmailButton = phone.querySelector('.email-form button[type="submit"]');
+          galleryEmailButton.disabled = false;
+          galleryEmailButton.tabIndex = 0;
+          galleryEmailButton.dataset.galleryEntry = 'email';
+          galleryEmailButton.addEventListener('click', (event) => {
+            event.preventDefault();
+            activateLiveEmailEntry();
+          });
+        }
         slot.append(phone);
         const caption = document.createElement('div');
         caption.className = 'gallery-caption';
