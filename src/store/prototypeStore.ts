@@ -54,6 +54,10 @@ import {
   APPROVED_MANUAL_TEMPLATE_LOCK_MESSAGE,
   isApprovedManualTemplateLocked,
 } from "../domain/templatePolicy";
+import {
+  deriveTranslationBatchStatus,
+  normalizeTranslationStatus,
+} from "../domain/translationStatus";
 
 export interface PrototypeState {
   messages: UserMessage[];
@@ -110,6 +114,24 @@ export const normalizeTranslationBatches = (
         ? "manual_task_content"
         : "template_version");
 
+    const items = batch.items
+      .filter((item) => String(item.status) !== "已取消")
+      .map((item) => {
+        const policy = policies.find(
+          (candidate) => candidate.localeCode === item.targetLocale,
+        );
+        return {
+          ...item,
+          status: normalizeTranslationStatus(String(item.status)),
+          subjectType: item.subjectType || batch.subjectType || subjectType,
+          subjectId: item.subjectId || batch.subjectId || batch.templateId,
+          subjectName: item.subjectName || batch.subjectName || item.templateName,
+          specialReviewRequired: policy?.specialReviewRequired || false,
+          reviewGroup: policy?.reviewGroup,
+          reviewSlaHours: policy?.reviewSlaHours,
+        };
+      });
+
     return {
       ...batch,
       subjectType,
@@ -119,28 +141,8 @@ export const normalizeTranslationBatches = (
       returnPath:
         batch.returnPath ||
         (subjectType === "manual_task_content" ? "/tasks/create" : "/templates"),
-      items: batch.items.map((item) => {
-      const policy = policies.find(
-        (candidate) => candidate.localeCode === item.targetLocale,
-      );
-      return {
-        ...item,
-        status:
-          item.status === "审核通过"
-            ? "已通过"
-            : item.status === "待人工审核"
-              ? policy?.specialReviewRequired
-                ? "待小语种专审"
-                : "待普通确认"
-              : item.status,
-        subjectType: item.subjectType || batch.subjectType || subjectType,
-        subjectId: item.subjectId || batch.subjectId || batch.templateId,
-        subjectName: item.subjectName || batch.subjectName || item.templateName,
-        specialReviewRequired: policy?.specialReviewRequired || false,
-        reviewGroup: policy?.reviewGroup,
-        reviewSlaHours: policy?.reviewSlaHours,
-      };
-      }),
+      status: deriveTranslationBatchStatus(items),
+      items,
     };
   });
 
@@ -509,7 +511,7 @@ const enrichTasks = (seededTemplates: MessageTemplate[]): MessageTask[] =>
         schedule: isEvent ? "事件到达时" : task.schedule,
         status: isEvent
           ? template?.status === "已发布" &&
-            template.translationReadiness === "全部审核通过"
+            template.translationReadiness === "已通过"
             ? "已启用"
             : task.status === "草稿" || task.status === "待审核"
               ? task.status
@@ -962,7 +964,7 @@ export const createTranslationBatch = (
     templateVersion: subject.version,
     sourceLocale,
     targetLocales,
-    status: "待人工审核",
+    status: "翻译返回待审核",
     createdBy,
     createdAt: "刚刚",
     updatedAt: "刚刚",
@@ -988,11 +990,7 @@ export const createTranslationBatch = (
         targetLocale: locale,
         externalTaskId: `EXT-MT-${stamp}${index}`,
         attemptNo: 1,
-        status: generalized
-          ? policy?.specialReviewRequired
-            ? "待小语种专审" as const
-            : "待普通确认" as const
-          : "待人工审核" as const,
+        status: "翻译返回待审核",
         sourceContentHash: `sha256:${stamp}${index}`,
         machineTitle: machineOutput.title,
         machineSummary: machineOutput.summary,
@@ -1017,7 +1015,7 @@ export const createTranslationBatch = (
         ? {
             ...item,
             translationBatchId: batch.id,
-            translationReadiness: "待人工审核",
+            translationReadiness: "翻译返回待审核",
             locales: [item.sourceLocale, ...targetLocales],
             content: item.content
               ? {
@@ -1035,15 +1033,9 @@ export const createTranslationBatch = (
 };
 
 const recomputeBatch = (batch: TranslationBatch): TranslationBatch => {
-  const approved = batch.items.every(
-    (item) => item.status === "审核通过" || item.status === "已通过",
-  );
-  const failed = batch.items.some(
-    (item) => item.status === "翻译失败" || item.status === "审核驳回",
-  );
   return {
     ...batch,
-    status: approved ? "全部审核通过" : failed ? "部分失败" : "待人工审核",
+    status: deriveTranslationBatchStatus(batch.items),
     updatedAt: "刚刚",
   };
 };
@@ -1077,7 +1069,7 @@ const approveTranslationWithMode = (
           item.id === itemId
             ? {
                 ...item,
-                status: mode === "legacy" ? "审核通过" : "已通过",
+                status: "已通过",
                 reviewedTitle: values.title,
                 reviewedSummary: values.summary,
                 reviewedBody: values.body,
@@ -1100,14 +1092,14 @@ const approveTranslationWithMode = (
     );
     const readyIds = new Set(
       batches
-        .filter((batch) => batch.status === "全部审核通过")
+        .filter((batch) => batch.status === "已通过")
         .map((batch) => batch.templateId),
     );
     const readyRuleVersionIds = new Set(
       batches
         .filter(
           (batch) =>
-            batch.status === "全部审核通过" &&
+            batch.status === "已通过" &&
             batch.subjectType === "rule_content_version",
         )
         .map((batch) => batch.subjectId),
@@ -1119,7 +1111,7 @@ const approveTranslationWithMode = (
         readyIds.has(candidate.id)
           ? {
               ...candidate,
-              translationReadiness: "全部审核通过",
+              translationReadiness: "已通过",
               status: "待业务审核",
             }
           : candidate,
@@ -1161,7 +1153,7 @@ export const saveTranslationDraft = (
           item.id === itemId
             ? {
                 ...item,
-                status: item.specialReviewRequired ? "专审中" : "修改中",
+                status: "翻译返回待审核",
                 humanDraft: values,
                 reviewedTitle: values.title,
                 reviewedSummary: values.summary,
@@ -1181,7 +1173,7 @@ export const startSpecialReview = (itemId: string) =>
         ...batch,
         items: batch.items.map((item) =>
           item.id === itemId && item.specialReviewRequired
-            ? { ...item, status: "专审中" }
+            ? { ...item, status: "翻译返回待审核" }
             : item,
         ),
       }),
@@ -1198,7 +1190,7 @@ export const rejectTranslation = (itemId: string, reason: string) =>
           item.id === itemId
             ? {
                 ...item,
-                status: "审核驳回",
+                status: "翻译返回待审核",
                 errorMessage: reason,
                 reviewedAt: "刚刚",
               }
@@ -1217,11 +1209,7 @@ export const retryTranslation = (itemId: string) =>
           item.id === itemId
             ? {
                 ...item,
-                status: item.specialReviewRequired
-                  ? "待小语种专审"
-                  : item.subjectType
-                    ? "待普通确认"
-                    : "待人工审核",
+                status: "翻译返回待审核",
                 attemptNo: item.attemptNo + 1,
                 externalTaskId: `EXT-MT-${Date.now().toString().slice(-8)}`,
                 errorCode: undefined,
@@ -1297,7 +1285,7 @@ export const validateEventTaskConfig = (
   if (
     !template ||
     template.status !== "已发布" ||
-    template.translationReadiness !== "全部审核通过"
+    template.translationReadiness !== "已通过"
   )
     return { valid: false, reason: "模板尚未发布或多语言审核未完成" };
   if (!config.dedupeKey.trim())
@@ -1630,7 +1618,7 @@ export const updateTemplate = (
       result = {
         ...item,
         ...changes,
-        translationReadiness: "未提交",
+        translationReadiness: "无结果",
         translationBatchId: "",
         status: "草稿",
         version: `v${Number(item.version.replace(/\D/g, "")) + 1}`,
@@ -1647,7 +1635,7 @@ export const submitTemplateForApproval = (templateId: string) => {
   if (!template) throw new Error("模板不存在");
   if (isApprovedManualTemplateLocked(template))
     throw new Error(APPROVED_MANUAL_TEMPLATE_LOCK_MESSAGE);
-  if (template.translationReadiness !== "全部审核通过")
+  if (template.translationReadiness !== "已通过")
     throw new Error("多语言人工审核尚未全部通过");
   const existing = state.approvals.find(
     (item) =>

@@ -14,8 +14,10 @@ import {
   normalizeRuleContentVersions,
   performManualTaskOperation,
   publishRuleContentVersion,
+  rejectTranslation,
   resetPrototypeStore,
   removeOperatorTestAccount,
+  retryTranslation,
   sendTemplateTest,
   submitTask,
   reviewApproval,
@@ -138,7 +140,8 @@ describe("prototype store workflow transitions", () => {
       createdBy: "Gary Ma",
     });
     expect(batch.items[0].externalTaskId).toMatch(/^EXT-MT-/);
-    expect(batch.items[0].status).toBe("待人工审核");
+    expect(batch.status).toBe("翻译返回待审核");
+    expect(batch.items[0].status).toBe("翻译返回待审核");
   });
 
   it("opens the publishing gate after every locale is approved", () => {
@@ -157,7 +160,7 @@ describe("prototype store workflow transitions", () => {
       getPrototypeState().translationBatches.find(
         (item) => item.id === batch.id,
       )?.status,
-    ).toBe("全部审核通过");
+    ).toBe("已通过");
   });
 
   it("routes generalized translation items by language review policy", () => {
@@ -180,9 +183,13 @@ describe("prototype store workflow transitions", () => {
     });
 
     expect(batch.items.find((item) => item.targetLocale === "en-US")?.status)
-      .toBe("待普通确认");
+      .toBe("翻译返回待审核");
     expect(batch.items.find((item) => item.targetLocale === "ja-JP")?.status)
-      .toBe("待小语种专审");
+      .toBe("翻译返回待审核");
+    expect(
+      batch.items.find((item) => item.targetLocale === "ja-JP")
+        ?.specialReviewRequired,
+    ).toBe(true);
     expect(batch.subjectType).toBe("manual_task_content");
   });
 
@@ -227,7 +234,36 @@ describe("prototype store workflow transitions", () => {
 
     expect(
       getPrototypeState().translationBatches.find((item) => item.id === batch.id),
-    ).toMatchObject({ status: "全部审核通过" });
+    ).toMatchObject({ status: "已通过" });
+  });
+
+  it("keeps rejected results reviewable and retries missing results without transition states", () => {
+    const batch = createTranslationBatch({
+      templateId: "TPL-1001",
+      targetLocales: ["fr-FR"],
+      createdBy: "Gary Ma",
+    });
+    const itemId = batch.items[0].id;
+
+    rejectTranslation(itemId, "术语不准确");
+    expect(
+      getPrototypeState().translationBatches
+        .flatMap((item) => item.items)
+        .find((item) => item.id === itemId),
+    ).toMatchObject({
+      status: "翻译返回待审核",
+      errorMessage: "术语不准确",
+    });
+
+    retryTranslation(itemId);
+    expect(
+      getPrototypeState().translationBatches
+        .flatMap((item) => item.items)
+        .find((item) => item.id === itemId),
+    ).toMatchObject({
+      status: "翻译返回待审核",
+      errorMessage: undefined,
+    });
   });
 
   it("updates the special-language review policy", () => {
@@ -278,7 +314,7 @@ describe("prototype store workflow transitions", () => {
     ).toMatchObject({
       specialReviewRequired: true,
       reviewGroup: "小语种专项审核组",
-      status: "待小语种专审",
+      status: "翻译返回待审核",
     });
   });
 

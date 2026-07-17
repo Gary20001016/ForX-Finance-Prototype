@@ -3,9 +3,9 @@ import { templates, translationBatches } from './data';
 
 describe('translation fixtures', () => {
   it('models external jobs and blocks templates with incomplete locale reviews', () => {
-    const partial = translationBatches.find((batch) => batch.status === '部分失败');
+    const partial = translationBatches.find((batch) => batch.status === '无结果');
 
-    expect(partial?.items.some((item) => item.externalTaskId && item.status === '翻译失败')).toBe(true);
-    expect(templates.some((template) => template.translationReadiness !== '全部审核通过')).toBe(true);
+    expect(partial?.items.some((item) => item.externalTaskId && item.status === '无结果')).toBe(true);
+    expect(templates.some((template) => template.translationReadiness !== '已通过')).toBe(true);
   });
 });
