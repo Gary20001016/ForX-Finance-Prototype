@@ -1014,3 +1014,23 @@ test('asset bottom navigation stays fixed while home content scrolls', async () 
     assert.equal(await page.locator('#interactive-phone .app-screen').evaluate(node => node.scrollTop), 0);
   }, { width:390, height:844 });
 });
+
+test('asset header stays fixed while home content scrolls', async () => {
+  await withPage(async page => {
+    const header = page.locator('#interactive-phone .home-header');
+    assert.equal(await header.count(), 1);
+    const status = page.locator('#interactive-phone .status-bar');
+    const accounts = page.locator('#interactive-phone .account-nav');
+    const scroller = page.locator('#interactive-phone .home-scroll');
+    const beforeStatus = await status.boundingBox();
+    const beforeAccounts = await accounts.boundingBox();
+    assert.ok(beforeStatus && beforeAccounts);
+    await scroller.evaluate(node => node.scrollTo(0, node.scrollHeight));
+    const afterStatus = await status.boundingBox();
+    const afterAccounts = await accounts.boundingBox();
+    assert.ok(afterStatus && afterAccounts);
+    assert.equal(Math.round(afterStatus.y), Math.round(beforeStatus.y));
+    assert.equal(Math.round(afterAccounts.y), Math.round(beforeAccounts.y));
+    assert.equal(await scroller.locator('.status-bar,.account-nav').count(), 0);
+  }, { width:390, height:844 });
+});
