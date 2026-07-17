@@ -978,3 +978,16 @@ test('operational address surfaces preserve complete values', async () => {
     await expectFullAddresses(page);
   });
 });
+
+test('collapsed asset rows keep only balance essentials and disclose secondary facts', async () => {
+  await withPage(async page => {
+    const row = page.locator('#interactive-phone [data-asset-row="USDT"]');
+    const collapsed = await row.textContent();
+    assert.match(collapsed, /USDT/);
+    assert.match(collapsed, /18,240\.00/);
+    assert.match(collapsed, /≈ \$18,238\.18/);
+    assert.doesNotMatch(collapsed, /Tether USD|\$0\.9999|\+0\.02%|73\.9%/);
+    await row.click();
+    assert.match(await page.locator('#interactive-phone [data-asset-detail]').textContent(), /Tether USD.*参考价格.*24h 涨跌.*资产占比.*可用余额.*最近变动.*支持网络/s);
+  });
+});
