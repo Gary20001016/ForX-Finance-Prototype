@@ -146,6 +146,16 @@ export const normalizeTranslationBatches = (
     };
   });
 
+export const normalizeTemplateTranslationReadiness = (
+  templates: MessageTemplate[],
+): MessageTemplate[] =>
+  templates.map((template) => ({
+    ...template,
+    translationReadiness: normalizeTranslationStatus(
+      String(template.translationReadiness),
+    ),
+  }));
+
 export const normalizeRuleContentVersions = (
   versions: RuleContentVersion[],
   availableTemplates: MessageTemplate[],
@@ -639,7 +649,7 @@ const createSeed = (): PrototypeState => {
 const migrateSavedState = (saved: PrototypeState): PrototypeState => {
   const fresh = createSeed();
   const savedTemplates = saved.templates || [];
-  const mergedTemplateCandidates = [
+  const mergedTemplateCandidates = normalizeTemplateTranslationReadiness([
     ...savedTemplates.map((template) => ({
       ...fresh.templates.find((item) => item.id === template.id),
       ...template,
@@ -647,7 +657,7 @@ const migrateSavedState = (saved: PrototypeState): PrototypeState => {
     ...fresh.templates.filter(
       (template) => !savedTemplates.some((item) => item.id === template.id),
     ),
-  ];
+  ]);
   const savedTranslationBatches = saved.translationBatches || [];
   const mergedTranslationBatches = [
     ...savedTranslationBatches,

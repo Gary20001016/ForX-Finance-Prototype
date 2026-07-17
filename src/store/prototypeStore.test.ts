@@ -12,6 +12,7 @@ import {
   markMessageRead,
   getOperatorTestAccounts,
   normalizeTranslationBatches,
+  normalizeTemplateTranslationReadiness,
   normalizeRuleContentVersions,
   performManualTaskOperation,
   publishRuleContentVersion,
@@ -299,6 +300,19 @@ describe("prototype store workflow transitions", () => {
       "TPL-1004": "manual",
     });
     expect(Object.values(scopes).every(Boolean)).toBe(true);
+  });
+
+  it("migrates legacy template translation readiness before template filtering", () => {
+    const current = getPrototypeState();
+    const legacyTemplate = {
+      ...current.templates.find((item) => item.id === "TPL-1007")!,
+      translationReadiness: "全部审核通过" as never,
+    };
+
+    expect(normalizeTemplateTranslationReadiness([legacyTemplate])[0]).toMatchObject({
+      id: "TPL-1007",
+      translationReadiness: "已通过",
+    });
   });
 
   it("hydrates special-review routing when migrating legacy translation batches", () => {
