@@ -265,29 +265,9 @@ export interface MessageTemplate {
   usageScope: TemplateUsageScope;
 }
 
-export type TranslationItemStatus =
-  | "未提交"
-  | "排队中"
-  | "翻译中"
-  | "待普通确认"
-  | "修改中"
-  | "待小语种专审"
-  | "专审中"
-  | "源文案已变更"
-  | "已通过"
-  | "待人工审核"
-  | "审核通过"
-  | "翻译失败"
-  | "审核驳回"
-  | "已取消";
-export type TranslationBatchStatus =
-  | "未提交"
-  | "机翻处理中"
-  | "待人工审核"
-  | "全部审核通过"
-  | "部分失败"
-  | "审核被驳回"
-  | "已取消";
+export type TranslationStatus = "无结果" | "翻译返回待审核" | "已通过";
+export type TranslationItemStatus = TranslationStatus;
+export type TranslationBatchStatus = TranslationStatus;
 
 export type TranslationSubjectType =
   | "template_version"
