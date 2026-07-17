@@ -16,6 +16,7 @@ import MessagePreview from "../../components/MessagePreview";
 import MarkdownEditor from "../../components/MarkdownEditor";
 import { hasUnsafeMarkdownLinks } from "../../components/MarkdownContent";
 import type {
+  Channel,
   LocalizedMessageContent,
   MessageTemplate,
   TemplateUsageScope,
@@ -49,6 +50,7 @@ const locales = [
   "fr-FR",
   "de-DE",
 ];
+const defaultChannels: Channel[] = ["站内信", "Push"];
 const emptyContent: LocalizedMessageContent = {
   sourceLocale: "zh-CN",
   locales: ["zh-CN"],
@@ -83,6 +85,7 @@ export default function TemplateEditorDrawer({
 }) {
   const [form] = Form.useForm();
   const [content, setContent] = useState<LocalizedMessageContent>(emptyContent);
+  const [channels, setChannels] = useState<Channel[]>(defaultChannels);
   const [targetLocales, setTargetLocales] = useState<string[]>(["en-US"]);
   const [submitting, setSubmitting] = useState(false);
   const [testSendVisible, setTestSendVisible] = useState(false);
@@ -97,6 +100,11 @@ export default function TemplateEditorDrawer({
         (item) => item !== (template?.sourceLocale || "zh-CN"),
       ),
     );
+    setChannels(
+      template?.channels?.length
+        ? [...template.channels]
+        : [...defaultChannels],
+    );
     form.setFieldsValue({
       code: template?.code,
       name: template?.name,
@@ -105,7 +113,6 @@ export default function TemplateEditorDrawer({
       nature: template?.nature || "事务",
       risk: template?.risk || "中",
       sourceLocale: template?.sourceLocale || "zh-CN",
-      channels: template?.channels || ["站内信", "Push"],
       owner: template?.owner || "消息运营",
       usageScope: template?.usageScope || entryScope,
       variables: (
@@ -130,20 +137,30 @@ export default function TemplateEditorDrawer({
       ...current,
       push: { ...current.push, ...changes },
     }));
+  const updateChannels = (values: Channel[]) => {
+    if (!values.length) {
+      Message.warning("请至少保留一个正式渠道");
+      return;
+    }
+    setChannels(values);
+  };
   const save = async (translate: boolean) => {
     try {
       const values = await form.validate();
-      if (
-        !content.web.title ||
-        !content.web.summary ||
-        !content.web.body ||
-        !content.push.title ||
-        !content.push.body
-      ) {
-        Message.warning("请完整填写站内信与 App Push 内容");
+      const stationIncomplete =
+        channels.includes("站内信") &&
+        (!content.web.title || !content.web.summary || !content.web.body);
+      const pushIncomplete =
+        channels.includes("Push") &&
+        (!content.push.title || !content.push.body);
+      if (stationIncomplete || pushIncomplete) {
+        Message.warning("请完整填写已选正式渠道的内容");
         return;
       }
-      if (hasUnsafeMarkdownLinks(content.web.body)) {
+      if (
+        channels.includes("站内信") &&
+        hasUnsafeMarkdownLinks(content.web.body)
+      ) {
         Message.error(
           "站内信 Markdown 包含不允许的链接，仅支持 http、https 和 forxfinance 协议",
         );
@@ -160,7 +177,7 @@ export default function TemplateEditorDrawer({
         category: values.category,
         nature: values.nature,
         risk: values.risk,
-        channels: values.channels,
+        channels,
         locales: [values.sourceLocale, ...targetLocales],
         sourceLocale: values.sourceLocale,
         content: {
@@ -322,8 +339,12 @@ export default function TemplateEditorDrawer({
         </Grid.Row>
         <Grid.Row gutter={16}>
           <Grid.Col span={10}>
-            <Form.Item label="正式渠道" field="channels">
-              <Checkbox.Group options={["站内信", "Push"]} />
+            <Form.Item label="正式渠道" required>
+              <Checkbox.Group
+                value={channels}
+                options={["站内信", "Push"]}
+                onChange={(values) => updateChannels(values as Channel[])}
+              />
             </Form.Item>
           </Grid.Col>
           <Grid.Col span={14}>
@@ -348,7 +369,8 @@ export default function TemplateEditorDrawer({
       <Tabs defaultActiveTab="content">
         <Tabs.TabPane key="content" title="内容编辑">
           <Grid.Row gutter={20}>
-            <Grid.Col span={12}>
+            {channels.includes("站内信") && (
+              <Grid.Col span={channels.length === 1 ? 24 : 12}>
               <h3>站内信（Web + App 共用）</h3>
               <Form layout="vertical">
                 <Form.Item label="站内信标题">
@@ -396,8 +418,10 @@ export default function TemplateEditorDrawer({
                   </Grid.Col>
                 </Grid.Row>
               </Form>
-            </Grid.Col>
-            <Grid.Col span={12}>
+              </Grid.Col>
+            )}
+            {channels.includes("Push") && (
+              <Grid.Col span={channels.length === 1 ? 24 : 12}>
               <h3>App Push</h3>
               <Form layout="vertical">
                 <Form.Item label="Push 标题">
@@ -465,12 +489,14 @@ export default function TemplateEditorDrawer({
                   )}
                 </Grid.Row>
               </Form>
-            </Grid.Col>
+              </Grid.Col>
+            )}
           </Grid.Row>
         </Tabs.TabPane>
         <Tabs.TabPane key="preview" title="双端预览">
           <MessagePreview
             content={content}
+            channels={channels}
             showPushPriority={entryScope === "event"}
           />
         </Tabs.TabPane>
@@ -478,7 +504,7 @@ export default function TemplateEditorDrawer({
       <TemplateTestSendModal
         visible={testSendVisible}
         content={content}
-        channels={(form.getFieldValue("channels") || []) as MessageTemplate["channels"]}
+        channels={channels}
         variables={String(form.getFieldValue("variables") || "")
           .split(",")
           .map((item) => item.trim())
