@@ -151,6 +151,8 @@ Rounded corners communicate hierarchy: 12px for controls, 16px for major panels,
 - Status steppers use explicit labels and icons; color alone never communicates progress.
 - Sheets preserve context, trap focus, close with Escape, and return focus to the trigger.
 - Asset and record rows align amounts to the trailing edge and use small muted metadata below.
+- Collapsed funding asset rows show only token identity, token balance, approximate fiat value, and disclosure; price, 24-hour change, allocation share, and the English token name belong in the expanded detail.
+- The asset home uses a fixed two-row shell: `.home-scroll` owns vertical scrolling and the bottom navigation is its non-scrolling sibling.
 - Icons come from one 1.75px outline SVG family. Token and network marks use consistent containers; no emoji or improvised symbol acts as a control.
 - Transaction screens expose orientation, primary value, supporting metadata, state, action hierarchy, and auditability before they are considered complete.
 - Funding uses a three-column balance strip for available, frozen, and incoming value; contract uses the same pattern for available margin, ratio, and transfer headroom.
@@ -171,6 +173,7 @@ Rounded corners communicate hierarchy: 12px for controls, 16px for major panels,
 - Do separate net external flow, trading returns, and internal transfer flow.
 - Do keep notification and fund-record shortcuts in the same row as account tabs.
 - Do keep simulation, failure injection, and manual state advancement in the external demo console.
+- Do keep the last asset-home activity row fully scrollable above the fixed bottom navigation.
 - Don't add a page title, service-status badge, ForX lockup, or decorative brand subtitle above the account tabs.
 - Don't compress four operational facts into one mobile row or reduce required text to make a fixed-height screen fit.
 - Don't use ellipsis, middle truncation, or shortened sample data for any address-class value.
@@ -179,6 +182,7 @@ Rounded corners communicate hierarchy: 12px for controls, 16px for major panels,
 - Don't imply any prototype wallet, signature, transaction, or blockchain state is real.
 - Don't place “模拟” or “演示处理” buttons inside the phone UI.
 - Don't use empty space to compensate for missing operational content.
+- Don't place bottom navigation inside the element that owns vertical scrolling.
 - Don't wrap every metric in a separate rounded card; use tonal sections, aligned columns, and dividers.
 
 ## Motion

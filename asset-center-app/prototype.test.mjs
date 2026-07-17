@@ -635,12 +635,12 @@ test('matches the reference shell at desktop and mobile sizes', async () => {
 
 test('funding home exposes professional balance and asset detail', async () => {
   await withPage(async page => {
-    for (const label of ['可用资产', '冻结资产', '待入账', '最后更新', '资产配置', '24h 变化', '资金动态']) {
+    for (const label of ['可用资产', '冻结资产', '待入账', '最后更新', '资产配置', '资金动态']) {
       assert.match(await page.locator('#screen-root').textContent(), new RegExp(label));
     }
     assert.equal(await page.locator('[data-asset-row]').count(), 2);
     await page.locator('[data-asset-row="USDT"]').click();
-    assert.match(await page.locator('[data-asset-detail]').textContent(), /支持网络.*最近变动.*可用余额/s);
+    assert.match(await page.locator('[data-asset-detail]').textContent(), /参考价格.*24h 涨跌.*资产占比.*可用余额.*最近变动.*支持网络/s);
     assert.ok(await page.locator('[data-activity-row]').count() >= 3);
   });
 });
@@ -989,6 +989,9 @@ test('collapsed asset rows keep only balance essentials and disclose secondary f
     assert.doesNotMatch(collapsed, /Tether USD|\$0\.9999|\+0\.02%|73\.9%/);
     await row.click();
     assert.match(await page.locator('#interactive-phone [data-asset-detail]').textContent(), /Tether USD.*参考价格.*24h 涨跌.*资产占比.*可用余额.*最近变动.*支持网络/s);
+    const networkPills = page.locator('#interactive-phone [data-asset-detail] .network-pills');
+    assert.equal(await networkPills.evaluate(node => getComputedStyle(node).flexWrap), 'wrap');
+    assert.equal(await networkPills.evaluate(node => getComputedStyle(node).overflowX), 'visible');
   });
 });
 
