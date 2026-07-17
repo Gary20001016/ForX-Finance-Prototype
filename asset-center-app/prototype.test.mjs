@@ -991,3 +991,23 @@ test('collapsed asset rows keep only balance essentials and disclose secondary f
     assert.match(await page.locator('#interactive-phone [data-asset-detail]').textContent(), /Tether USD.*参考价格.*24h 涨跌.*资产占比.*可用余额.*最近变动.*支持网络/s);
   });
 });
+
+test('asset bottom navigation stays fixed while home content scrolls', async () => {
+  await withPage(async page => {
+    const scroller = page.locator('#interactive-phone .home-scroll');
+    assert.equal(await scroller.count(), 1);
+    const nav = page.locator('#interactive-phone .bottom-nav');
+    const phone = page.locator('#interactive-phone');
+    const before = await nav.boundingBox();
+    const phoneBox = await phone.boundingBox();
+    assert.ok(before && phoneBox);
+    await scroller.evaluate(node => node.scrollTo(0, node.scrollHeight));
+    const after = await nav.boundingBox();
+    const lastActivity = await page.locator('#interactive-phone [data-activity-row]').last().boundingBox();
+    assert.ok(after && lastActivity);
+    assert.equal(Math.round(after.y), Math.round(before.y));
+    assert.ok(Math.abs((after.y + after.height) - (phoneBox.y + phoneBox.height)) <= 2);
+    assert.ok(lastActivity.y + lastActivity.height <= after.y + 1);
+    assert.equal(await page.locator('#interactive-phone .app-screen').evaluate(node => node.scrollTop), 0);
+  }, { width:390, height:844 });
+});
