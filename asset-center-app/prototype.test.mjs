@@ -686,9 +686,13 @@ test('withdrawal separates debit fee receipt limit and risk', async () => {
     await openWithdrawal(page);
     await page.locator('#paste-demo-address').click();
     await page.locator('#withdraw-amount').fill('250');
-    for (const label of ['本次扣除', '网络费', '预计到账', '今日剩余额度', '地址类型', '网络拥堵', '预计处理']) {
+    for (const label of ['本次扣除', '网络费', '预计到账', '今日剩余额度', '预计处理']) {
       assert.match(await page.locator('#screen-root').textContent(), new RegExp(label));
     }
+    const operations = page.locator('#interactive-phone .withdraw-operations');
+    assert.equal(await operations.locator(':scope > div').count(), 1);
+    assert.doesNotMatch(await operations.textContent(), /地址类型|网络拥堵/);
+    assert.match(await operations.textContent(), /预计处理/);
     assert.equal(await page.locator('[data-withdraw-gross]').textContent(), '250.00 USDT');
     assert.equal(await page.locator('[data-withdraw-net]').textContent(), '249.20 USDT');
   });
