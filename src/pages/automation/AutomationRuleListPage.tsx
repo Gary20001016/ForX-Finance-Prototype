@@ -46,13 +46,12 @@ import { templateSupportsScope } from "../templates/templateScope";
 const localeOptions = ["en-US", "ja-JP", "ko-KR", "fr-FR", "es-ES"];
 
 const versionAction = (
-  status: RuleContentVersion["status"],
+  version: RuleContentVersion,
+  batch?: ReturnType<typeof usePrototypeStore>["translationBatches"][number],
 ): RuleContentVersionOperation | "发布版本" | undefined => {
-  if (status === "草稿") return "提交机翻";
-  if (status === "机翻处理中") return "机翻完成";
-  if (status === "待人工审核") return "人工审核通过";
-  if (status === "待审核") return "通过审核";
-  if (status === "待生效") return "发布版本";
+  if (version.status === "草稿" && !batch) return "提交机翻";
+  if (version.status === "待审核") return "通过审核";
+  if (version.status === "待生效") return "发布版本";
   return undefined;
 };
 
@@ -437,7 +436,10 @@ export default function AutomationRuleListPage() {
                     title: "操作",
                     width: 150,
                     render: (_: unknown, item: RuleContentVersion) => {
-                      const action = versionAction(item.status);
+                      const batch = store.translationBatches.find(
+                        (candidate) => candidate.id === item.translationBatchId,
+                      );
+                      const action = versionAction(item, batch);
                       return action ? (
                         <Button type="text" onClick={() => advanceVersion(item, action)}>
                           {action}

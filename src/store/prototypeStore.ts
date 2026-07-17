@@ -152,6 +152,9 @@ export const normalizeRuleContentVersions = (
 ): RuleContentVersion[] =>
   versions.map((version) => ({
     ...version,
+    status: ["机翻处理中", "待人工审核"].includes(String(version.status))
+      ? "草稿"
+      : version.status,
     translationBatchId:
       version.translationBatchId ||
       availableTemplates.find((template) => template.id === version.templateId)
@@ -1589,7 +1592,7 @@ export const saveTemplate = (
     ...input,
     id: `TPL-${Date.now().toString().slice(-6)}`,
     translationBatchId: "",
-    translationReadiness: "未提交",
+    translationReadiness: "无结果",
     version: "v1",
     status: "草稿",
     updatedAt: "刚刚",
@@ -1860,7 +1863,7 @@ export const createRuleTranslationBatch = (versionId: string) => {
     ...current,
     ruleVersions: current.ruleVersions.map((item) =>
       item.id === versionId
-        ? { ...item, translationBatchId: batch.id, status: "待人工审核" }
+        ? { ...item, translationBatchId: batch.id, status: "草稿" }
         : item,
     ),
   }));

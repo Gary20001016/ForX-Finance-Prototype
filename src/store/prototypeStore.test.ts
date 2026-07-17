@@ -5,6 +5,7 @@ import {
   approveSpecialReview,
   addOperatorTestAccount,
   advanceRuleContentVersion,
+  createRuleTranslationBatch,
   createRuleContentVersion,
   createTranslationBatch,
   getPrototypeState,
@@ -637,9 +638,19 @@ describe("prototype store workflow transitions", () => {
     const oldVersionId = rule.currentVersionId;
     const version = createRuleContentVersion(rule.id);
 
-    advanceRuleContentVersion(version.id, "提交机翻");
-    advanceRuleContentVersion(version.id, "机翻完成");
-    advanceRuleContentVersion(version.id, "人工审核通过");
+    const batch = createRuleTranslationBatch(version.id);
+    batch.items.forEach((item) =>
+      approveTranslation(item.id, {
+        title: item.machineTitle || "Translated title",
+        summary: item.machineSummary || "Translated summary",
+        body: item.machineBody || "Translated body",
+        reviewer: "Reviewer 02",
+      }),
+    );
+    expect(
+      getPrototypeState().ruleVersions.find((item) => item.id === version.id)
+        ?.status,
+    ).toBe("待审核");
     advanceRuleContentVersion(version.id, "通过审核");
     publishRuleContentVersion(version.id);
 

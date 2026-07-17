@@ -67,8 +67,6 @@ export type EventRuleOperation =
 
 export type RuleContentVersionStatus =
   | "草稿"
-  | "机翻处理中"
-  | "待人工审核"
   | "待审核"
   | "待生效"
   | "当前生效"
@@ -78,8 +76,6 @@ export type RuleContentVersionStatus =
 
 export type RuleContentVersionOperation =
   | "提交机翻"
-  | "机翻完成"
-  | "人工审核通过"
   | "通过审核"
   | "取消版本";
 

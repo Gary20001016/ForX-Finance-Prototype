@@ -35,9 +35,7 @@ const versionTransitions: Partial<
     Partial<Record<RuleContentVersionOperation, RuleContentVersionStatus>>
   >
 > = {
-  草稿: { 提交机翻: "机翻处理中", 取消版本: "已取消" },
-  机翻处理中: { 机翻完成: "待人工审核", 取消版本: "已取消" },
-  待人工审核: { 人工审核通过: "待审核", 取消版本: "已取消" },
+  草稿: { 取消版本: "已取消" },
   待审核: { 通过审核: "待生效", 取消版本: "已取消" },
   待生效: { 取消版本: "已取消" },
 };
