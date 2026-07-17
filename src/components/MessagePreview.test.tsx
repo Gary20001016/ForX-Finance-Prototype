@@ -31,3 +31,11 @@ it("previews shared inbox content on Web and App separately from App Push", () =
   expect(within(appInbox).getByText("统一站内信标题")).toBeVisible();
   expect(within(appPush).getByText("独立 Push 标题")).toBeVisible();
 });
+
+it("hides Push priority metadata for artificial messages", () => {
+  render(<MessagePreview content={content} showPushPriority={false} />);
+
+  const appPush = screen.getByRole("region", { name: "App Push 预览" });
+  expect(within(appPush).getByText("全部设备")).toBeVisible();
+  expect(within(appPush).queryByText("高")).not.toBeInTheDocument();
+});

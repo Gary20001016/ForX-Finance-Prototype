@@ -96,7 +96,7 @@ const emptyContent: LocalizedMessageContent = {
     body: "",
     deepLink: "forxfinance://security/devices",
     platform: "全部设备",
-    priority: "高",
+    priority: "普通",
   },
 };
 const audienceMap: Record<
@@ -170,12 +170,12 @@ export default function CreateTaskPage() {
   const manualTemplates = store.templates.filter(
     (template) =>
       isReusableMessageTemplate(template) &&
-      template.translationReadiness === "全部审核通过" &&
+      template.translationReadiness === "已通过" &&
       templateSupportsScope(template, "manual"),
   );
   const eventTemplates = store.templates.filter(
     (template) =>
-      template.translationReadiness === "全部审核通过" &&
+      template.translationReadiness === "已通过" &&
       template.status === "已发布" &&
       templateSupportsScope(template, "event"),
   );
@@ -325,9 +325,9 @@ export default function CreateTaskPage() {
     sameChannels(temporaryBatchChannels, selectedChannels);
   const translationReady =
     contentMode === "template"
-      ? selectedTemplate?.translationReadiness === "全部审核通过"
+      ? selectedTemplate?.translationReadiness === "已通过"
       : targetLocales.length === 0 ||
-        (currentBatch?.status === "全部审核通过" && translationScopeCurrent);
+        (currentBatch?.status === "已通过" && translationScopeCurrent);
   const values = { ...snapshot, ...form.getFieldsValue() };
   const selectedCategory = String(
     values.category || copiedTask?.category || "系统公告",
@@ -682,7 +682,6 @@ export default function CreateTaskPage() {
       content,
       audienceCount: audience.count,
       audienceLabel: audience.label,
-      sampleUsers: audience.samples,
       schedule,
       expiresAt,
       translationReady: Boolean(translationReady),
@@ -736,7 +735,7 @@ export default function CreateTaskPage() {
           className="task-steps"
         >
           <Steps.Step title="内容与多语言" description="渠道、模板与临时消息" />
-          <Steps.Step title="目标用户" description="受众、排除与样例" />
+          <Steps.Step title="目标用户" description="受众与排除规则" />
           <Steps.Step title="发送策略" description="排期、有效期与渠道检查" />
           <Steps.Step title="预览并提交" description="冻结与审批" />
         </Steps>
@@ -902,6 +901,7 @@ export default function CreateTaskPage() {
                             content={content}
                             channels={channels}
                             compact
+                            showPushPriority={false}
                           />
                         </>
                       )}
@@ -1006,7 +1006,7 @@ export default function CreateTaskPage() {
                               />
                             </FormItem>
                             <Grid.Row gutter={12}>
-                              <Grid.Col span={8}>
+                              <Grid.Col span={24}>
                                 <FormItem label="设备平台">
                                   <Select
                                     value={temporary.push.platform}
@@ -1018,29 +1018,6 @@ export default function CreateTaskPage() {
                                       "iOS",
                                       "Android",
                                     ].map((value) => ({ label: value, value }))}
-                                  />
-                                </FormItem>
-                              </Grid.Col>
-                              <Grid.Col span={8}>
-                                <FormItem label="优先级">
-                                  <Select
-                                    value={temporary.push.priority}
-                                    onChange={(value) =>
-                                      patchPush({ priority: value })
-                                    }
-                                    options={["普通", "高", "紧急"].map(
-                                      (value) => ({ label: value, value }),
-                                    )}
-                                  />
-                                </FormItem>
-                              </Grid.Col>
-                              <Grid.Col span={8}>
-                                <FormItem label="折叠键">
-                                  <Input
-                                    value={temporary.push.collapseKey}
-                                    onChange={(value) =>
-                                      patchPush({ collapseKey: value })
-                                    }
                                   />
                                 </FormItem>
                               </Grid.Col>
@@ -1087,7 +1064,11 @@ export default function CreateTaskPage() {
                           context="temporary-task"
                         />
                       )}
-                      <MessagePreview content={content} channels={channels} />
+                      <MessagePreview
+                        content={content}
+                        channels={channels}
+                        showPushPriority={false}
+                      />
                     </div>
                   )}
                 </>
@@ -1111,7 +1092,6 @@ export default function CreateTaskPage() {
                       { label: "受众方式", value: "事件主体用户" },
                       { label: "预计单次受众", value: "1 人" },
                       { label: "用户字段", value: "user_id" },
-                      { label: "测试样例", value: "UID TEST-001" },
                     ]}
                   />
                 </>
@@ -1215,17 +1195,12 @@ export default function CreateTaskPage() {
                     </div>
                     <Button
                       onClick={() =>
-                        Message.success("已生成新的受众快照和抽样用户")
+                        Message.success("已刷新预计受众人数")
                       }
                     >
                       刷新人数
                     </Button>
                   </div>
-                  <Card title="受众样例" size="small">
-                    {audience.samples.map((item) => (
-                      <Tag key={item}>{item}</Tag>
-                    ))}
-                  </Card>
                 </>
               )}
             </div>
@@ -1325,10 +1300,19 @@ export default function CreateTaskPage() {
                 <Alert
                   type="info"
                   title="App Push 正式发送检查"
-                  content="提交前校验 APNs/FCM 状态、通知权限、有效设备 Token、Deep Link 白名单、折叠键和优先级；临时失败退避重试，永久失败使 Token 失效。"
+                  content={
+                    triggerType === "event"
+                      ? "提交前校验 APNs/FCM 状态、通知权限、有效设备 Token、Deep Link 白名单、折叠键和优先级；临时失败退避重试，永久失败使 Token 失效。"
+                      : "提交前校验 APNs/FCM 状态、通知权限、有效设备 Token 和 Deep Link 白名单；临时失败退避重试，永久失败使 Token 失效。"
+                  }
                 />
               )}
-              <MessagePreview content={content} channels={channels} compact />
+              <MessagePreview
+                content={content}
+                channels={channels}
+                compact
+                showPushPriority={triggerType === "event"}
+              />
             </div>
           )}
           {current === 3 && <TaskSummary data={summary} />}

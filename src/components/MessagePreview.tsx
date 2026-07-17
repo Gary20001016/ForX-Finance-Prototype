@@ -6,10 +6,12 @@ export default function MessagePreview({
   content,
   compact = false,
   channels = ["站内信", "Push"],
+  showPushPriority = true,
 }: {
   content: LocalizedMessageContent;
   compact?: boolean;
   channels?: Channel[];
+  showPushPriority?: boolean;
 }) {
   return (
     <div className={`dual-message-preview ${compact ? "compact" : ""}`}>
@@ -80,11 +82,13 @@ export default function MessagePreview({
             <strong>App Push 预览</strong>
             <Space>
               <Tag color="purple">{content.push.platform}</Tag>
-              <Tag
-                color={content.push.priority === "紧急" ? "red" : "orange"}
-              >
-                {content.push.priority}
-              </Tag>
+              {showPushPriority && (
+                <Tag
+                  color={content.push.priority === "紧急" ? "red" : "orange"}
+                >
+                  {content.push.priority}
+                </Tag>
+              )}
             </Space>
           </div>
           <div className="preview-device phone">

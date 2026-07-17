@@ -183,7 +183,10 @@ export default function ApprovalDrawer({
           <Tabs defaultActiveTab="preview">
             <Tabs.TabPane key="preview" title="内容预览">
               {item.content ? (
-                <MessagePreview content={item.content} />
+                <MessagePreview
+                  content={item.content}
+                  showPushPriority={item.triggerType === "event"}
+                />
               ) : (
                 <Alert
                   type="warning"
@@ -210,12 +213,6 @@ export default function ApprovalDrawer({
                 type="success"
                 content={`${item.audience.toLocaleString()} 名用户已通过地区、授权、退订、频控和地址有效性检查。`}
               />
-              <div className="approval-samples">
-                <h3>受众样例</h3>
-                {(item.sampleUsers || []).map((user) => (
-                  <Tag key={user}>{user}</Tag>
-                ))}
-              </div>
             </Tabs.TabPane>
             <Tabs.TabPane key="audit" title="审批轨迹">
               <Timeline>

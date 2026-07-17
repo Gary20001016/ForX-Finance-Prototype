@@ -82,7 +82,10 @@ export default function TemplateReadOnlyDetails({
         <Typography.Title heading={6}>默认语言内容预览</Typography.Title>
         {template.content ? (
           <>
-            <MessagePreview content={template.content} />
+            <MessagePreview
+              content={template.content}
+              showPushPriority={template.usageScope === "event"}
+            />
             <details className="markdown-source-disclosure">
               <summary>查看站内信正文 Markdown 源码</summary>
               <pre className="markdown-source">

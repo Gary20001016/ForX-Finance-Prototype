@@ -16,6 +16,8 @@ it('authors a temporary multilingual Web and Push message and previews entered c
   await user.click(screen.getByText('临时消息'));
   expect(screen.getByLabelText('站内信标题')).toBeVisible();
   expect(screen.getByLabelText('Push 标题')).toBeVisible();
+  expect(screen.queryByText('优先级', { selector: 'label' })).not.toBeInTheDocument();
+  expect(screen.queryByText('折叠键', { selector: 'label' })).not.toBeInTheDocument();
   expect(screen.getByText('创建外部机翻任务')).toBeVisible();
 });
 
@@ -68,6 +70,7 @@ it('restores the full translation progress for a temporary multilingual message'
 
   expect(screen.getByText('语言审核进度')).toBeVisible();
   expect(screen.getByText('0/2 个目标语言已通过')).toBeVisible();
-  expect(screen.getByText('逐语言任务')).toBeVisible();
-  expect(screen.getAllByText('进入人工审核')).toHaveLength(2);
+  expect(screen.getByText('逐语言结果')).toBeVisible();
+  expect(screen.getByRole('button', { name: '当场校对并确认' })).toBeVisible();
+  expect(screen.getByRole('button', { name: '前往专项审核' })).toBeVisible();
 });

@@ -472,13 +472,12 @@ export default function TaskListPage() {
                   : []),
               ]}
             />
-            {selected.content && <MessagePreview content={selected.content} />}
-            <div className="approval-samples">
-              <strong>受众样例</strong>
-              {selected.sampleUsers?.map((user) => (
-                <Tag key={user}>{user}</Tag>
-              ))}
-            </div>
+            {selected.content && (
+              <MessagePreview
+                content={selected.content}
+                showPushPriority={false}
+              />
+            )}
           </Space>
         )}
       </Drawer>

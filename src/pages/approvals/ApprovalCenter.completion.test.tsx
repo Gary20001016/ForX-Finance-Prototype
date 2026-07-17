@@ -18,7 +18,7 @@ it("shows object-bound Web/App inbox and Push previews in approval", async () =>
   expect(screen.getByRole("button", { name: "通过审核" })).toBeVisible();
   expect(screen.getByRole("button", { name: "驳回审核" })).toBeVisible();
   await user.click(screen.getByRole("tab", { name: "受众与合规" }));
-  expect(screen.getByText("受众样例")).toBeVisible();
+  expect(screen.queryByText("受众样例")).not.toBeInTheDocument();
 });
 
 it("shows the frozen event policy in approval details", async () => {

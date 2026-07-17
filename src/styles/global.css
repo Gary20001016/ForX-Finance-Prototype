@@ -1858,21 +1858,6 @@ select {
   color: #3538cd;
   font-size: 11px;
 }
-.sample-user-list,
-.approval-samples {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  margin-top: 16px;
-}
-.sample-user-list strong,
-.approval-samples strong {
-  margin-right: 4px;
-}
-.approval-samples h3 {
-  width: 100%;
-}
 .allowlist-table {
   min-width: 980px;
   border: 1px solid var(--mc-border);

@@ -428,7 +428,7 @@ export default function TemplateEditorDrawer({
                   />
                 </Form.Item>
                 <Grid.Row gutter={12}>
-                  <Grid.Col span={8}>
+                  <Grid.Col span={entryScope === "event" ? 8 : 24}>
                     <Form.Item label="设备平台">
                       <Select
                         value={content.push.platform}
@@ -439,33 +439,40 @@ export default function TemplateEditorDrawer({
                       />
                     </Form.Item>
                   </Grid.Col>
-                  <Grid.Col span={8}>
-                    <Form.Item label="优先级">
-                      <Select
-                        value={content.push.priority}
-                        onChange={(value) => patchPush({ priority: value })}
-                        options={["普通", "高", "紧急"].map((value) => ({
-                          label: value,
-                          value,
-                        }))}
-                      />
-                    </Form.Item>
-                  </Grid.Col>
-                  <Grid.Col span={8}>
-                    <Form.Item label="折叠键">
-                      <Input
-                        value={content.push.collapseKey}
-                        onChange={(value) => patchPush({ collapseKey: value })}
-                      />
-                    </Form.Item>
-                  </Grid.Col>
+                  {entryScope === "event" && (
+                    <>
+                      <Grid.Col span={8}>
+                        <Form.Item label="优先级">
+                          <Select
+                            value={content.push.priority}
+                            onChange={(value) => patchPush({ priority: value })}
+                            options={["普通", "高", "紧急"].map((value) => ({
+                              label: value,
+                              value,
+                            }))}
+                          />
+                        </Form.Item>
+                      </Grid.Col>
+                      <Grid.Col span={8}>
+                        <Form.Item label="折叠键">
+                          <Input
+                            value={content.push.collapseKey}
+                            onChange={(value) => patchPush({ collapseKey: value })}
+                          />
+                        </Form.Item>
+                      </Grid.Col>
+                    </>
+                  )}
                 </Grid.Row>
               </Form>
             </Grid.Col>
           </Grid.Row>
         </Tabs.TabPane>
         <Tabs.TabPane key="preview" title="双端预览">
-          <MessagePreview content={content} />
+          <MessagePreview
+            content={content}
+            showPushPriority={entryScope === "event"}
+          />
         </Tabs.TabPane>
       </Tabs>
       <TemplateTestSendModal
