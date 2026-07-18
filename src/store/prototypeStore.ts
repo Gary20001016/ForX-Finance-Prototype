@@ -22,6 +22,7 @@ import type {
   RuleContentVersion,
   RuleContentVersionOperation,
   SystemEventDefinition,
+  TemplateUsageScope,
   TriggerRecord,
   TranslationBatch,
   TranslationContentLayer,
@@ -1587,20 +1588,48 @@ export const reviewApproval = (
     };
   });
 
-export const saveTemplate = (
-  input: Omit<
-    MessageTemplate,
-    | "id"
-    | "translationBatchId"
-    | "translationReadiness"
-    | "version"
-    | "status"
-    | "updatedAt"
-  >,
-) => {
+type TemplateCreateInput = Omit<
+  MessageTemplate,
+  | "id"
+  | "code"
+  | "translationBatchId"
+  | "translationReadiness"
+  | "version"
+  | "status"
+  | "updatedAt"
+>;
+
+type TemplateUpdateInput = Partial<Omit<MessageTemplate, "id" | "code">>;
+
+const templateScopeCode: Record<TemplateUsageScope, string> = {
+  manual: "MAN",
+  event: "EVT",
+  shared: "SHR",
+};
+
+const localDateStamp = (date: Date) =>
+  [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, "0"),
+    String(date.getDate()).padStart(2, "0"),
+  ].join("");
+
+const nextTemplateIdentifiers = (usageScope: TemplateUsageScope) => {
+  const prefix = `TPL-${templateScopeCode[usageScope]}-${localDateStamp(new Date())}`;
+  let sequence = 1;
+  let id = "";
+  do {
+    id = `${prefix}-${String(sequence).padStart(4, "0")}`;
+    sequence += 1;
+  } while (state.templates.some((template) => template.id === id));
+  return { id, code: id.toLowerCase().replaceAll("-", "_") };
+};
+
+export const saveTemplate = (input: TemplateCreateInput) => {
+  const identifiers = nextTemplateIdentifiers(input.usageScope);
   const template: MessageTemplate = {
     ...input,
-    id: `TPL-${Date.now().toString().slice(-6)}`,
+    ...identifiers,
     translationBatchId: "",
     translationReadiness: "无结果",
     version: "v1",
@@ -1616,12 +1645,20 @@ export const saveTemplate = (
 
 export const updateTemplate = (
   id: string,
-  changes: Partial<MessageTemplate>,
+  changes: TemplateUpdateInput,
 ) => {
   const existing = state.templates.find((item) => item.id === id);
   if (!existing) throw new Error("模板不存在");
   if (isApprovedManualTemplateLocked(existing))
     throw new Error(APPROVED_MANUAL_TEMPLATE_LOCK_MESSAGE);
+
+  const {
+    id: ignoredId,
+    code: ignoredCode,
+    ...mutableChanges
+  } = changes as Partial<MessageTemplate>;
+  void ignoredId;
+  void ignoredCode;
 
   let result = existing;
   update((current) => ({
@@ -1630,7 +1667,7 @@ export const updateTemplate = (
       if (item.id !== id) return item;
       result = {
         ...item,
-        ...changes,
+        ...mutableChanges,
         translationReadiness: "无结果",
         translationBatchId: "",
         status: "草稿",

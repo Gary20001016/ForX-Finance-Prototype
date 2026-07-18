@@ -61,7 +61,6 @@ it("keeps one formal channel and validates only selected channel content", async
   expect(stationChannel).toBeChecked();
   expect(screen.getByText("请至少保留一个正式渠道")).toBeVisible();
 
-  await user.type(screen.getByPlaceholderText(/snake_case/), "station_only");
   await user.type(
     screen.getByPlaceholderText("后台识别名称"),
     "仅站内信模板",

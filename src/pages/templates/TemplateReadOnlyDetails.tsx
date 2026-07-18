@@ -35,8 +35,10 @@ export default function TemplateReadOnlyDetails({
         column={3}
         border
         data={[
-          { label: "模板 ID", value: <span className="mono">{template.id}</span> },
-          { label: "模板编码", value: <span className="mono">{template.code}</span> },
+          {
+            label: "模板编号",
+            value: <span className="mono">{template.id}</span>,
+          },
           { label: "模板名称", value: template.name },
           { label: "版本", value: template.version },
           { label: "状态", value: <StatusTag status={template.status} /> },

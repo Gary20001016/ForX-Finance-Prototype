@@ -65,7 +65,7 @@ export default function TemplateListPage() {
       render: (_, r) => (
         <div>
           <Typography.Text className="strong">{r.name}</Typography.Text>
-          <div className="mono muted">{r.code}</div>
+          <div className="mono muted">{r.id}</div>
         </div>
       ),
     },
@@ -201,7 +201,7 @@ export default function TemplateListPage() {
         <Input.Search
           value={keyword}
           onChange={setKeyword}
-          placeholder="搜索模板 ID、编码或名称"
+          placeholder="搜索模板编号或名称"
           style={{ width: 280 }}
         />
         <Select

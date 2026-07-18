@@ -24,7 +24,6 @@ it('authors a temporary multilingual Web and Push message and previews entered c
 it('restores the full translation progress for a temporary multilingual message', () => {
   const sourceTemplate = getPrototypeState().templates[0];
   const temporaryTemplate = saveTemplate({
-    code: 'temporary_progress_test',
     name: '临时消息 · 翻译进度测试',
     category: '系统公告',
     nature: '事务',

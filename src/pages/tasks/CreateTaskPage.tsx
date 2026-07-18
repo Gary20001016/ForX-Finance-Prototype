@@ -612,7 +612,6 @@ export default function CreateTaskPage() {
       return;
     }
     const draft = saveTemplate({
-      code: `temporary_${Date.now().toString().slice(-6)}`,
       name: `临时消息 · ${form.getFieldValue("name") || "未命名"}`,
       category: form.getFieldValue("category") || "系统公告",
       nature: resolvedNature,

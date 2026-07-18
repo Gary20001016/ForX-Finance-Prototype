@@ -106,7 +106,6 @@ export default function TemplateEditorDrawer({
         : [...defaultChannels],
     );
     form.setFieldsValue({
-      code: template?.code,
       name: template?.name,
       description: "",
       category: template?.category || "系统公告",
@@ -172,7 +171,6 @@ export default function TemplateEditorDrawer({
       }
       setSubmitting(true);
       const payload = {
-        code: values.code,
         name: values.name,
         category: values.category,
         nature: values.nature,
@@ -255,17 +253,7 @@ export default function TemplateEditorDrawer({
       />
       <Form form={form} layout="vertical" className="template-editor-form">
         <Grid.Row gutter={16}>
-          <Grid.Col span={6}>
-            <Form.Item
-              label="模板编码"
-              field="code"
-              required
-              rules={[{ required: true }]}
-            >
-              <Input placeholder="snake_case，例如 risk_alert" />
-            </Form.Item>
-          </Grid.Col>
-          <Grid.Col span={6}>
+          <Grid.Col span={12}>
             <Form.Item
               label="模板名称"
               field="name"

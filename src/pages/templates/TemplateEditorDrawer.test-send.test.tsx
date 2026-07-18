@@ -54,4 +54,7 @@ it("does not offer test sending for a locked published manual template", () => {
   expect(
     screen.queryByRole("button", { name: "测试发送" }),
   ).not.toBeInTheDocument();
+  expect(screen.getByText("模板编号")).toBeVisible();
+  expect(screen.queryByText("模板编码")).not.toBeInTheDocument();
+  expect(screen.getByText(template.id)).toBeVisible();
 });

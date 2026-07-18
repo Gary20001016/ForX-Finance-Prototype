@@ -13,9 +13,25 @@ it("opens a complete template content editor", async () => {
   await user.click(
     screen.getByRole("button", { name: "新建人工消息模板" }),
   );
+  expect(
+    screen.queryByText("模板编码", { selector: "label" }),
+  ).not.toBeInTheDocument();
+  expect(screen.queryByPlaceholderText(/snake_case/)).not.toBeInTheDocument();
   expect(screen.getByLabelText("站内信标题")).toBeVisible();
   expect(screen.getByLabelText("Push Deep Link")).toBeVisible();
   expect(screen.getByText("提交外部机翻")).toBeVisible();
+});
+
+it("shows the system template number instead of the internal code", () => {
+  render(
+    <MemoryRouter initialEntries={["/templates?scope=manual"]}>
+      <TemplateListPage />
+    </MemoryRouter>,
+  );
+
+  expect(screen.getByText("TPL-1004")).toBeVisible();
+  expect(screen.queryByText("network_maintenance")).not.toBeInTheDocument();
+  expect(screen.getByPlaceholderText("搜索模板编号或名称")).toBeVisible();
 });
 
 it("shows task usage instead of a direct event binding", () => {
