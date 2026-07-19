@@ -708,6 +708,8 @@ export default function CreateTaskPage() {
             subject,
             sourceLocale: temporarySourceLocale,
             sourceContent,
+            sourceChannelContent: currentContent,
+            channels,
             targetLocales,
             createdBy: "Gary Ma",
           })

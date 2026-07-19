@@ -148,6 +148,59 @@ describe("prototype store workflow transitions", () => {
     expect(batch.items[0].status).toBe("翻译返回待审核");
   });
 
+  it("freezes selected channels and creates channel-specific translation output", () => {
+    const sourceChannelContent = {
+      sourceLocale: "zh-CN",
+      locales: ["zh-CN", "en-US"],
+      web: {
+        title: "站内信标题",
+        summary: "站内信摘要",
+        body: "站内信正文",
+        actionText: "查看详情",
+        targetUrl: "forxfinance://security/devices",
+      },
+      push: {
+        title: "Push 标题",
+        body: "Push 正文",
+        imageUrl: "https://cdn.example.com/push.png",
+        deepLink: "forxfinance://security/devices",
+        platform: "全部设备" as const,
+        priority: "高" as const,
+      },
+    };
+    const batch = createTranslationBatch({
+      subject: {
+        type: "manual_task_content",
+        id: "TASK-CHANNEL-PREVIEW",
+        name: "分渠道翻译",
+        version: "draft-1",
+        returnPath: "/tasks/create",
+      },
+      sourceLocale: "zh-CN",
+      sourceContent: {
+        title: "站内信标题",
+        summary: "站内信摘要",
+        body: "站内信正文",
+      },
+      sourceChannelContent,
+      channels: ["站内信", "Push"],
+      targetLocales: ["en-US"],
+      createdBy: "Gary Ma",
+    });
+
+    expect(batch.channels).toEqual(["站内信", "Push"]);
+    expect(batch.sourceChannelContent).toEqual(sourceChannelContent);
+    expect(batch.items[0].machineChannelOutput?.web?.title).toBe(
+      "站内信标题 · en-US",
+    );
+    expect(batch.items[0].machineChannelOutput?.push?.title).toBe(
+      "Push 标题 · en-US",
+    );
+    expect(batch.items[0].machineChannelOutput?.push?.deepLink).toBe(
+      "forxfinance://security/devices",
+    );
+  });
+
   it("creates a direct source review batch for a special-review source locale", () => {
     const result = prepareSingleLanguageContent({
       subject: {

@@ -5,6 +5,7 @@ import type { TranslationBatch, TranslationItemStatus } from "../../domain/types
 import { usePrototypeStore } from "../../store/prototypeStore";
 import { deriveMultilingualProgress } from "./multilingualProgress";
 import { localeName } from "./MultilingualProgressCell";
+import MultilingualMessagePreview from "./MultilingualMessagePreview";
 import MultilingualResultPanel from "./MultilingualResultPanel";
 
 const statusColor: Partial<Record<TranslationItemStatus, string>> = {
@@ -27,8 +28,11 @@ export default function MultilingualProgressDrawer({
   const liveBatch = batch
     ? store.translationBatches.find((candidate) => candidate.id === batch.id) || batch
     : undefined;
-  const [expandedItemId, setExpandedItemId] = useState<string>();
-  useEffect(() => setExpandedItemId(undefined), [batch?.id]);
+  const [expandedView, setExpandedView] = useState<{
+    itemId: string;
+    mode: "content" | "preview";
+  }>();
+  useEffect(() => setExpandedView(undefined), [batch?.id]);
   const progress = liveBatch ? deriveMultilingualProgress(liveBatch) : undefined;
   const directSource = liveBatch?.productionMode === "direct_source_review";
 
@@ -81,15 +85,39 @@ export default function MultilingualProgressDrawer({
                   <Space>
                     <Button
                       size="small"
-                      onClick={() => setExpandedItemId((current) => current === item.id ? undefined : item.id)}
+                      onClick={() =>
+                        setExpandedView((current) =>
+                          current?.itemId === item.id &&
+                          current.mode === "content"
+                            ? undefined
+                            : { itemId: item.id, mode: "content" },
+                        )
+                      }
                     >
-                      {expandedItemId === item.id
+                      {expandedView?.itemId === item.id &&
+                      expandedView.mode === "content"
                         ? directSource
                           ? "收起原文"
                           : "收起译文"
                         : directSource
                           ? "查看原文"
                           : "查看译文"}
+                    </Button>
+                    <Button
+                      size="small"
+                      onClick={() =>
+                        setExpandedView((current) =>
+                          current?.itemId === item.id &&
+                          current.mode === "preview"
+                            ? undefined
+                            : { itemId: item.id, mode: "preview" },
+                        )
+                      }
+                    >
+                      {expandedView?.itemId === item.id &&
+                      expandedView.mode === "preview"
+                        ? "收起预览"
+                        : "预览"}
                     </Button>
                     {item.status === "翻译返回待审核" && item.specialReviewRequired && (
                       <Button
@@ -102,9 +130,12 @@ export default function MultilingualProgressDrawer({
                     )}
                   </Space>
                 </div>
-                {expandedItemId === item.id && (
-                  <MultilingualResultPanel batch={liveBatch} item={item} />
-                )}
+                {expandedView?.itemId === item.id &&
+                  (expandedView.mode === "content" ? (
+                    <MultilingualResultPanel batch={liveBatch} item={item} />
+                  ) : (
+                    <MultilingualMessagePreview batch={liveBatch} item={item} />
+                  ))}
               </div>
             ))}
           </div>

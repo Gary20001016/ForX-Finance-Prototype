@@ -25,6 +25,7 @@ import type {
   TemplateUsageScope,
   TriggerRecord,
   TranslationBatch,
+  TranslationChannelContent,
   TranslationContentLayer,
   TranslationItem,
   TranslationSubjectType,
@@ -936,6 +937,8 @@ type GeneralTranslationBatchInput = {
   };
   sourceLocale: string;
   sourceContent: TranslationContentLayer;
+  sourceChannelContent?: LocalizedMessageContent;
+  channels?: Channel[];
   targetLocales: string[];
   createdBy: string;
 };
@@ -1105,6 +1108,10 @@ export const createTranslationBatch = (
         summary: template!.content?.web.summary,
         body: template!.content?.web.body,
       };
+  const sourceChannelContent = generalized
+    ? input.sourceChannelContent
+    : template!.content;
+  const channels = generalized ? input.channels : template!.channels;
   const templateId = generalized ? subject.id : template!.id;
   const targetLocales = input.targetLocales;
   const createdBy = input.createdBy;
@@ -1126,6 +1133,10 @@ export const createTranslationBatch = (
     createdAt: "刚刚",
     updatedAt: "刚刚",
     sourceContent,
+    channels: channels?.length ? [...channels] : undefined,
+    sourceChannelContent: sourceChannelContent
+      ? JSON.parse(JSON.stringify(sourceChannelContent))
+      : undefined,
     items: targetLocales.map((locale, index) => {
       const policy = state.languageReviewPolicies.find(
         (candidate) => candidate.localeCode === locale && candidate.enabled,
@@ -1135,6 +1146,23 @@ export const createTranslationBatch = (
         summary: sourceContent.summary || "",
         body: sourceContent.body || "",
       };
+      const machineChannelOutput: TranslationChannelContent | undefined =
+        sourceChannelContent
+          ? {
+              web: channels?.includes("站内信")
+                ? {
+                    ...sourceChannelContent.web,
+                    title: `${sourceChannelContent.web.title || subject.name} · ${locale}`,
+                  }
+                : undefined,
+              push: channels?.includes("Push")
+                ? {
+                    ...sourceChannelContent.push,
+                    title: `${sourceChannelContent.push.title || subject.name} · ${locale}`,
+                  }
+                : undefined,
+            }
+          : undefined;
       return {
         id: `MTI-${stamp}${index}`,
         batchId: `MT-${stamp}`,
@@ -1155,6 +1183,10 @@ export const createTranslationBatch = (
         machineBody: machineOutput.body,
         machineOutput,
         humanDraft: { ...machineOutput },
+        machineChannelOutput,
+        humanChannelDraft: machineChannelOutput
+          ? JSON.parse(JSON.stringify(machineChannelOutput))
+          : undefined,
         submittedAt: "刚刚",
         translatedAt: "刚刚",
         submitter: createdBy,
@@ -1205,6 +1237,30 @@ type TranslationApprovalValues = {
   reviewer: string;
 };
 
+const mergeTranslationValuesIntoChannels = (
+  base: TranslationChannelContent | undefined,
+  values: Omit<TranslationApprovalValues, "reviewer">,
+): TranslationChannelContent | undefined =>
+  base
+    ? {
+        web: base.web
+          ? {
+              ...base.web,
+              title: values.title,
+              summary: values.summary,
+              body: values.body,
+            }
+          : undefined,
+        push: base.push
+          ? {
+              ...base.push,
+              title: values.title,
+              body: values.body,
+            }
+          : undefined,
+      }
+    : undefined;
+
 const approveTranslationWithMode = (
   itemId: string,
   values: TranslationApprovalValues,
@@ -1225,25 +1281,35 @@ const approveTranslationWithMode = (
         ...batch,
         items: batch.items.map((item) =>
           item.id === itemId
-            ? {
-                ...item,
-                status: "已通过",
-                reviewedTitle: values.title,
-                reviewedSummary: values.summary,
-                reviewedBody: values.body,
-                humanDraft: {
-                  title: values.title,
-                  summary: values.summary,
-                  body: values.body,
-                },
-                approvedOutput: {
-                  title: values.title,
-                  summary: values.summary,
-                  body: values.body,
-                },
-                reviewer: values.reviewer,
-                reviewedAt: "刚刚",
-              }
+            ? (() => {
+                const channelDraft = mergeTranslationValuesIntoChannels(
+                  item.humanChannelDraft || item.machineChannelOutput,
+                  values,
+                );
+                return {
+                  ...item,
+                  status: "已通过",
+                  reviewedTitle: values.title,
+                  reviewedSummary: values.summary,
+                  reviewedBody: values.body,
+                  humanDraft: {
+                    title: values.title,
+                    summary: values.summary,
+                    body: values.body,
+                  },
+                  approvedOutput: {
+                    title: values.title,
+                    summary: values.summary,
+                    body: values.body,
+                  },
+                  humanChannelDraft: channelDraft,
+                  approvedChannelOutput: channelDraft
+                    ? JSON.parse(JSON.stringify(channelDraft))
+                    : undefined,
+                  reviewer: values.reviewer,
+                  reviewedAt: "刚刚",
+                };
+              })()
             : item,
         ),
       }),
@@ -1313,6 +1379,10 @@ export const saveTranslationDraft = (
                 ...item,
                 status: "翻译返回待审核",
                 humanDraft: values,
+                humanChannelDraft: mergeTranslationValuesIntoChannels(
+                  item.humanChannelDraft || item.machineChannelOutput,
+                  values,
+                ),
                 reviewedTitle: values.title,
                 reviewedSummary: values.summary,
                 reviewedBody: values.body,
@@ -2035,6 +2105,24 @@ export const createRuleTranslationBatch = (versionId: string) => {
     ? state.rules.find((item) => item.id === version.ruleId)
     : undefined;
   if (!version || !rule) throw new Error("规则内容版本不存在");
+  const template = state.templates.find(
+    (item) => item.id === version.templateId,
+  );
+  const sourceChannelContent = template?.content
+    ? {
+        ...template.content,
+        web: {
+          ...template.content.web,
+          title: version.title,
+          body: version.body,
+        },
+        push: {
+          ...template.content.push,
+          title: version.title,
+          body: version.body,
+        },
+      }
+    : undefined;
   const batch = createTranslationBatch({
     subject: {
       type: "rule_content_version",
@@ -2045,6 +2133,8 @@ export const createRuleTranslationBatch = (versionId: string) => {
     },
     sourceLocale: version.sourceLocale,
     sourceContent: { title: version.title, body: version.body },
+    sourceChannelContent,
+    channels: template?.channels,
     targetLocales: version.targetLocales.filter(
       (locale) => locale !== version.sourceLocale,
     ),
