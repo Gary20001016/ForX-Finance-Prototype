@@ -23,6 +23,8 @@ import type {
 } from "../../domain/types";
 import {
   createTranslationBatch,
+  prepareSingleLanguageContent,
+  requiresSpecialLanguageReview,
   saveTemplate,
   updateTemplate,
 } from "../../store/prototypeStore";
@@ -39,7 +41,8 @@ const categories = [
   "活动通知",
   "风控通知",
 ];
-const locales = [
+const supportedLocales = [
+  "zh-CN",
   "en-US",
   "zh-TW",
   "ja-JP",
@@ -86,7 +89,8 @@ export default function TemplateEditorDrawer({
   const [form] = Form.useForm();
   const [content, setContent] = useState<LocalizedMessageContent>(emptyContent);
   const [channels, setChannels] = useState<Channel[]>(defaultChannels);
-  const [targetLocales, setTargetLocales] = useState<string[]>(["en-US"]);
+  const [sourceLocale, setSourceLocale] = useState("zh-CN");
+  const [targetLocales, setTargetLocales] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [testSendVisible, setTestSendVisible] = useState(false);
   const locked = Boolean(
@@ -94,11 +98,11 @@ export default function TemplateEditorDrawer({
   );
   useEffect(() => {
     const next = template?.content || emptyContent;
+    const nextSourceLocale = template?.sourceLocale || "zh-CN";
     setContent(JSON.parse(JSON.stringify(next)));
+    setSourceLocale(nextSourceLocale);
     setTargetLocales(
-      (template?.locales || ["zh-CN", "en-US"]).filter(
-        (item) => item !== (template?.sourceLocale || "zh-CN"),
-      ),
+      (template?.locales || []).filter((item) => item !== nextSourceLocale),
     );
     setChannels(
       template?.channels?.length
@@ -111,7 +115,6 @@ export default function TemplateEditorDrawer({
       category: template?.category || "系统公告",
       nature: template?.nature || "事务",
       risk: template?.risk || "中",
-      sourceLocale: template?.sourceLocale || "zh-CN",
       owner: template?.owner || "消息运营",
       usageScope: template?.usageScope || entryScope,
       variables: (
@@ -143,7 +146,11 @@ export default function TemplateEditorDrawer({
     }
     setChannels(values);
   };
-  const save = async (translate: boolean) => {
+  const updateSourceLocale = (locale: string) => {
+    setSourceLocale(locale);
+    setTargetLocales((current) => current.filter((item) => item !== locale));
+  };
+  const save = async (mode: "draft" | "submit") => {
     try {
       const values = await form.validate();
       const stationIncomplete =
@@ -165,10 +172,6 @@ export default function TemplateEditorDrawer({
         );
         return;
       }
-      if (translate && targetLocales.length === 0) {
-        Message.warning("请至少选择一个目标语言");
-        return;
-      }
       setSubmitting(true);
       const payload = {
         name: values.name,
@@ -176,12 +179,12 @@ export default function TemplateEditorDrawer({
         nature: values.nature,
         risk: values.risk,
         channels,
-        locales: [values.sourceLocale, ...targetLocales],
-        sourceLocale: values.sourceLocale,
+        locales: [sourceLocale, ...targetLocales],
+        sourceLocale,
         content: {
           ...content,
-          sourceLocale: values.sourceLocale,
-          locales: [values.sourceLocale, ...targetLocales],
+          sourceLocale,
+          locales: [sourceLocale, ...targetLocales],
         },
         variables: values.variables
           .split(",")
@@ -193,15 +196,53 @@ export default function TemplateEditorDrawer({
       const entity = template
         ? updateTemplate(template.id, payload)
         : saveTemplate(payload);
-      if (translate)
-        createTranslationBatch({
-          templateId: entity.id,
-          targetLocales,
-          createdBy: "Gary Ma",
-        });
-      Message.success(
-        translate ? "模板已保存，并已创建外部机翻任务" : "模板草稿已保存",
-      );
+      if (mode === "submit") {
+        if (targetLocales.length) {
+          createTranslationBatch({
+            templateId: entity.id,
+            targetLocales,
+            createdBy: "Gary Ma",
+          });
+          Message.success("模板已保存，并已创建外部机翻任务");
+        } else {
+          const sourceContent = {
+            title:
+              channels.length === 1 && channels.includes("Push")
+                ? content.push.title
+                : channels.length === 1
+                  ? content.web.title
+                  : `站内信：${content.web.title} / Push：${content.push.title}`,
+            summary: channels.includes("站内信")
+              ? content.web.summary
+              : undefined,
+            body:
+              channels.length === 1 && channels.includes("Push")
+                ? content.push.body
+                : channels.length === 1
+                  ? content.web.body
+                  : `【站内信】\n${content.web.body}\n\n【App Push】\n${content.push.body}`,
+          };
+          const result = prepareSingleLanguageContent({
+            subject: {
+              type: "template_version",
+              id: entity.id,
+              name: entity.name,
+              version: entity.version,
+              returnPath: "/templates",
+            },
+            sourceLocale,
+            sourceContent,
+            createdBy: "Gary Ma",
+          });
+          Message.success(
+            result.requiresReview
+              ? "模板已保存，并已提交语言审核"
+              : "单语言模板已保存，可进入业务审核",
+          );
+        }
+      } else {
+        Message.success("模板草稿已保存");
+      }
       onCreated?.(entity);
       onClose();
     } catch (error) {
@@ -225,6 +266,13 @@ export default function TemplateEditorDrawer({
     );
   }
 
+  const directReviewRequired = requiresSpecialLanguageReview(sourceLocale);
+  const submitLabel = targetLocales.length
+    ? "提交外部机翻"
+    : directReviewRequired
+      ? "提交语言审核"
+      : "保存并进入业务审核";
+
   return (
     <Drawer
       width={1080}
@@ -235,13 +283,13 @@ export default function TemplateEditorDrawer({
         <Space>
           <Button onClick={onClose}>取消</Button>
           <Button onClick={() => setTestSendVisible(true)}>测试发送</Button>
-          <Button onClick={() => save(false)}>保存草稿</Button>
+          <Button onClick={() => save("draft")}>保存草稿</Button>
           <Button
             type="primary"
             loading={submitting}
-            onClick={() => save(true)}
+            onClick={() => save("submit")}
           >
-            提交外部机翻
+            {submitLabel}
           </Button>
         </Space>
       }
@@ -249,7 +297,13 @@ export default function TemplateEditorDrawer({
       <Alert
         type="info"
         showIcon
-        content="默认语言由操作者维护；目标语言提交平台后台的外部异步机翻任务，返回后必须逐语言人工审核。"
+        content={
+          targetLocales.length
+            ? "默认语言由操作者维护；目标语言提交平台后台的外部异步机翻任务，返回后必须逐语言人工审核。"
+            : directReviewRequired
+              ? "单语言模板，无需机器翻译；当前语言需要专项人工审核。"
+              : "单语言模板，无需机器翻译；保存后可进入业务审核。"
+        }
       />
       <Form form={form} layout="vertical" className="template-editor-form">
         <Grid.Row gutter={16}>
@@ -315,9 +369,12 @@ export default function TemplateEditorDrawer({
             </Form.Item>
           </Grid.Col>
           <Grid.Col span={6}>
-            <Form.Item label="默认语言" field="sourceLocale">
+            <Form.Item label="默认语言" required>
               <Select
-                options={["zh-CN", "en-US"].map((value) => ({
+                aria-label="默认语言"
+                value={sourceLocale}
+                onChange={updateSourceLocale}
+                options={supportedLocales.map((value) => ({
                   label: value,
                   value,
                 }))}
@@ -338,10 +395,14 @@ export default function TemplateEditorDrawer({
           <Grid.Col span={14}>
             <Form.Item label="目标语言">
               <Select
+                aria-label="目标语言"
                 mode="multiple"
+                placeholder="可留空，表示单语言模板"
                 value={targetLocales}
                 onChange={setTargetLocales}
-                options={locales.map((value) => ({ label: value, value }))}
+                options={supportedLocales
+                  .filter((value) => value !== sourceLocale)
+                  .map((value) => ({ label: value, value }))}
               />
             </Form.Item>
           </Grid.Col>
@@ -421,6 +482,7 @@ export default function TemplateEditorDrawer({
                 </Form.Item>
                 <Form.Item label="Push 正文">
                   <Input.TextArea
+                    aria-label="Push 正文"
                     value={content.push.body}
                     onChange={(value) => patchPush({ body: value })}
                   />
