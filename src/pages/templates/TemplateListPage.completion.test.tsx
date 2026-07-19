@@ -19,7 +19,7 @@ it("opens a complete template content editor", async () => {
   expect(screen.queryByPlaceholderText(/snake_case/)).not.toBeInTheDocument();
   expect(screen.getByLabelText("站内信标题")).toBeVisible();
   expect(screen.getByLabelText("Push Deep Link")).toBeVisible();
-  expect(screen.getByText("提交外部机翻")).toBeVisible();
+  expect(screen.getByText("保存并进入业务审核")).toBeVisible();
 });
 
 it("shows the system template number instead of the internal code", () => {
