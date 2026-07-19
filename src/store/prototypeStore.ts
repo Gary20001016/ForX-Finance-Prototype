@@ -26,6 +26,7 @@ import type {
   TriggerRecord,
   TranslationBatch,
   TranslationContentLayer,
+  TranslationItem,
   TranslationSubjectType,
   TemplateTestSendResult,
   UserMessage,
@@ -106,6 +107,7 @@ export const normalizeTranslationBatches = (
   availableTemplates: MessageTemplate[],
 ): TranslationBatch[] =>
   JSON.parse(JSON.stringify(batches)).map((batch: TranslationBatch) => {
+    const productionMode = batch.productionMode || "machine_translation";
     const subjectTemplate = availableTemplates.find(
       (template) => template.id === batch.templateId,
     );
@@ -123,6 +125,7 @@ export const normalizeTranslationBatches = (
         );
         return {
           ...item,
+          productionMode: item.productionMode || productionMode,
           status: normalizeTranslationStatus(String(item.status)),
           subjectType: item.subjectType || batch.subjectType || subjectType,
           subjectId: item.subjectId || batch.subjectId || batch.templateId,
@@ -135,6 +138,7 @@ export const normalizeTranslationBatches = (
 
     return {
       ...batch,
+      productionMode,
       subjectType,
       subjectId: batch.subjectId || batch.templateId,
       subjectName: batch.subjectName || subjectTemplate?.name || batch.templateId,
@@ -936,6 +940,144 @@ type GeneralTranslationBatchInput = {
   createdBy: string;
 };
 
+type SingleLanguagePreparationInput = {
+  subject: GeneralTranslationBatchInput["subject"];
+  sourceLocale: string;
+  sourceContent: TranslationContentLayer;
+  createdBy: string;
+};
+
+export const getLanguageReviewPolicy = (locale: string) =>
+  state.languageReviewPolicies.find((policy) => policy.localeCode === locale);
+
+export const requiresSpecialLanguageReview = (locale: string) => {
+  const policy = getLanguageReviewPolicy(locale);
+  return Boolean(policy?.enabled && policy.specialReviewRequired);
+};
+
+export const prepareSingleLanguageContent = (
+  input: SingleLanguagePreparationInput,
+): { requiresReview: boolean; batch?: TranslationBatch } => {
+  const policy = getLanguageReviewPolicy(input.sourceLocale);
+  if (policy?.specialReviewRequired && (!policy.enabled || !policy.reviewGroup)) {
+    throw new Error(`${input.sourceLocale} 的专项语言审核配置不可用`);
+  }
+
+  if (!requiresSpecialLanguageReview(input.sourceLocale)) {
+    if (input.subject.type === "template_version") {
+      update((current) => ({
+        ...current,
+        templates: current.templates.map((template) =>
+          template.id === input.subject.id
+            ? {
+                ...template,
+                translationBatchId: "",
+                translationReadiness: "已通过",
+                locales: [input.sourceLocale],
+                content: template.content
+                  ? {
+                      ...template.content,
+                      sourceLocale: input.sourceLocale,
+                      locales: [input.sourceLocale],
+                    }
+                  : template.content,
+                status: "待业务审核",
+                updatedAt: "刚刚",
+              }
+            : template,
+        ),
+      }));
+    }
+    return { requiresReview: false, batch: undefined };
+  }
+
+  const sourceContentHash = JSON.stringify([
+    input.sourceLocale,
+    input.sourceContent.title || "",
+    input.sourceContent.summary || "",
+    input.sourceContent.body || "",
+  ]);
+  const existing = state.translationBatches.find(
+    (batch) =>
+      batch.productionMode === "direct_source_review" &&
+      batch.subjectType === input.subject.type &&
+      batch.subjectId === input.subject.id &&
+      batch.sourceLocale === input.sourceLocale &&
+      batch.items[0]?.sourceContentHash === sourceContentHash,
+  );
+  if (existing) return { requiresReview: true, batch: existing };
+
+  const stamp = Date.now().toString().slice(-7);
+  const batchId = `LR-${stamp}`;
+  const item: TranslationItem = {
+    id: `LRI-${stamp}`,
+    batchId,
+    templateId: input.subject.id,
+    templateName: input.subject.name,
+    subjectType: input.subject.type,
+    subjectId: input.subject.id,
+    subjectName: input.subject.name,
+    sourceLocale: input.sourceLocale,
+    targetLocale: input.sourceLocale,
+    productionMode: "direct_source_review",
+    attemptNo: 0,
+    status: "翻译返回待审核",
+    sourceContentHash,
+    humanDraft: { ...input.sourceContent },
+    submittedAt: "刚刚",
+    submitter: input.createdBy,
+    variablesValid: true,
+    specialReviewRequired: true,
+    reviewGroup: policy?.reviewGroup,
+    reviewSlaHours: policy?.reviewSlaHours,
+  };
+  const batch: TranslationBatch = {
+    id: batchId,
+    productionMode: "direct_source_review",
+    subjectType: input.subject.type,
+    subjectId: input.subject.id,
+    subjectName: input.subject.name,
+    contentVersion: input.subject.version,
+    returnPath: input.subject.returnPath,
+    templateId: input.subject.id,
+    templateVersion: input.subject.version,
+    sourceLocale: input.sourceLocale,
+    targetLocales: [],
+    status: "翻译返回待审核",
+    createdBy: input.createdBy,
+    createdAt: "刚刚",
+    updatedAt: "刚刚",
+    sourceContent: { ...input.sourceContent },
+    items: [item],
+  };
+
+  update((current) => ({
+    ...current,
+    translationBatches: [batch, ...current.translationBatches],
+    templates: current.templates.map((template) =>
+      input.subject.type === "template_version" &&
+      template.id === input.subject.id
+        ? {
+            ...template,
+            translationBatchId: batch.id,
+            translationReadiness: "翻译返回待审核",
+            locales: [input.sourceLocale],
+            content: template.content
+              ? {
+                  ...template.content,
+                  sourceLocale: input.sourceLocale,
+                  locales: [input.sourceLocale],
+                }
+              : template.content,
+            status: "审核中",
+            updatedAt: "刚刚",
+          }
+        : template,
+    ),
+  }));
+  return { requiresReview: true, batch };
+};
+
 export const createTranslationBatch = (
   input: LegacyTranslationBatchInput | GeneralTranslationBatchInput,
 ) => {
@@ -969,6 +1111,7 @@ export const createTranslationBatch = (
   const stamp = Date.now().toString().slice(-7);
   const batch: TranslationBatch = {
     id: `MT-${stamp}`,
+    productionMode: "machine_translation",
     subjectType: subject.type,
     subjectId: subject.id,
     subjectName: subject.name,
@@ -1002,6 +1145,7 @@ export const createTranslationBatch = (
         subjectName: subject.name,
         sourceLocale,
         targetLocale: locale,
+        productionMode: "machine_translation" as const,
         externalTaskId: `EXT-MT-${stamp}${index}`,
         attemptNo: 1,
         status: "翻译返回待审核",

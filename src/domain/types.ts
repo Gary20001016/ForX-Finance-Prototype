@@ -264,6 +264,9 @@ export interface MessageTemplate {
 export type TranslationStatus = "无结果" | "翻译返回待审核" | "已通过";
 export type TranslationItemStatus = TranslationStatus;
 export type TranslationBatchStatus = TranslationStatus;
+export type LanguageProductionMode =
+  | "machine_translation"
+  | "direct_source_review";
 
 export type TranslationSubjectType =
   | "template_version"
@@ -298,7 +301,8 @@ export interface TranslationItem {
   subjectName?: string;
   sourceLocale: string;
   targetLocale: string;
-  externalTaskId: string;
+  productionMode?: LanguageProductionMode;
+  externalTaskId?: string;
   attemptNo: number;
   status: TranslationItemStatus;
   sourceContentHash: string;
@@ -334,6 +338,7 @@ export interface TranslationBatch {
   returnPath?: string;
   templateId: string;
   templateVersion: string;
+  productionMode?: LanguageProductionMode;
   sourceLocale: string;
   targetLocales: string[];
   status: TranslationBatchStatus;

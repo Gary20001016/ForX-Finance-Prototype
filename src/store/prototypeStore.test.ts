@@ -15,11 +15,13 @@ import {
   normalizeTemplateTranslationReadiness,
   normalizeRuleContentVersions,
   performManualTaskOperation,
+  prepareSingleLanguageContent,
   publishRuleContentVersion,
   rejectTranslation,
   resetPrototypeStore,
   removeOperatorTestAccount,
   retryTranslation,
+  requiresSpecialLanguageReview,
   sendTemplateTest,
   submitTask,
   reviewApproval,
@@ -144,6 +146,99 @@ describe("prototype store workflow transitions", () => {
     expect(batch.items[0].externalTaskId).toMatch(/^EXT-MT-/);
     expect(batch.status).toBe("翻译返回待审核");
     expect(batch.items[0].status).toBe("翻译返回待审核");
+  });
+
+  it("creates a direct source review batch for a special-review source locale", () => {
+    const result = prepareSingleLanguageContent({
+      subject: {
+        type: "manual_task_content",
+        id: "TASK-JA-001",
+        name: "日本語の臨時メッセージ",
+        version: "draft-1",
+        returnPath: "/tasks/create",
+      },
+      sourceLocale: "ja-JP",
+      sourceContent: {
+        title: "出金完了",
+        summary: "出金処理が完了しました。",
+        body: "詳細をご確認ください。",
+      },
+      createdBy: "operator-01",
+    });
+
+    expect(result.requiresReview).toBe(true);
+    expect(result.batch).toMatchObject({
+      productionMode: "direct_source_review",
+      sourceLocale: "ja-JP",
+      targetLocales: [],
+      status: "翻译返回待审核",
+    });
+    expect(result.batch?.items[0]).toMatchObject({
+      productionMode: "direct_source_review",
+      sourceLocale: "ja-JP",
+      targetLocale: "ja-JP",
+      attemptNo: 0,
+      status: "翻译返回待审核",
+      specialReviewRequired: true,
+      humanDraft: {
+        title: "出金完了",
+        summary: "出金処理が完了しました。",
+        body: "詳細をご確認ください。",
+      },
+    });
+    expect(result.batch?.items[0]).not.toHaveProperty("externalTaskId");
+  });
+
+  it("completes language preparation without a batch for an ordinary single language", () => {
+    const result = prepareSingleLanguageContent({
+      subject: {
+        type: "template_version",
+        id: "TPL-1001",
+        name: "单语言中文模板",
+        version: "v12",
+        returnPath: "/templates",
+      },
+      sourceLocale: "zh-CN",
+      sourceContent: { title: "系统公告", summary: "摘要", body: "正文" },
+      createdBy: "operator-01",
+    });
+
+    expect(result).toEqual({ requiresReview: false, batch: undefined });
+    expect(
+      getPrototypeState().templates.find((item) => item.id === "TPL-1001"),
+    ).toMatchObject({
+      translationReadiness: "已通过",
+      locales: ["zh-CN"],
+    });
+  });
+
+  it("uses the configured language policy for direct source review", () => {
+    expect(requiresSpecialLanguageReview("ja-JP")).toBe(true);
+    expect(requiresSpecialLanguageReview("zh-CN")).toBe(false);
+  });
+
+  it("reuses the effective direct review batch for identical source content", () => {
+    const input = {
+      subject: {
+        type: "manual_task_content" as const,
+        id: "TASK-JA-IDEMPOTENT",
+        name: "日本語メッセージ",
+        version: "draft-1",
+        returnPath: "/tasks/create",
+      },
+      sourceLocale: "ja-JP",
+      sourceContent: { title: "通知", summary: "概要", body: "本文" },
+      createdBy: "operator-01",
+    };
+    const first = prepareSingleLanguageContent(input);
+    const second = prepareSingleLanguageContent(input);
+
+    expect(second.batch?.id).toBe(first.batch?.id);
+    expect(
+      getPrototypeState().translationBatches.filter(
+        (batch) => batch.subjectId === "TASK-JA-IDEMPOTENT",
+      ),
+    ).toHaveLength(1);
   });
 
   it("opens the publishing gate after every locale is approved", () => {
