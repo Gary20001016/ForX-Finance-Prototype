@@ -9,7 +9,7 @@ import {
 } from '../../store/prototypeStore';
 import CreateTaskPage from './CreateTaskPage';
 
-it('authors a temporary multilingual Web and Push message and previews entered content', async () => {
+it('authors a temporary single-language Web and Push message and previews entered content', async () => {
   const user = userEvent.setup();
   render(<MemoryRouter><CreateTaskPage /></MemoryRouter>);
   await user.type(screen.getByPlaceholderText('例如：夏季交易赛召回'), '临时安全提醒');
@@ -18,7 +18,7 @@ it('authors a temporary multilingual Web and Push message and previews entered c
   expect(screen.getByLabelText('Push 标题')).toBeVisible();
   expect(screen.queryByText('优先级', { selector: 'label' })).not.toBeInTheDocument();
   expect(screen.queryByText('折叠键', { selector: 'label' })).not.toBeInTheDocument();
-  expect(screen.getByText('创建外部机翻任务')).toBeVisible();
+  expect(screen.getByText('完成语言准备')).toBeVisible();
 });
 
 it('restores the full translation progress for a temporary multilingual message', () => {

@@ -40,6 +40,8 @@ import type {
 import { canEditManualTask, isManualTaskStatus } from "./taskLifecycle";
 import {
   createTranslationBatch,
+  prepareSingleLanguageContent,
+  requiresSpecialLanguageReview,
   saveTemplate,
   saveTaskDraft,
   submitTask,
@@ -71,7 +73,8 @@ import {
 } from "./taskChannelPolicy";
 
 const FormItem = Form.Item;
-const localeOptions = [
+const supportedLocales = [
+  "zh-CN",
   "en-US",
   "zh-TW",
   "ja-JP",
@@ -80,7 +83,10 @@ const localeOptions = [
   "tr-TR",
   "ru-RU",
   "fr-FR",
+  "de-DE",
 ];
+const sameLocales = (left: string[], right: string[]) =>
+  left.length === right.length && left.every((locale) => right.includes(locale));
 const emptyContent: LocalizedMessageContent = {
   sourceLocale: "zh-CN",
   locales: ["zh-CN"],
@@ -236,8 +242,13 @@ export default function CreateTaskPage() {
   const [temporary, setTemporary] = useState<LocalizedMessageContent>(
     copiedTask?.content || emptyContent,
   );
+  const [temporarySourceLocale, setTemporarySourceLocale] = useState(
+    copiedTask?.content?.sourceLocale || "zh-CN",
+  );
   const [targetLocales, setTargetLocales] = useState<string[]>(
-    copiedTask?.content?.locales.filter((locale) => locale !== "zh-CN") || [],
+    copiedTask?.content?.locales.filter(
+      (locale) => locale !== (copiedTask.content?.sourceLocale || "zh-CN"),
+    ) || [],
   );
   const [temporaryBatchId, setTemporaryBatchId] = useState<string | undefined>(
     copiedTask?.translationBatchId,
@@ -282,7 +293,11 @@ export default function CreateTaskPage() {
   const content =
     contentMode === "template"
       ? selectedTemplate?.content || emptyContent
-      : { ...temporary, locales: ["zh-CN", ...targetLocales] };
+      : {
+          ...temporary,
+          sourceLocale: temporarySourceLocale,
+          locales: [temporarySourceLocale, ...targetLocales],
+        };
   const manualUids = useMemo(
     () => parseManualUids(uidAudienceValue.manualText),
     [uidAudienceValue.manualText],
@@ -322,12 +337,28 @@ export default function CreateTaskPage() {
         : audienceMap[audienceType];
   const translationScopeCurrent =
     !temporaryBatchId ||
-    sameChannels(temporaryBatchChannels, selectedChannels);
+    (sameChannels(temporaryBatchChannels, selectedChannels) &&
+      currentBatch?.sourceLocale === temporarySourceLocale &&
+      sameLocales(currentBatch.targetLocales, targetLocales));
+  const directReviewRequired =
+    targetLocales.length === 0 &&
+    requiresSpecialLanguageReview(temporarySourceLocale);
   const translationReady =
     contentMode === "template"
       ? selectedTemplate?.translationReadiness === "已通过"
-      : targetLocales.length === 0 ||
-        (currentBatch?.status === "已通过" && translationScopeCurrent);
+      : directReviewRequired
+        ? currentBatch?.productionMode === "direct_source_review" &&
+          currentBatch.status === "已通过" &&
+          translationScopeCurrent
+        : targetLocales.length === 0 ||
+          (currentBatch?.status === "已通过" && translationScopeCurrent);
+  const temporaryLanguageAction = targetLocales.length
+    ? temporaryBatchId && !translationScopeCurrent
+      ? "按当前配置重新创建机翻任务"
+      : "创建外部机翻任务"
+    : directReviewRequired
+      ? "提交语言审核"
+      : "完成语言准备";
   const values = { ...snapshot, ...form.getFieldsValue() };
   const selectedCategory = String(
     values.category || copiedTask?.category || "系统公告",
@@ -410,6 +441,15 @@ export default function CreateTaskPage() {
       ...value,
       push: { ...value.push, ...changes },
     }));
+  const updateTemporarySourceLocale = (sourceLocale: string) => {
+    setTemporarySourceLocale(sourceLocale);
+    setTargetLocales((locales) => locales.filter((locale) => locale !== sourceLocale));
+    setTemporary((value) => ({
+      ...value,
+      sourceLocale,
+      locales: [sourceLocale],
+    }));
+  };
   const eventValidation = validateEventTaskConfig(
     eventConfig,
     store.events.find((item) => item.id === eventId),
@@ -598,7 +638,7 @@ export default function CreateTaskPage() {
       Message.error(error instanceof Error ? error.message : "任务提交失败");
     }
   };
-  const createTemporaryTranslation = () => {
+  const prepareTemporaryLanguageContent = () => {
     if (!channels.length) {
       Message.warning("请至少选择站内信或 App Push");
       return;
@@ -607,69 +647,95 @@ export default function CreateTaskPage() {
       Message.warning("请先完整填写所选发送渠道的默认语言文案");
       return;
     }
-    if (!targetLocales.length) {
-      Message.warning("请至少选择一个目标语言");
-      return;
-    }
-    const draft = saveTemplate({
-      name: `临时消息 · ${form.getFieldValue("name") || "未命名"}`,
-      category: form.getFieldValue("category") || "系统公告",
-      nature: resolvedNature,
-      risk: form.getFieldValue("risk") || "低",
-      channels,
-      locales: ["zh-CN", ...targetLocales],
-      sourceLocale: "zh-CN",
-      content: { ...temporary, locales: ["zh-CN", ...targetLocales] },
-      variables: [
-        "user_nickname",
-        "amount",
-        "currency",
-        "symbol",
-        "occurred_at",
-      ],
-      owner: "临时任务",
-      usageScope: "manual",
-    });
-    const batch = createTranslationBatch({
-      subject: {
-        type: "manual_task_content",
-        id: draft.id,
-        name: draft.name,
-        version: draft.version,
-        returnPath: "/tasks/create",
-      },
-      sourceLocale: "zh-CN",
-      sourceContent: {
-        title:
-          channels.length === 1 && channels.includes("Push")
-            ? temporary.push.title
-            : channels.length === 1
-              ? temporary.web.title
-              : `站内信：${temporary.web.title} / Push：${temporary.push.title}`,
-        summary: channels.includes("站内信")
-          ? temporary.web.summary
-          : undefined,
-        body:
-          channels.length === 1 && channels.includes("Push")
-            ? temporary.push.body
-            : channels.length === 1
-              ? temporary.web.body
-              : `【站内信】\n${temporary.web.body}\n\n【App Push】\n${temporary.push.body}`,
-      },
-      targetLocales,
-      createdBy: "Gary Ma",
-    });
-    setTemporaryBatchId(batch.id);
+    const currentContent = {
+      ...temporary,
+      sourceLocale: temporarySourceLocale,
+      locales: [temporarySourceLocale, ...targetLocales],
+    };
+    const sourceContent = {
+      title:
+        channels.length === 1 && channels.includes("Push")
+          ? temporary.push.title
+          : channels.length === 1
+            ? temporary.web.title
+            : `站内信：${temporary.web.title} / Push：${temporary.push.title}`,
+      summary: channels.includes("站内信")
+        ? temporary.web.summary
+        : undefined,
+      body:
+        channels.length === 1 && channels.includes("Push")
+          ? temporary.push.body
+          : channels.length === 1
+            ? temporary.web.body
+            : `【站内信】\n${temporary.web.body}\n\n【App Push】\n${temporary.push.body}`,
+    };
+    const requiresBatch =
+      targetLocales.length > 0 ||
+      requiresSpecialLanguageReview(temporarySourceLocale);
+    const draft = requiresBatch
+      ? saveTemplate({
+          name: `临时消息 · ${form.getFieldValue("name") || "未命名"}`,
+          category: form.getFieldValue("category") || "系统公告",
+          nature: resolvedNature,
+          risk: form.getFieldValue("risk") || "低",
+          channels,
+          locales: currentContent.locales,
+          sourceLocale: temporarySourceLocale,
+          content: currentContent,
+          variables: [
+            "user_nickname",
+            "amount",
+            "currency",
+            "symbol",
+            "occurred_at",
+          ],
+          owner: "临时任务",
+          usageScope: "manual",
+        })
+      : undefined;
+    const subject = draft
+      ? {
+          type: "manual_task_content" as const,
+          id: draft.id,
+          name: draft.name,
+          version: draft.version,
+          returnPath: "/tasks/create",
+        }
+      : undefined;
+    const batch =
+      targetLocales.length > 0 && subject
+        ? createTranslationBatch({
+            subject,
+            sourceLocale: temporarySourceLocale,
+            sourceContent,
+            targetLocales,
+            createdBy: "Gary Ma",
+          })
+        : subject
+          ? prepareSingleLanguageContent({
+              subject,
+              sourceLocale: temporarySourceLocale,
+              sourceContent,
+              createdBy: "Gary Ma",
+            }).batch
+          : undefined;
+    setTemporaryBatchId(batch?.id);
     setTemporaryBatchChannels([...channels]);
     saveTaskDraft(
       {
         ...submission(),
-        translationBatchId: batch.id,
-        content: { ...temporary, locales: ["zh-CN", ...targetLocales] },
+        translationBatchId: batch?.id,
+        content: currentContent,
       },
       editingTask ? copiedTask?.id : undefined,
     );
-    Message.success(`已创建机翻批次 ${batch.id}，并保存可继续编辑的任务草稿`);
+    Message.success(
+      targetLocales.length
+        ? `已创建机翻批次 ${batch?.id}，并保存可继续编辑的任务草稿`
+        : batch
+          ? `已提交语言审核 ${batch.id}，并保存可继续编辑的任务草稿`
+          : "单语言内容准备完成，并已保存可继续编辑的任务草稿",
+    );
   };
 
   const summary = useMemo(
@@ -908,8 +974,14 @@ export default function CreateTaskPage() {
                   ) : (
                     <div className="temporary-content-editor">
                       <Alert
-                        type="warning"
-                        content="临时消息同样必须完成外部机翻和逐语言人工审核；内容仅冻结在当前任务版本中。"
+                        type={targetLocales.length ? "warning" : "info"}
+                        content={
+                          targetLocales.length
+                            ? "多语言临时消息将提交外部机器翻译，返回后逐语言人工审核；内容仅冻结在当前任务版本中。"
+                            : directReviewRequired
+                              ? "单语言临时消息，无需机器翻译；当前语言需要专项人工审核，内容仅冻结在当前任务版本中。"
+                              : "单语言临时消息，无需机器翻译；语言准备可直接完成，内容仅冻结在当前任务版本中。"
+                        }
                       />
                       <Grid.Row gutter={20}>
                         {channels.includes("站内信") && (
@@ -924,6 +996,7 @@ export default function CreateTaskPage() {
                             </FormItem>
                             <FormItem label="站内信摘要">
                               <Input.TextArea
+                                aria-label="站内信摘要"
                                 value={temporary.web.summary}
                                 onChange={(value) =>
                                   patchWeb({ summary: value })
@@ -982,6 +1055,7 @@ export default function CreateTaskPage() {
                             </FormItem>
                             <FormItem label="Push 正文">
                               <Input.TextArea
+                                aria-label="Push 正文"
                                 value={temporary.push.body}
                                 onChange={(value) =>
                                   patchPush({ body: value })
@@ -1026,22 +1100,32 @@ export default function CreateTaskPage() {
                       </Grid.Row>
                       <div className="translation-submit-strip">
                         <Select
-                          mode="multiple"
-                          placeholder="选择目标语言"
-                          value={targetLocales}
-                          onChange={setTargetLocales}
-                          options={localeOptions.map((value) => ({
+                          aria-label="临时消息默认语言"
+                          value={temporarySourceLocale}
+                          onChange={updateTemporarySourceLocale}
+                          options={supportedLocales.map((value) => ({
                             label: value,
                             value,
                           }))}
                         />
+                        <Select
+                          aria-label="临时消息目标语言"
+                          mode="multiple"
+                          placeholder="可留空，表示单语言临时消息"
+                          value={targetLocales}
+                          onChange={setTargetLocales}
+                          options={supportedLocales
+                            .filter((value) => value !== temporarySourceLocale)
+                            .map((value) => ({
+                              label: value,
+                              value,
+                            }))}
+                        />
                         <Button
                           type="primary"
-                          onClick={createTemporaryTranslation}
+                          onClick={prepareTemporaryLanguageContent}
                         >
-                          {temporaryBatchId && !translationScopeCurrent
-                            ? "按新渠道重新创建机翻任务"
-                            : "创建外部机翻任务"}
+                          {temporaryLanguageAction}
                         </Button>
                         {temporaryBatchId && (
                           <Tag color={translationReady ? "green" : "orange"}>
@@ -1052,8 +1136,8 @@ export default function CreateTaskPage() {
                       {temporaryBatchId && !translationScopeCurrent && (
                         <Alert
                           type="warning"
-                          title="发送渠道已变更"
-                          content="现有机翻批次的内容范围与当前渠道不一致，请按新渠道重新创建机翻任务后再提交审核。"
+                          title="语言配置或发送渠道已变更"
+                          content="现有语言批次的内容范围与当前配置不一致，请按当前配置重新创建语言任务后再提交审核。"
                         />
                       )}
                       {currentBatch && temporaryTranslationTemplate && (
