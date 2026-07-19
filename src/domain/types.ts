@@ -27,6 +27,11 @@ export interface LocalizedMessageContent {
   push: PushMessageContent;
 }
 
+export interface TranslationChannelContent {
+  web?: Partial<WebMessageContent>;
+  push?: Partial<PushMessageContent>;
+}
+
 export type TaskTriggerType = "manual" | "event";
 
 export interface EventVariableMapping {
@@ -312,6 +317,9 @@ export interface TranslationItem {
   machineOutput?: TranslationContentLayer;
   humanDraft?: TranslationContentLayer;
   approvedOutput?: TranslationContentLayer;
+  machineChannelOutput?: TranslationChannelContent;
+  humanChannelDraft?: TranslationChannelContent;
+  approvedChannelOutput?: TranslationChannelContent;
   reviewedTitle?: string;
   reviewedSummary?: string;
   reviewedBody?: string;
@@ -346,6 +354,8 @@ export interface TranslationBatch {
   createdAt: string;
   updatedAt: string;
   sourceContent?: TranslationContentLayer;
+  channels?: Channel[];
+  sourceChannelContent?: LocalizedMessageContent;
   items: TranslationItem[];
 }
 
