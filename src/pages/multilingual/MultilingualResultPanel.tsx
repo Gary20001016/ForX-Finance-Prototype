@@ -40,6 +40,9 @@ export default function MultilingualResultPanel({
   const navigate = useNavigate();
   const store = usePrototypeStore();
   const template = store.templates.find((candidate) => candidate.id === item.templateId);
+  const directSource =
+    batch.productionMode === "direct_source_review" ||
+    item.productionMode === "direct_source_review";
   const sourceContent = fallbackLayer(batch.sourceContent, {
     title: template?.content?.web.title || item.subjectName || item.templateName,
     summary: template?.content?.web.summary || "",
@@ -76,7 +79,9 @@ export default function MultilingualResultPanel({
     !item.specialReviewRequired && item.status === "翻译返回待审核";
   const canEnterSpecialReview =
     item.specialReviewRequired && item.status === "翻译返回待审核";
-  const machineResultReady = hasContent(machineContent);
+  const machineResultReady = directSource
+    ? hasContent(sourceContent) || hasContent(item.humanDraft)
+    : hasContent(machineContent);
 
   if (!machineResultReady) {
     return (
@@ -84,9 +89,11 @@ export default function MultilingualResultPanel({
         <Alert
           type={item.errorMessage ? "error" : "info"}
           showIcon
-          title="暂无可查看的译文"
+          title={directSource ? "暂无可查看的原文" : "暂无可查看的译文"}
           content={
-            item.errorMessage
+            directSource
+              ? "尚未提交单语言原文"
+              : item.errorMessage
               ? `${item.errorCode || "TRANSLATION_FAILED"} · ${item.errorMessage || "外部机翻任务失败"}`
               : "外部机器翻译尚未返回结果"
           }
@@ -117,14 +124,20 @@ export default function MultilingualResultPanel({
     <div className="multilingual-result-panel">
       <div className="multilingual-result-meta">
         <Space wrap>
-          <Tag color="arcoblue">{batch.sourceLocale} → {item.targetLocale}</Tag>
+          <Tag color="arcoblue">
+            {directSource
+              ? `${batch.sourceLocale} · 单语言直接编写`
+              : `${batch.sourceLocale} → ${item.targetLocale}`}
+          </Tag>
           <Tag color={item.variablesValid ? "green" : "red"}>
             变量检查 · {item.variablesValid ? "通过" : "失败"}
           </Tag>
           {item.specialReviewRequired && <Tag color="purple">小语种专项审核</Tag>}
         </Space>
         <span>
-          机翻完成：{item.translatedAt || "—"} · 审核：{item.reviewer || "未审核"}
+          {directSource
+            ? `原文提交：${item.submittedAt || "—"}`
+            : `机翻完成：${item.translatedAt || "—"}`} · 审核：{item.reviewer || "未审核"}
           {item.reviewedAt ? ` ${item.reviewedAt}` : ""}
         </span>
       </div>
@@ -132,20 +145,28 @@ export default function MultilingualResultPanel({
         <Alert
           type="warning"
           showIcon
-          content="该语言被配置为小语种专项审核；此处仅供查看，修改与审核必须前往多语言审核。"
+          content={
+            directSource
+              ? "该语言被配置为专项审核；此处可直接查看提交原文，修改与审核必须前往多语言审核。"
+              : "该语言被配置为小语种专项审核；此处仅供查看，修改与审核必须前往多语言审核。"
+          }
         />
       )}
-      <div className="multilingual-result-compare">
+      <div
+        className={`multilingual-result-compare${directSource ? " direct-source" : ""}`}
+      >
         <section>
-          <h4>源文案</h4>
+          <h4>{directSource ? "提交原文" : "源文案"}</h4>
           <ReadonlyContent content={sourceContent} />
         </section>
+        {!directSource && (
+          <section>
+            <h4>机器翻译</h4>
+            <ReadonlyContent content={machineContent} />
+          </section>
+        )}
         <section>
-          <h4>机器翻译</h4>
-          <ReadonlyContent content={machineContent} />
-        </section>
-        <section>
-          <h4>{canEdit ? "人工校对" : "当前结果"}</h4>
+          <h4>{directSource ? "当前审核稿" : canEdit ? "人工校对" : "当前结果"}</h4>
           {canEdit ? (
             <Form layout="vertical">
               <Form.Item label="标题"><Input value={title} onChange={setTitle} /></Form.Item>
@@ -171,7 +192,7 @@ export default function MultilingualResultPanel({
             type="primary"
             onClick={() => navigate(`/multilingual-review?item=${item.id}`)}
           >
-            前往多语言审核
+            {directSource ? "前往语言审核" : "前往多语言审核"}
           </Button>
         )}
       </div>

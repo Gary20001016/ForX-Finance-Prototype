@@ -68,3 +68,39 @@ it("renders only the three translation states and exposes actions by result and 
   expect(screen.queryByText("外部机翻", { exact: true })).not.toBeInTheDocument();
   expect(screen.queryByText("人工审核", { exact: true })).not.toBeInTheDocument();
 });
+
+it("presents a direct source review without machine-translation task fields", () => {
+  const directBatch: TranslationBatch = {
+    ...batch,
+    id: "LR-TEST",
+    productionMode: "direct_source_review",
+    sourceLocale: "ja-JP",
+    targetLocales: [],
+    status: "翻译返回待审核",
+    items: [
+      {
+        ...batch.items[2],
+        id: "LRI-TEST",
+        batchId: "LR-TEST",
+        sourceLocale: "ja-JP",
+        targetLocale: "ja-JP",
+        productionMode: "direct_source_review",
+        externalTaskId: undefined,
+        attemptNo: 0,
+        humanDraft: { title: "お知らせ", body: "本文" },
+      },
+    ],
+  };
+
+  render(
+    <MemoryRouter>
+      <TranslationWorkflowPanel template={template} batch={directBatch} />
+    </MemoryRouter>,
+  );
+
+  expect(screen.getByText("单语言直接编写")).toBeVisible();
+  expect(screen.getAllByText("原文待审核").length).toBeGreaterThan(0);
+  expect(screen.getByRole("button", { name: "前往语言审核" })).toBeEnabled();
+  expect(screen.queryByText("外部任务 ID")).not.toBeInTheDocument();
+  expect(screen.queryByText(/第 0 次/)).not.toBeInTheDocument();
+});

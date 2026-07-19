@@ -76,4 +76,45 @@ describe("multilingual progress UI", () => {
     expect(screen.getAllByRole("button", { name: "前往专审" })).toHaveLength(2);
     expect(screen.queryByRole("button", { name: "普通确认" })).not.toBeInTheDocument();
   });
+
+  it("shows directly authored source content as the review result", () => {
+    const directBatch: TranslationBatch = {
+      ...batch,
+      id: "LR-UI",
+      productionMode: "direct_source_review",
+      sourceLocale: "ja-JP",
+      sourceContent: { title: "お知らせ", summary: "概要", body: "本文" },
+      targetLocales: [],
+      status: "翻译返回待审核",
+      items: [
+        {
+          ...batch.items[3],
+          id: "LRI-UI",
+          batchId: "LR-UI",
+          sourceLocale: "ja-JP",
+          targetLocale: "ja-JP",
+          productionMode: "direct_source_review",
+          externalTaskId: undefined,
+          attemptNo: 0,
+          humanDraft: { title: "お知らせ", summary: "概要", body: "本文" },
+        },
+      ],
+    };
+
+    render(
+      <MemoryRouter>
+        <MultilingualProgressDrawer
+          batch={directBatch}
+          visible
+          onClose={() => undefined}
+        />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText(/当前状态：原文待审核/)).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "查看原文" }));
+    expect(screen.getByText("提交原文")).toBeVisible();
+    expect(screen.getByText("当前审核稿")).toBeVisible();
+    expect(screen.queryByText("机器翻译")).not.toBeInTheDocument();
+  });
 });

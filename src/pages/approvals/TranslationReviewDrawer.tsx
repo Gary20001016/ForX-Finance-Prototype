@@ -52,6 +52,9 @@ export default function TranslationReviewDrawer({
         (candidate) => candidate.id === current.batchId,
       )
     : undefined;
+  const directSource =
+    current?.productionMode === "direct_source_review" ||
+    batch?.productionMode === "direct_source_review";
   const [title, setTitle] = useState("");
   const [summary, setSummary] = useState("");
   const [body, setBody] = useState("");
@@ -71,11 +74,15 @@ export default function TranslationReviewDrawer({
   const reject = () => {
     if (!current) return;
     if (isSelf) {
-      Message.warning("机翻提交人与人工审核人必须不同");
+      Message.warning(
+        directSource
+          ? "原文提交人与语言审核人必须不同"
+          : "机翻提交人与人工审核人必须不同",
+      );
       return;
     }
     if (!reason.trim()) {
-      Message.warning("请先填写驳回重翻原因");
+      Message.warning(directSource ? "请先填写退回修改原因" : "请先填写驳回重翻原因");
       return;
     }
     rejectTranslation(current.id, reason);
@@ -86,7 +93,11 @@ export default function TranslationReviewDrawer({
   const approve = () => {
     if (!current) return;
     if (reviewMode !== "ordinary" && isSelf) {
-      Message.warning("机翻提交人与人工审核人必须不同");
+      Message.warning(
+        directSource
+          ? "原文提交人与语言审核人必须不同"
+          : "机翻提交人与人工审核人必须不同",
+      );
       return;
     }
     if (!current.variablesValid) {
@@ -123,7 +134,7 @@ export default function TranslationReviewDrawer({
       visible={visible}
       title={
         current
-          ? `${current.subjectName || current.templateName} · ${current.targetLocale} ${reviewMode === "special" ? "专项审核" : "翻译校对"}`
+          ? `${current.subjectName || current.templateName} · ${current.targetLocale} ${directSource ? "原文校对" : reviewMode === "special" ? "专项审核" : "翻译校对"}`
           : "翻译审核"
       }
       onCancel={onClose}
@@ -131,13 +142,13 @@ export default function TranslationReviewDrawer({
         current && (
           <div className="drawer-footer">
             <Button onClick={onClose}>取消</Button>
-            <Button onClick={saveDraft}>保存修订</Button>
+            <Button onClick={saveDraft}>{directSource ? "保存审核稿" : "保存修订"}</Button>
             <Button
               status="danger"
               disabled={reviewMode !== "ordinary" && isSelf}
               onClick={reject}
             >
-              驳回
+              {directSource ? "退回修改" : "驳回"}
             </Button>
             <Button
               type="primary"
@@ -147,7 +158,11 @@ export default function TranslationReviewDrawer({
               }
               onClick={approve}
             >
-              {reviewMode === "special" ? "专项审核通过" : "修订并通过"}
+              {directSource
+                ? "原文审核通过"
+                : reviewMode === "special"
+                  ? "专项审核通过"
+                  : "修订并通过"}
             </Button>
           </div>
         )
@@ -159,48 +174,80 @@ export default function TranslationReviewDrawer({
             <Alert
               type="warning"
               title="职责分离限制"
-              content="机翻任务提交人与人工审核人必须不同，请转交其他语言审核人。"
+              content={
+                directSource
+                  ? "原文提交人与语言审核人必须不同，请转交其他语言审核人。"
+                  : "机翻任务提交人与人工审核人必须不同，请转交其他语言审核人。"
+              }
             />
           )}
           <Alert
             type="info"
             showIcon
-            title="翻译成功后必须人工审核"
-            content="核对数字、币种、交易对、风险措辞、Markdown 结构和模板变量；修订内容与机翻原文分别留档。"
+            title={directSource ? "单语言原文审核" : "翻译成功后必须人工审核"}
+            content={
+              directSource
+                ? "内容未经过机器翻译。请直接核对措辞、数字、币种、交易对、Markdown 结构和模板变量，审核稿与提交原文分别留档。"
+                : "核对数字、币种、交易对、风险措辞、Markdown 结构和模板变量；修订内容与机翻原文分别留档。"
+            }
           />
           <Descriptions
             column={3}
             border
-            data={[
-              {
-                label: "目标语言",
-                value: <Tag color="arcoblue">{current.targetLocale}</Tag>,
-              },
-              {
-                label: "外部任务 ID",
-                value: <span className="mono">{current.externalTaskId}</span>,
-              },
-              { label: "翻译尝试", value: `第 ${current.attemptNo} 次` },
-              {
-                label: "源内容哈希",
-                value: <span className="mono">{current.sourceContentHash}</span>,
-              },
-              {
-                label: "变量完整性",
-                value: (
-                  <Tag color={current.variablesValid ? "green" : "red"}>
-                    {current.variablesValid ? "检查通过" : "检查失败"}
-                  </Tag>
-                ),
-              },
-              { label: "完成时间", value: current.translatedAt || "—" },
-            ]}
+            data={
+              directSource
+                ? [
+                    {
+                      label: "原文语言",
+                      value: <Tag color="arcoblue">{current.sourceLocale}</Tag>,
+                    },
+                    { label: "内容来源", value: "操作者直接编写" },
+                    { label: "提交人", value: current.submitter },
+                    {
+                      label: "源内容哈希",
+                      value: <span className="mono">{current.sourceContentHash}</span>,
+                    },
+                    {
+                      label: "变量完整性",
+                      value: (
+                        <Tag color={current.variablesValid ? "green" : "red"}>
+                          {current.variablesValid ? "检查通过" : "检查失败"}
+                        </Tag>
+                      ),
+                    },
+                    { label: "提交时间", value: current.submittedAt || "—" },
+                  ]
+                : [
+                    {
+                      label: "目标语言",
+                      value: <Tag color="arcoblue">{current.targetLocale}</Tag>,
+                    },
+                    {
+                      label: "外部任务 ID",
+                      value: <span className="mono">{current.externalTaskId}</span>,
+                    },
+                    { label: "翻译尝试", value: `第 ${current.attemptNo} 次` },
+                    {
+                      label: "源内容哈希",
+                      value: <span className="mono">{current.sourceContentHash}</span>,
+                    },
+                    {
+                      label: "变量完整性",
+                      value: (
+                        <Tag color={current.variablesValid ? "green" : "red"}>
+                          {current.variablesValid ? "检查通过" : "检查失败"}
+                        </Tag>
+                      ),
+                    },
+                    { label: "完成时间", value: current.translatedAt || "—" },
+                  ]
+            }
           />
           <div className="translation-compare">
             <section>
               <div className="compare-heading">
                 <span>{current.sourceLocale} · 源文案</span>
-                <h3>默认语言源文案</h3>
+                <h3>{directSource ? "提交原文" : "默认语言源文案"}</h3>
               </div>
               <label>
                 标题
@@ -230,8 +277,10 @@ export default function TranslationReviewDrawer({
             </section>
             <section>
               <div className="compare-heading">
-                <span>{current.targetLocale} · 机翻与人工修订</span>
-                <h3>机器翻译与人工修订</h3>
+                <span>
+                  {current.targetLocale} · {directSource ? "人工审核" : "机翻与人工修订"}
+                </span>
+                <h3>{directSource ? "人工审核稿" : "机器翻译与人工修订"}</h3>
               </div>
               <Form layout="vertical">
                 <Form.Item label="标题">
@@ -261,8 +310,12 @@ export default function TranslationReviewDrawer({
           </div>
           <Form layout="vertical">
             <Form.Item
-              label="驳回原因"
-              extra="驳回时必填；状态仍为“翻译返回待审核”，可继续修改后复审"
+              label={directSource ? "退回修改原因" : "驳回原因"}
+              extra={
+                directSource
+                  ? "退回时必填；状态仍为“原文待审核”，修改后可重新提交审核"
+                  : "驳回时必填；状态仍为“翻译返回待审核”，可继续修改后复审"
+              }
             >
               <Input.TextArea value={reason} onChange={setReason} />
             </Form.Item>
@@ -270,13 +323,24 @@ export default function TranslationReviewDrawer({
           <div className="review-history">
             <strong>审核与任务轨迹</strong>
             <Timeline>
-              <Timeline.Item>
-                {current.submittedAt} {current.submitter} 提交外部机翻
-              </Timeline.Item>
-              <Timeline.Item>
-                {current.translatedAt} 外部服务回调成功
-              </Timeline.Item>
-              <Timeline.Item>当前 · 翻译返回待审核</Timeline.Item>
+              {directSource ? (
+                <>
+                  <Timeline.Item>
+                    {current.submittedAt} {current.submitter} 提交单语言原文
+                  </Timeline.Item>
+                  <Timeline.Item>当前 · 原文待审核</Timeline.Item>
+                </>
+              ) : (
+                <>
+                  <Timeline.Item>
+                    {current.submittedAt} {current.submitter} 提交外部机翻
+                  </Timeline.Item>
+                  <Timeline.Item>
+                    {current.translatedAt} 外部服务回调成功
+                  </Timeline.Item>
+                  <Timeline.Item>当前 · 翻译返回待审核</Timeline.Item>
+                </>
+              )}
             </Timeline>
           </div>
         </div>

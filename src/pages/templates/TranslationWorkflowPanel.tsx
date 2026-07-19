@@ -38,10 +38,12 @@ const statusColor: Record<TranslationItemStatus, string> = {
 function LanguageAction({
   item,
   locked,
+  directSource,
   onOrdinaryReview,
 }: {
   item: TranslationItem;
   locked: boolean;
+  directSource?: boolean;
   onOrdinaryReview: () => void;
 }) {
   const navigate = useNavigate();
@@ -67,7 +69,7 @@ function LanguageAction({
         type="primary"
         onClick={() => navigate(`/multilingual-review?item=${item.id}`)}
       >
-        前往专项审核
+        {directSource ? "前往语言审核" : "前往专项审核"}
       </Button>
     );
   }
@@ -100,11 +102,46 @@ export default function TranslationWorkflowPanel({
   const [targets, setTargets] = useState<string[]>(["en-US"]);
   const [ordinaryReviewId, setOrdinaryReviewId] = useState<string>();
   const sourceEditingLocked = isApprovedManualTemplateLocked(template);
+  const singleLanguageReady =
+    template.translationReadiness === "已通过" &&
+    template.locales.length === 1 &&
+    template.locales[0] === template.sourceLocale;
 
   if (!batch) {
     return (
       <div className="translation-flow">
-        {sourceEditingLocked ? (
+        {singleLanguageReady ? (
+          <>
+            <Alert
+              type="success"
+              showIcon
+              title="单语言内容已就绪"
+              content={`${template.sourceLocale} 直接编写，无需机器翻译，可以进入业务审核。`}
+            />
+            {!sourceEditingLocked && (
+              <div className="translation-gate ready">
+                <div>
+                  <strong>发布门禁 · 已通过</strong>
+                  <p>单语言内容已完成语言准备，可以提交业务审核。</p>
+                </div>
+                <Space>
+                  <Button onClick={onEdit}>编辑源文案</Button>
+                  <Button
+                    type="primary"
+                    disabled={template.status === "已发布"}
+                    onClick={() => {
+                      const approval = submitTemplateForApproval(template.id);
+                      Message.success(`已提交业务审核 ${approval.id}`);
+                      navigate("/approvals");
+                    }}
+                  >
+                    {template.status === "已发布" ? "已发布" : "提交业务审核"}
+                  </Button>
+                </Space>
+              </div>
+            )}
+          </>
+        ) : sourceEditingLocked ? (
           <Alert
             type="warning"
             showIcon
@@ -156,6 +193,7 @@ export default function TranslationWorkflowPanel({
   }
 
   const summary = deriveMultilingualProgress(batch);
+  const directSource = batch.productionMode === "direct_source_review";
   const ready = summary.status === "已通过";
   const temporaryTask = context === "temporary-task";
   const aggregateColor =
@@ -170,19 +208,31 @@ export default function TranslationWorkflowPanel({
       <Alert
         type="info"
         showIcon
-        title="外部异步机翻"
-        content="平台后台提交外部任务；返回结果后进入人工审核。技术任务 ID、错误和时间仍保留用于排障。"
+        title={directSource ? "单语言直接编写" : "外部异步机翻"}
+        content={
+          directSource
+            ? "当前内容由操作者直接使用目标语言编写，不经过机器翻译；专项语言审核通过后即可继续。"
+            : "平台后台提交外部任务；返回结果后进入人工审核。技术任务 ID、错误和时间仍保留用于排障。"
+        }
       />
       <Descriptions
         column={2}
         border
         data={[
-          { label: "翻译批次 ID", value: <span className="mono">{batch.id}</span> },
+          { label: directSource ? "语言审核批次 ID" : "翻译批次 ID", value: <span className="mono">{batch.id}</span> },
           { label: "默认语言", value: `${batch.sourceLocale} · 操作者原文` },
-          { label: "目标语言", value: batch.targetLocales.join(" · ") },
+          directSource
+            ? { label: "生产方式", value: "单语言原文直接审核" }
+            : { label: "目标语言", value: batch.targetLocales.join(" · ") },
           {
             label: "当前状态",
-            value: <Tag color={aggregateColor}>{summary.status}</Tag>,
+            value: (
+              <Tag color={aggregateColor}>
+                {directSource && summary.status === "翻译返回待审核"
+                  ? "原文待审核"
+                  : summary.status}
+              </Tag>
+            ),
           },
           { label: "创建人", value: batch.createdBy },
           { label: "最后更新", value: batch.updatedAt },
@@ -190,8 +240,8 @@ export default function TranslationWorkflowPanel({
       />
       <div className="translation-progress-head">
         <div>
-          <strong>语言审核进度</strong>
-          <span>{summary.approved}/{summary.total} 个目标语言已通过</span>
+          <strong>{directSource ? "原文审核进度" : "语言审核进度"}</strong>
+          <span>{summary.approved}/{summary.total} 个{directSource ? "语言" : "目标语言"}已通过</span>
         </div>
         <Progress
           percent={summary.percent}
@@ -201,30 +251,51 @@ export default function TranslationWorkflowPanel({
       </div>
       <div className="translation-locale-list">
         <div className="translation-locale-header">
-          <strong>逐语言结果</strong>
-          <span>无结果可重试；有结果后按语言配置进入当场校对或专项审核</span>
+          <strong>{directSource ? "原文审核结果" : "逐语言结果"}</strong>
+          <span>
+            {directSource
+              ? "直接查看操作者提交的原文，并前往多语言审核完成专项校对"
+              : "无结果可重试；有结果后按语言配置进入当场校对或专项审核"}
+          </span>
         </div>
         {batch.items.map((item) => (
-          <div className="translation-locale-row" key={item.id}>
+          <div
+            className={`translation-locale-row${directSource ? " direct-source" : ""}`}
+            key={item.id}
+          >
             <div className="locale-code">
               <strong>{item.targetLocale}</strong>
               <span>{item.id}</span>
             </div>
-            <div>
-              <span className="muted">外部任务 ID</span>
-              <strong className="mono">{item.externalTaskId}</strong>
-            </div>
-            <div>
-              <span className="muted">尝试 / 结果时间</span>
-              <strong>第 {item.attemptNo} 次 · {item.translatedAt || "尚无结果"}</strong>
-            </div>
+            {directSource ? (
+              <div>
+                <span className="muted">内容来源</span>
+                <strong>操作者直接编写</strong>
+              </div>
+            ) : (
+              <>
+                <div>
+                  <span className="muted">外部任务 ID</span>
+                  <strong className="mono">{item.externalTaskId}</strong>
+                </div>
+                <div>
+                  <span className="muted">尝试 / 结果时间</span>
+                  <strong>第 {item.attemptNo} 次 · {item.translatedAt || "尚无结果"}</strong>
+                </div>
+              </>
+            )}
             <Space>
-              <Tag color={statusColor[item.status]}>{item.status}</Tag>
+              <Tag color={statusColor[item.status]}>
+                {directSource && item.status === "翻译返回待审核"
+                  ? "原文待审核"
+                  : item.status}
+              </Tag>
               {item.specialReviewRequired && <Tag color="purple">需专项审核</Tag>}
             </Space>
             <LanguageAction
               item={item}
               locked={sourceEditingLocked}
+              directSource={directSource}
               onOrdinaryReview={() => setOrdinaryReviewId(item.id)}
             />
             {item.errorMessage && (
@@ -244,11 +315,11 @@ export default function TranslationWorkflowPanel({
           <p>
             {ready
               ? temporaryTask
-                ? "全部目标语言已完成人工审核，可以继续提交消息任务业务审核。"
-                : "全部目标语言已完成人工审核，可以提交业务审核。"
+                ? `${directSource ? "原文" : "全部目标语言"}已完成人工审核，可以继续提交消息任务业务审核。`
+                : `${directSource ? "原文" : "全部目标语言"}已完成人工审核，可以提交业务审核。`
               : temporaryTask
-                ? "仍有目标语言未人工审核通过，临时消息任务不可提交业务审核。"
-                : "仍有目标语言未人工审核通过，模板不可发布，也不可用于消息任务。"}
+                ? `${directSource ? "原文尚未" : "仍有目标语言未"}人工审核通过，临时消息任务不可提交业务审核。`
+                : `${directSource ? "原文尚未" : "仍有目标语言未"}人工审核通过，模板不可发布，也不可用于消息任务。`}
           </p>
         </div>
         {!temporaryTask && (

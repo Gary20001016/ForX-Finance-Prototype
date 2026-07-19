@@ -31,7 +31,7 @@ export default function MultilingualReviewPage() {
           (item) =>
             item.specialReviewRequired &&
             item.status === "翻译返回待审核" &&
-            `${item.subjectName || item.templateName}${item.targetLocale}${item.externalTaskId}`
+            `${item.subjectName || item.templateName}${item.targetLocale}${item.externalTaskId || ""}`
               .toLowerCase()
               .includes(keyword.toLowerCase()) &&
             (!source || item.subjectType === source) &&
@@ -73,9 +73,14 @@ export default function MultilingualReviewPage() {
       render: (_, item) => `${item.reviewSlaHours || "—"} 小时`,
     },
     {
-      title: "外部机翻任务",
+      title: "内容生产方式",
       width: 180,
-      render: (_, item) => <span className="mono">{item.externalTaskId}</span>,
+      render: (_, item) =>
+        item.productionMode === "direct_source_review" ? (
+          <Tag color="arcoblue">单语言原文</Tag>
+        ) : (
+          <span className="mono">{item.externalTaskId}</span>
+        ),
     },
     {
       title: "变量检查",
@@ -89,7 +94,13 @@ export default function MultilingualReviewPage() {
     {
       title: "状态",
       width: 130,
-      render: (_, item) => <StatusTag status={item.status} />,
+      render: (_, item) =>
+        item.productionMode === "direct_source_review" &&
+        item.status === "翻译返回待审核" ? (
+          <Tag color="orange">原文待审核</Tag>
+        ) : (
+          <StatusTag status={item.status} />
+        ),
     },
     {
       title: "操作",
@@ -103,7 +114,7 @@ export default function MultilingualReviewPage() {
             setSelected(item);
           }}
         >
-          审核译文
+          {item.productionMode === "direct_source_review" ? "审核原文" : "审核译文"}
         </Button>
       ),
     },
@@ -126,7 +137,7 @@ export default function MultilingualReviewPage() {
         <Input.Search
           value={keyword}
           onChange={setKeyword}
-          placeholder="搜索来源名称或外部任务 ID"
+          placeholder="搜索来源名称、语言或外部任务 ID"
           style={{ width: 280 }}
         />
         <Select
