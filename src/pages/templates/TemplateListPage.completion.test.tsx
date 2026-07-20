@@ -30,6 +30,9 @@ it("shows the system template number instead of the internal code", () => {
   );
 
   expect(screen.getByText("TPL-1004")).toBeVisible();
+  expect(
+    screen.queryByRole("columnheader", { name: "版本" }),
+  ).not.toBeInTheDocument();
   expect(screen.queryByText("network_maintenance")).not.toBeInTheDocument();
   expect(screen.getByPlaceholderText("搜索模板编号或名称")).toBeVisible();
 });

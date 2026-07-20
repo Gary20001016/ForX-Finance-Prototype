@@ -215,6 +215,7 @@ export default function CreateTaskPage() {
     copiedTask?.templateId ||
       store.templates.find(
         (template) =>
+          template.name === copiedTask?.template ||
           `${template.code} ${template.version}` === copiedTask?.template,
       )?.id ||
       (initialTriggerType === "event"
@@ -510,8 +511,8 @@ export default function CreateTaskPage() {
     contentMode,
     template:
       contentMode === "template"
-        ? `${selectedTemplate?.code} ${selectedTemplate?.version}`
-        : "临时消息 v1",
+        ? selectedTemplate?.name || "未选择模板"
+        : "临时消息",
     templateId: contentMode === "template" ? selectedTemplate?.id : undefined,
     templateVersion:
       contentMode === "template" ? selectedTemplate?.version : undefined,
@@ -789,7 +790,7 @@ export default function CreateTaskPage() {
         }
       />
       <div className="task-capability-strip">
-        <span>仅显示全部目标语言人工审核通过的模板版本</span>
+        <span>仅显示全部目标语言人工审核通过的模板</span>
         <Tag color="green">翻译审核通过</Tag>
         <Tag color="arcoblue">站内信（Web + App）</Tag>
         <Tag color="purple">App Push</Tag>
@@ -946,14 +947,14 @@ export default function CreateTaskPage() {
                         label="消息模板"
                         field="template"
                         required
-                        extra="仅显示全部目标语言人工审核通过的不可变模板版本"
+                        extra="仅显示全部目标语言人工审核通过的模板"
                       >
                         <Select
                           value={selectedTemplate?.id}
                           onChange={setTemplateId}
                           disabled={!approvedTemplates.length}
                           options={approvedTemplates.map((item) => ({
-                            label: `${item.name} · ${item.version} · ${item.channels.join(" + ")}`,
+                            label: `${item.name} · ${item.channels.join(" + ")}`,
                             value: item.id,
                           }))}
                         />

@@ -18,8 +18,10 @@ const usageScopeLabel: Record<MessageTemplate["usageScope"], string> = {
 
 export default function TemplateReadOnlyDetails({
   template,
+  showVersion = false,
 }: {
   template: MessageTemplate;
+  showVersion?: boolean;
 }) {
   return (
     <Space direction="vertical" size={20} style={{ width: "100%" }}>
@@ -40,7 +42,9 @@ export default function TemplateReadOnlyDetails({
             value: <span className="mono">{template.id}</span>,
           },
           { label: "模板名称", value: template.name },
-          { label: "版本", value: template.version },
+          ...(showVersion
+            ? [{ label: "版本", value: template.version }]
+            : []),
           { label: "状态", value: <StatusTag status={template.status} /> },
           { label: "更新时间", value: template.updatedAt },
           { label: "消息分类", value: template.category },

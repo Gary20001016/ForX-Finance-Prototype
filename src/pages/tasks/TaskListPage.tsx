@@ -53,6 +53,11 @@ export default function TaskListPage() {
   const [channel, setChannel] = useState<string>();
   const [selected, setSelected] = useState<MessageTask>();
   const [progressBatch, setProgressBatch] = useState<TranslationBatch>();
+  const templateDisplayName = (task: MessageTask) => {
+    if (task.contentMode === "temporary") return "临时消息";
+    const template = store.templates.find((item) => item.id === task.templateId);
+    return template?.name || task.template.replace(/\s+v\d+$/i, "");
+  };
   const filtered = useMemo(
     () =>
       tasks.filter((task) => {
@@ -177,10 +182,9 @@ export default function TaskListPage() {
       ),
     },
     {
-      title: "模板版本",
-      dataIndex: "template",
+      title: "消息模板",
       width: 170,
-      render: (value) => <span className="mono">{value}</span>,
+      render: (_, row) => <span>{templateDisplayName(row)}</span>,
     },
     {
       title: "渠道",
@@ -414,11 +418,7 @@ export default function TaskListPage() {
                   value:
                     selected.contentMode === "temporary"
                       ? "临时消息"
-                      : selected.template,
-                },
-                {
-                  label: "模板版本",
-                  value: selected.templateVersion || selected.template,
+                      : templateDisplayName(selected),
                 },
                 { label: "渠道", value: selected.channels.join(" + ") },
                 {

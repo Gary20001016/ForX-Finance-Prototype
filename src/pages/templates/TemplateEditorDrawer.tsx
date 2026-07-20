@@ -27,7 +27,9 @@ import {
   requiresSpecialLanguageReview,
   saveTemplate,
   updateTemplate,
+  usePrototypeStore,
 } from "../../store/prototypeStore";
+import { getMessageCategoryDefaultNature } from "../../domain/messageCategoryPolicy";
 import { isApprovedManualTemplateLocked } from "../../domain/templatePolicy";
 import TemplateReadOnlyDetails from "./TemplateReadOnlyDetails";
 import TemplateTestSendModal from "./TemplateTestSendModal";
@@ -87,6 +89,7 @@ export default function TemplateEditorDrawer({
   onCreated?: (template: MessageTemplate) => void;
 }) {
   const [form] = Form.useForm();
+  const store = usePrototypeStore();
   const [content, setContent] = useState<LocalizedMessageContent>(emptyContent);
   const [channels, setChannels] = useState<Channel[]>(defaultChannels);
   const [sourceLocale, setSourceLocale] = useState("zh-CN");
@@ -99,6 +102,9 @@ export default function TemplateEditorDrawer({
   useEffect(() => {
     const next = template?.content || emptyContent;
     const nextSourceLocale = template?.sourceLocale || "zh-CN";
+    const nextCategory = template?.category || "系统公告";
+    const nextNature =
+      getMessageCategoryDefaultNature(store.categories, nextCategory) || "事务";
     setContent(JSON.parse(JSON.stringify(next)));
     setSourceLocale(nextSourceLocale);
     setTargetLocales(
@@ -112,9 +118,9 @@ export default function TemplateEditorDrawer({
     form.setFieldsValue({
       name: template?.name,
       description: "",
-      category: template?.category || "系统公告",
-      nature: template?.nature || "事务",
-      risk: template?.risk || "中",
+      category: nextCategory,
+      nature: nextNature,
+      risk: template?.risk || "低",
       owner: template?.owner || "消息运营",
       usageScope: template?.usageScope || entryScope,
       variables: (
@@ -127,7 +133,7 @@ export default function TemplateEditorDrawer({
         ]
       ).join(", "),
     });
-  }, [template, visible, form, entryScope]);
+  }, [template, visible, form, entryScope, store.categories]);
 
   const patchWeb = (changes: Partial<LocalizedMessageContent["web"]>) =>
     setContent((current) => ({
@@ -153,6 +159,9 @@ export default function TemplateEditorDrawer({
   const save = async (mode: "draft" | "submit") => {
     try {
       const values = await form.validate();
+      const resolvedNature =
+        getMessageCategoryDefaultNature(store.categories, values.category) ||
+        "事务";
       const stationIncomplete =
         channels.includes("站内信") &&
         (!content.web.title || !content.web.summary || !content.web.body);
@@ -176,7 +185,7 @@ export default function TemplateEditorDrawer({
       const payload = {
         name: values.name,
         category: values.category,
-        nature: values.nature,
+        nature: resolvedNature,
         risk: values.risk,
         channels,
         locales: [sourceLocale, ...targetLocales],
@@ -261,7 +270,12 @@ export default function TemplateEditorDrawer({
         onCancel={onClose}
         footer={<Button onClick={onClose}>关闭</Button>}
       >
-        {template && <TemplateReadOnlyDetails template={template} />}
+        {template && (
+          <TemplateReadOnlyDetails
+            template={template}
+            showVersion={entryScope === "event"}
+          />
+        )}
       </Drawer>
     );
   }
@@ -344,18 +358,26 @@ export default function TemplateEditorDrawer({
           <Grid.Col span={6}>
             <Form.Item label="消息分类" field="category" required>
               <Select
+                onChange={(category) =>
+                  form.setFieldsValue({
+                    nature:
+                      getMessageCategoryDefaultNature(
+                        store.categories,
+                        category,
+                      ) || "事务",
+                  })
+                }
                 options={categories.map((value) => ({ label: value, value }))}
               />
             </Form.Item>
           </Grid.Col>
           <Grid.Col span={6}>
-            <Form.Item label="消息性质" field="nature">
-              <Select
-                options={["事务", "服务", "营销"].map((value) => ({
-                  label: value,
-                  value,
-                }))}
-              />
+            <Form.Item
+              label="消息性质"
+              field="nature"
+              extra="由消息分类自动确定"
+            >
+              <Input disabled />
             </Form.Item>
           </Grid.Col>
           <Grid.Col span={6}>

@@ -117,7 +117,9 @@ export default function TemplateListPage() {
         );
       },
     },
-    { title: "版本", dataIndex: "version", width: 70 },
+    ...(entryScope === "event"
+      ? [{ title: "版本", dataIndex: "version", width: 70 }]
+      : []),
     {
       title: "适用场景",
       width: 100,
@@ -178,7 +180,7 @@ export default function TemplateListPage() {
         description={
           entryScope === "event"
             ? "维护事件通知专用与通用模板，共享版本、多语言、预览和审核能力。"
-            : "维护人工消息专用与通用模板，共享版本、多语言、预览和审核能力。"
+            : "维护人工消息专用与通用模板，共享多语言、预览和审核能力。"
         }
         actions={
           <Button
@@ -239,7 +241,9 @@ export default function TemplateListPage() {
         width={820}
         title={
           preview
-            ? `${preview.name} · ${preview.version} · 多语言生产`
+            ? entryScope === "event"
+              ? `${preview.name} · ${preview.version} · 多语言生产`
+              : `${preview.name} · 多语言生产`
             : "多语言生产"
         }
         visible={Boolean(preview)}
@@ -271,7 +275,9 @@ export default function TemplateListPage() {
         width={720}
         title={
           usageTemplate
-            ? `${usageTemplate.name} · ${usageTemplate.version} · 使用任务`
+            ? entryScope === "event"
+              ? `${usageTemplate.name} · ${usageTemplate.version} · 使用任务`
+              : `${usageTemplate.name} · 使用任务`
             : "使用任务"
         }
         visible={Boolean(usageTemplate)}
@@ -303,7 +309,11 @@ export default function TemplateListPage() {
                 </div>
               ))
             ) : (
-              <div className="empty-state">当前模板版本尚未被任务使用</div>
+              <div className="empty-state">
+                {entryScope === "event"
+                  ? "当前模板版本尚未被任务使用"
+                  : "当前模板尚未被任务使用"}
+              </div>
             )}
           </Space>
         )}
