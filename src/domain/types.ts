@@ -461,6 +461,15 @@ export interface TemplateTestSendResult {
   totalDeliveries: number;
 }
 
+export interface ControlledTemplateVariable {
+  id: string;
+  name: string;
+  description: string;
+  status: "启用" | "停用";
+  updatedAt: string;
+  updatedBy: string;
+}
+
 export interface SystemEventDefinition {
   id: string;
   name: string;

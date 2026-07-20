@@ -2,6 +2,7 @@ import { useSyncExternalStore } from "react";
 import type {
   ApprovalItem,
   Channel,
+  ControlledTemplateVariable,
   DeliveryRecord,
   EventNotificationRule,
   EventRuleOperation,
@@ -77,7 +78,23 @@ export interface PrototypeState {
   rules: EventNotificationRule[];
   ruleVersions: RuleContentVersion[];
   triggerRecords: TriggerRecord[];
+  templateVariables: ControlledTemplateVariable[];
 }
+
+const controlledVariableSeed: ControlledTemplateVariable[] = [
+  ["VAR-001", "user_nickname", "用户昵称"],
+  ["VAR-002", "uid", "用户 UID"],
+  ["VAR-003", "vip_level", "用户当前 VIP 等级"],
+  ["VAR-004", "platform_name", "平台名称"],
+  ["VAR-005", "support_email", "客服邮箱"],
+].map(([id, name, description]) => ({
+  id,
+  name,
+  description,
+  status: "启用",
+  updatedAt: "2026-07-20 15:00",
+  updatedBy: "Gary Ma",
+}));
 
 const languageReviewPolicySeed: LanguageReviewPolicy[] = [
   ["en-US", "英语", false, undefined, 1, true, 8, "提醒"],
@@ -649,6 +666,7 @@ const createSeed = (): PrototypeState => {
     rules: automation.rules,
     ruleVersions: automation.versions,
     triggerRecords: automation.triggerRecords,
+    templateVariables: JSON.parse(JSON.stringify(controlledVariableSeed)),
   };
 };
 
@@ -736,6 +754,7 @@ const migrateSavedState = (saved: PrototypeState): PrototypeState => {
     rules: saved.rules || fresh.rules,
     ruleVersions: mergedRuleVersions,
     triggerRecords: saved.triggerRecords || fresh.triggerRecords,
+    templateVariables: saved.templateVariables || fresh.templateVariables,
   };
 };
 
@@ -781,6 +800,72 @@ export const usePrototypeStore = () =>
     getPrototypeState,
     getPrototypeState,
   );
+
+export const addControlledVariable = (input: {
+  name: string;
+  description: string;
+  updatedBy: string;
+}) => {
+  const name = input.name.trim();
+  const description = input.description.trim();
+  if (!/^[a-z][a-z0-9_]*$/.test(name))
+    throw new Error("变量名必须使用 snake_case");
+  if (!description) throw new Error("变量说明不能为空");
+  if (state.templateVariables.some((item) => item.name === name))
+    throw new Error("变量名已存在");
+  const variable: ControlledTemplateVariable = {
+    id: `VAR-${Date.now().toString().slice(-7)}`,
+    name,
+    description,
+    status: "启用",
+    updatedAt: "刚刚",
+    updatedBy: input.updatedBy,
+  };
+  update((current) => ({
+    ...current,
+    templateVariables: [variable, ...current.templateVariables],
+  }));
+  return variable;
+};
+
+export const updateControlledVariable = (
+  id: string,
+  changes: Pick<
+    ControlledTemplateVariable,
+    "description" | "status" | "updatedBy"
+  >,
+) => {
+  const description = changes.description.trim();
+  if (!description) throw new Error("变量说明不能为空");
+  update((current) => ({
+    ...current,
+    templateVariables: current.templateVariables.map((item) =>
+      item.id === id
+        ? { ...item, ...changes, description, updatedAt: "刚刚" }
+        : item,
+    ),
+  }));
+};
+
+export const importControlledVariables = (
+  rows: Array<{ name: string; description: string }>,
+  updatedBy: string,
+) => {
+  rows.forEach((row) => {
+    const existing = state.templateVariables.find(
+      (item) => item.name === row.name,
+    );
+    if (existing) {
+      updateControlledVariable(existing.id, {
+        description: row.description,
+        status: existing.status,
+        updatedBy,
+      });
+    } else {
+      addControlledVariable({ ...row, updatedBy });
+    }
+  });
+};
 
 export const getOperatorTestAccounts = (operatorId: string) =>
   state.testAccounts.filter((account) => account.operatorId === operatorId);

@@ -3,6 +3,7 @@ import {
   approveTranslation,
   approveOrdinaryTranslation,
   approveSpecialReview,
+  addControlledVariable,
   addOperatorTestAccount,
   advanceRuleContentVersion,
   createRuleTranslationBatch,
@@ -29,6 +30,7 @@ import {
   submitTemplateForApproval,
   testSystemEvent,
   updateLanguageReviewPolicy,
+  updateControlledVariable,
   updateOperatorTestAccount,
 } from "./prototypeStore";
 import { translationBatches as legacyTranslationBatches } from "../mocks/data";
@@ -76,6 +78,36 @@ describe("prototype store workflow transitions", () => {
         remark: "重复设备",
       }),
     ).toThrow("该 UID 已在你的测试账号中");
+  });
+
+  it("adds and updates controlled manual-message variables without renaming", () => {
+    const created = addControlledVariable({
+      name: "campaign_name",
+      description: "活动名称",
+      updatedBy: "Gary Ma",
+    });
+
+    expect(created).toMatchObject({
+      name: "campaign_name",
+      description: "活动名称",
+      status: "启用",
+    });
+
+    updateControlledVariable(created.id, {
+      description: "当前活动名称",
+      status: "停用",
+      updatedBy: "Gary Ma",
+    });
+
+    expect(
+      getPrototypeState().templateVariables.find(
+        (variable) => variable.id === created.id,
+      ),
+    ).toMatchObject({
+      name: "campaign_name",
+      description: "当前活动名称",
+      status: "停用",
+    });
   });
 
   it("prevents operators from changing another operator's test account", () => {
