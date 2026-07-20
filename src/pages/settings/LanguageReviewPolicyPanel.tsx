@@ -7,7 +7,6 @@ import {
   Switch,
   Tag,
 } from "@arco-design/web-react";
-import { reviewOperators } from "../../domain/reviewOperators";
 import { updateLanguageReviewPolicy, usePrototypeStore } from "../../store/prototypeStore";
 
 export default function LanguageReviewPolicyPanel() {
@@ -50,7 +49,7 @@ export default function LanguageReviewPolicyPanel() {
                   authorizedReviewerIds,
                 });
               }}
-              options={reviewOperators
+              options={store.operators
                 .filter((operator) => operator.enabled)
                 .map((operator) => ({
                   value: operator.id,
