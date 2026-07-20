@@ -7,7 +7,12 @@ import type {
   TranslationItem,
 } from "../../domain/types";
 import {
+  CURRENT_REVIEW_OPERATOR_ID,
+  reviewOperatorName,
+} from "../../domain/reviewOperators";
+import {
   approveOrdinaryTranslation,
+  canReviewTranslation,
   saveTranslationDraft,
   usePrototypeStore,
 } from "../../store/prototypeStore";
@@ -76,8 +81,13 @@ export default function MultilingualResultPanel({
     setBody(currentContent.body || "");
   }, [currentContent.body, currentContent.summary, currentContent.title, item.id]);
 
-  const canEdit =
+  const hasReviewPermission = canReviewTranslation(
+    item,
+    CURRENT_REVIEW_OPERATOR_ID,
+  );
+  const waitingForOrdinaryReview =
     !item.specialReviewRequired && item.status === "翻译返回待审核";
+  const canEdit = waitingForOrdinaryReview && hasReviewPermission;
   const canEnterSpecialReview =
     item.specialReviewRequired && item.status === "翻译返回待审核";
   const machineResultReady = directSource
@@ -104,7 +114,11 @@ export default function MultilingualResultPanel({
   }
 
   const save = () => {
-    saveTranslationDraft(item.id, { title, summary, body });
+    saveTranslationDraft(
+      item.id,
+      { title, summary, body },
+      CURRENT_REVIEW_OPERATOR_ID,
+    );
     Message.success(`${item.targetLocale} 人工修订草稿已保存`);
   };
   const approve = () => {
@@ -127,7 +141,7 @@ export default function MultilingualResultPanel({
       title,
       summary,
       body,
-      reviewer: "Gary Ma",
+      reviewer: CURRENT_REVIEW_OPERATOR_ID,
     });
     Message.success(`${item.targetLocale} 修订结果已通过`);
   };
@@ -149,7 +163,7 @@ export default function MultilingualResultPanel({
         <span>
           {directSource
             ? `原文提交：${item.submittedAt || "—"}`
-            : `机翻完成：${item.translatedAt || "—"}`} · 审核：{item.reviewer || "未审核"}
+            : `机翻完成：${item.translatedAt || "—"}`} · 审核：{item.reviewer ? reviewOperatorName(item.reviewer) : "未审核"}
           {item.reviewedAt ? ` ${item.reviewedAt}` : ""}
         </span>
       </div>
@@ -162,6 +176,14 @@ export default function MultilingualResultPanel({
               ? "该语言被配置为专项审核；此处可直接查看提交原文，修改与审核必须前往多语言审核。"
               : "该语言被配置为小语种专项审核；此处仅供查看，修改与审核必须前往多语言审核。"
           }
+        />
+      )}
+      {waitingForOrdinaryReview && !hasReviewPermission && (
+        <Alert
+          type="warning"
+          showIcon
+          title="无该语言审核权限"
+          content="你可以查看翻译结果，但不能修改或通过。请由该语言的授权审核人处理。"
         />
       )}
       <div

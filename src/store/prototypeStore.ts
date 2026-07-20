@@ -1380,6 +1380,8 @@ const approveTranslationWithMode = (
     .flatMap((batch) => batch.items)
     .find((item) => item.id === itemId);
   if (!currentItem) throw new Error("翻译任务不存在");
+  if (!canReviewTranslation(currentItem, values.reviewer))
+    throw new Error("无该语言审核权限");
   if (mode === "ordinary" && currentItem.specialReviewRequired)
     throw new Error("该语言必须进入小语种专审");
   if (mode === "special" && !currentItem.specialReviewRequired)
@@ -1477,8 +1479,16 @@ export const approveSpecialReview = (
 export const saveTranslationDraft = (
   itemId: string,
   values: Omit<TranslationApprovalValues, "reviewer">,
-) =>
-  update((current) => ({
+  reviewerId: string,
+) => {
+  const currentItem = state.translationBatches
+    .flatMap((batch) => batch.items)
+    .find((item) => item.id === itemId);
+  if (!currentItem) throw new Error("翻译任务不存在");
+  if (!canReviewTranslation(currentItem, reviewerId))
+    throw new Error("无该语言审核权限");
+
+  return update((current) => ({
     ...current,
     translationBatches: current.translationBatches.map((batch) =>
       recomputeBatch({
@@ -1502,6 +1512,7 @@ export const saveTranslationDraft = (
       }),
     ),
   }));
+};
 
 export const startSpecialReview = (itemId: string) =>
   update((current) => ({
@@ -1518,8 +1529,19 @@ export const startSpecialReview = (itemId: string) =>
     ),
   }));
 
-export const rejectTranslation = (itemId: string, reason: string) =>
-  update((current) => ({
+export const rejectTranslation = (
+  itemId: string,
+  reason: string,
+  reviewerId: string,
+) => {
+  const currentItem = state.translationBatches
+    .flatMap((batch) => batch.items)
+    .find((item) => item.id === itemId);
+  if (!currentItem) throw new Error("翻译任务不存在");
+  if (!canReviewTranslation(currentItem, reviewerId))
+    throw new Error("无该语言审核权限");
+
+  return update((current) => ({
     ...current,
     translationBatches: current.translationBatches.map((batch) =>
       recomputeBatch({
@@ -1530,6 +1552,7 @@ export const rejectTranslation = (itemId: string, reason: string) =>
                 ...item,
                 status: "翻译返回待审核",
                 errorMessage: reason,
+                reviewer: reviewerId,
                 reviewedAt: "刚刚",
               }
             : item,
@@ -1537,6 +1560,7 @@ export const rejectTranslation = (itemId: string, reason: string) =>
       }),
     ),
   }));
+};
 export const retryTranslation = (itemId: string) =>
   update((current) => ({
     ...current,

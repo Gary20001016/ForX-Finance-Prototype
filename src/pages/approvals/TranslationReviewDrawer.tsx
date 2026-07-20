@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import {
+  Alert,
   Button,
   Descriptions,
   Drawer,
@@ -14,11 +15,13 @@ import MarkdownContent, {
 } from "../../components/MarkdownContent";
 import MarkdownEditor from "../../components/MarkdownEditor";
 import { haveSameVariableOccurrences } from "../../domain/manualMessageVariables";
+import { CURRENT_REVIEW_OPERATOR_ID } from "../../domain/reviewOperators";
 import type { TranslationItem } from "../../domain/types";
 import {
   approveOrdinaryTranslation,
   approveSpecialReview,
   approveTranslation,
+  canReviewTranslation,
   rejectTranslation,
   saveTranslationDraft,
   usePrototypeStore,
@@ -28,7 +31,7 @@ export default function TranslationReviewDrawer({
   item,
   visible,
   onClose,
-  currentAdmin = "Gary Ma",
+  currentAdmin = CURRENT_REVIEW_OPERATOR_ID,
   reviewMode = "legacy",
 }: {
   item?: TranslationItem;
@@ -67,7 +70,9 @@ export default function TranslationReviewDrawer({
     setReason("");
   }, [current?.id]);
 
-  const isSelf = current?.submitter === currentAdmin;
+  const isAuthorized = Boolean(
+    current && canReviewTranslation(current, currentAdmin),
+  );
   const sourceBody =
     batch?.sourceContent?.body || template?.content?.web.body || "";
   const sourceVariableText = [
@@ -80,31 +85,23 @@ export default function TranslationReviewDrawer({
 
   const reject = () => {
     if (!current) return;
-    if (isSelf) {
-      Message.warning(
-        directSource
-          ? "原文提交人与语言审核人必须不同"
-          : "机翻提交人与人工审核人必须不同",
-      );
+    if (!isAuthorized) {
+      Message.warning("无该语言审核权限");
       return;
     }
     if (!reason.trim()) {
       Message.warning(directSource ? "请先填写退回修改原因" : "请先填写驳回重翻原因");
       return;
     }
-    rejectTranslation(current.id, reason);
+    rejectTranslation(current.id, reason, currentAdmin);
     Message.success(`${current.targetLocale} 已驳回，保留在待审核状态`);
     onClose();
   };
 
   const approve = () => {
     if (!current) return;
-    if (reviewMode !== "ordinary" && isSelf) {
-      Message.warning(
-        directSource
-          ? "原文提交人与语言审核人必须不同"
-          : "机翻提交人与人工审核人必须不同",
-      );
+    if (!isAuthorized) {
+      Message.warning("无该语言审核权限");
       return;
     }
     if (!current.variablesValid) {
@@ -140,7 +137,15 @@ export default function TranslationReviewDrawer({
 
   const saveDraft = () => {
     if (!current) return;
-    saveTranslationDraft(current.id, { title, summary, body });
+    if (!isAuthorized) {
+      Message.warning("无该语言审核权限");
+      return;
+    }
+    saveTranslationDraft(
+      current.id,
+      { title, summary, body },
+      currentAdmin,
+    );
     Message.success("人工修订草稿已保存");
   };
 
@@ -158,34 +163,39 @@ export default function TranslationReviewDrawer({
         current && (
           <div className="drawer-footer">
             <Button onClick={onClose}>取消</Button>
-            <Button onClick={saveDraft}>{directSource ? "保存审核稿" : "保存修订"}</Button>
-            <Button
-              status="danger"
-              disabled={reviewMode !== "ordinary" && isSelf}
-              onClick={reject}
-            >
-              {directSource ? "退回修改" : "驳回"}
-            </Button>
-            <Button
-              type="primary"
-              disabled={
-                (reviewMode !== "ordinary" && isSelf) ||
-                !current.variablesValid
-              }
-              onClick={approve}
-            >
-              {directSource
-                ? "原文审核通过"
-                : reviewMode === "special"
-                  ? "专项审核通过"
-                  : "修订并通过"}
-            </Button>
+            {isAuthorized && (
+              <>
+                <Button onClick={saveDraft}>{directSource ? "保存审核稿" : "保存修订"}</Button>
+                <Button status="danger" onClick={reject}>
+                  {directSource ? "退回修改" : "驳回"}
+                </Button>
+                <Button
+                  type="primary"
+                  disabled={!current.variablesValid}
+                  onClick={approve}
+                >
+                  {directSource
+                    ? "原文审核通过"
+                    : reviewMode === "special"
+                      ? "专项审核通过"
+                      : "修订并通过"}
+                </Button>
+              </>
+            )}
           </div>
         )
       }
     >
       {current && (
         <div className="translation-review">
+          {!isAuthorized && (
+            <Alert
+              type="warning"
+              showIcon
+              title="无该语言审核权限"
+              content="你可以查看内容，但不能修改、驳回或通过该语言的审核。请由系统配置中已授权的审核人处理。"
+            />
+          )}
           <Descriptions
             column={3}
             border
@@ -279,16 +289,17 @@ export default function TranslationReviewDrawer({
               </div>
               <Form layout="vertical">
                 <Form.Item label="标题">
-                  <Input value={title} onChange={setTitle} />
+                  <Input disabled={!isAuthorized} value={title} onChange={setTitle} />
                 </Form.Item>
                 <Form.Item label="摘要">
-                  <Input.TextArea value={summary} onChange={setSummary} />
+                  <Input.TextArea disabled={!isAuthorized} value={summary} onChange={setSummary} />
                 </Form.Item>
                 <Form.Item label="正文 Markdown">
                   <MarkdownEditor
                     value={body}
                     onChange={setBody}
                     minRows={6}
+                    readOnly={!isAuthorized}
                   />
                 </Form.Item>
               </Form>
@@ -312,7 +323,11 @@ export default function TranslationReviewDrawer({
                   : "驳回时必填；状态仍为“翻译返回待审核”，可继续修改后复审"
               }
             >
-              <Input.TextArea value={reason} onChange={setReason} />
+              <Input.TextArea
+                disabled={!isAuthorized}
+                value={reason}
+                onChange={setReason}
+              />
             </Form.Item>
           </Form>
           <div className="review-history">

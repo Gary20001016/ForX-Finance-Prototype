@@ -18,6 +18,10 @@ import type {
   TranslationItemStatus,
 } from "../../domain/types";
 import {
+  CURRENT_REVIEW_OPERATOR_ID,
+  reviewOperatorName,
+} from "../../domain/reviewOperators";
+import {
   createTranslationBatch,
   retryTranslation,
   submitTemplateForApproval,
@@ -82,7 +86,7 @@ function LanguageAction({
   }
   return (
     <Button size="small" disabled>
-      {item.reviewer ? `已由 ${item.reviewer} 审核` : "已通过"}
+      {item.reviewer ? `已由 ${reviewOperatorName(item.reviewer)} 审核` : "已通过"}
     </Button>
   );
 }
@@ -349,7 +353,7 @@ export default function TranslationWorkflowPanel({
         item={batch.items.find((item) => item.id === ordinaryReviewId)}
         visible={Boolean(ordinaryReviewId)}
         onClose={() => setOrdinaryReviewId(undefined)}
-        currentAdmin="Gary Ma"
+        currentAdmin={CURRENT_REVIEW_OPERATOR_ID}
         reviewMode="ordinary"
       />
     </div>
