@@ -1,4 +1,13 @@
-import { Card, InputNumber, Select, Space, Switch, Tag } from "@arco-design/web-react";
+import {
+  Card,
+  InputNumber,
+  Message,
+  Select,
+  Space,
+  Switch,
+  Tag,
+} from "@arco-design/web-react";
+import { reviewOperators } from "../../domain/reviewOperators";
 import { updateLanguageReviewPolicy, usePrototypeStore } from "../../store/prototypeStore";
 
 export default function LanguageReviewPolicyPanel() {
@@ -12,9 +21,8 @@ export default function LanguageReviewPolicyPanel() {
     >
       <div className="language-policy-table">
         <div className="language-policy-head">
-          <strong>语言</strong><strong>专项审核</strong><strong>审核组</strong>
-          <strong>审核人数</strong><strong>允许提交人自审</strong><strong>SLA</strong>
-          <strong>超时动作</strong><strong>状态</strong>
+          <strong>语言</strong><strong>专项审核</strong><strong>授权审核人</strong>
+          <strong>SLA</strong><strong>超时动作</strong><strong>状态</strong>
         </div>
         {store.languageReviewPolicies.map((policy) => (
           <div className="language-policy-row" key={policy.localeCode}>
@@ -25,25 +33,29 @@ export default function LanguageReviewPolicyPanel() {
               onChange={(checked) =>
                 updateLanguageReviewPolicy(policy.localeCode, {
                   specialReviewRequired: checked,
-                  reviewGroup: checked ? policy.reviewGroup || `${policy.localeName}专项审核组` : undefined,
                 })
               }
             />
             <Select
-              value={policy.reviewGroup}
-              disabled={!policy.specialReviewRequired}
-              onChange={(reviewGroup) => updateLanguageReviewPolicy(policy.localeCode, { reviewGroup })}
-              options={["日韩专项审核组", "小语种专项审核组", "欧洲语言审核组"].map((value) => ({ value, label: value }))}
-            />
-            <Select
-              value={policy.reviewerCount}
-              disabled={!policy.specialReviewRequired}
-              onChange={(reviewerCount) => updateLanguageReviewPolicy(policy.localeCode, { reviewerCount })}
-              options={[1, 2].map((value) => ({ value, label: `${value} 人` }))}
-            />
-            <Switch
-              checked={policy.allowSubmitterReview}
-              onChange={(allowSubmitterReview) => updateLanguageReviewPolicy(policy.localeCode, { allowSubmitterReview })}
+              mode="multiple"
+              allowSearch
+              value={policy.authorizedReviewerIds}
+              placeholder="选择可审核该语言的操作者"
+              onChange={(authorizedReviewerIds) => {
+                if (policy.enabled && authorizedReviewerIds.length === 0) {
+                  Message.warning("每个启用语言至少需要 1 名授权审核人");
+                  return;
+                }
+                updateLanguageReviewPolicy(policy.localeCode, {
+                  authorizedReviewerIds,
+                });
+              }}
+              options={reviewOperators
+                .filter((operator) => operator.enabled)
+                .map((operator) => ({
+                  value: operator.id,
+                  label: `${operator.name} · ${operator.id} · ${operator.team}`,
+                }))}
             />
             <InputNumber
               value={policy.reviewSlaHours}
@@ -56,7 +68,19 @@ export default function LanguageReviewPolicyPanel() {
               onChange={(timeoutAction) => updateLanguageReviewPolicy(policy.localeCode, { timeoutAction })}
               options={["提醒", "升级", "阻断发布"].map((value) => ({ value, label: value }))}
             />
-            <Space><Switch checked={policy.enabled} onChange={(enabled) => updateLanguageReviewPolicy(policy.localeCode, { enabled })}/><span>{policy.enabled ? "启用" : "停用"}</span></Space>
+            <Space>
+              <Switch
+                checked={policy.enabled}
+                onChange={(enabled) => {
+                  if (enabled && policy.authorizedReviewerIds.length === 0) {
+                    Message.warning("请先配置至少 1 名授权审核人");
+                    return;
+                  }
+                  updateLanguageReviewPolicy(policy.localeCode, { enabled });
+                }}
+              />
+              <span>{policy.enabled ? "启用" : "停用"}</span>
+            </Space>
           </div>
         ))}
       </div>
