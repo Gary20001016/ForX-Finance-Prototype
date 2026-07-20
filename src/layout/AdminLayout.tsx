@@ -29,10 +29,16 @@ import {
   settingsNavigationItem,
 } from '../app/navigation';
 import { openPrototypeDialog } from '../utils/prototypeActions';
+import { CURRENT_REVIEW_OPERATOR_ID } from '../domain/reviewOperators';
+import { usePrototypeStore } from '../store/prototypeStore';
 
 const { Sider, Header, Content } = Layout;
 
 export default function AdminLayout() {
+  const store = usePrototypeStore();
+  const currentOperator = store.operators.find(
+    (operator) => operator.id === CURRENT_REVIEW_OPERATOR_ID,
+  );
   const location = useLocation();
   const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
@@ -136,7 +142,10 @@ export default function AdminLayout() {
             <Dropdown droplist={<Menu><Menu.Item key="profile">个人设置</Menu.Item><Menu.Item key="logout">退出</Menu.Item></Menu>}>
               <Space className="user-control">
                 <Avatar size={32}>GM</Avatar>
-                <span className="user-copy"><strong>Gary Ma</strong><small>超级管理员</small></span>
+                <span className="user-copy">
+                  <strong>{currentOperator?.name || "未知操作者"}</strong>
+                  <small>{currentOperator?.isSuperAdmin ? "超级管理员" : "普通操作者"}</small>
+                </span>
                 <IconDown />
               </Space>
             </Dropdown>

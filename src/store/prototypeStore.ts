@@ -62,6 +62,11 @@ import {
   deriveTranslationBatchStatus,
   normalizeTranslationStatus,
 } from "../domain/translationStatus";
+import {
+  reviewOperators,
+  type OperatorPermission,
+  type ReviewOperator,
+} from "../domain/reviewOperators";
 
 export interface PrototypeState {
   messages: UserMessage[];
@@ -79,6 +84,7 @@ export interface PrototypeState {
   ruleVersions: RuleContentVersion[];
   triggerRecords: TriggerRecord[];
   templateVariables: ControlledTemplateVariable[];
+  operators: ReviewOperator[];
 }
 
 const controlledVariableSeed: ControlledTemplateVariable[] = [
@@ -672,6 +678,7 @@ const createSeed = (): PrototypeState => {
     ruleVersions: automation.versions,
     triggerRecords: automation.triggerRecords,
     templateVariables: JSON.parse(JSON.stringify(controlledVariableSeed)),
+    operators: JSON.parse(JSON.stringify(reviewOperators)),
   };
 };
 
@@ -760,6 +767,7 @@ const migrateSavedState = (saved: PrototypeState): PrototypeState => {
     ruleVersions: mergedRuleVersions,
     triggerRecords: saved.triggerRecords || fresh.triggerRecords,
     templateVariables: saved.templateVariables || fresh.templateVariables,
+    operators: saved.operators || fresh.operators,
   };
 };
 
@@ -1594,6 +1602,37 @@ export const updateLanguageReviewPolicy = (
       policy.localeCode === localeCode ? { ...policy, ...values } : policy,
     ),
   }));
+
+export const updateOperatorPermissions = (
+  operatorId: string,
+  permissions: OperatorPermission[],
+  reviewLocaleCodes: string[],
+) => {
+  const operator = state.operators.find((candidate) => candidate.id === operatorId);
+  if (!operator) throw new Error("操作者不存在");
+  if (!operator.enabled) throw new Error("停用账号不能修改权限");
+
+  const nextPolicies = state.languageReviewPolicies.map((policy) => {
+    const shouldAuthorize = reviewLocaleCodes.includes(policy.localeCode);
+    const authorizedReviewerIds = shouldAuthorize
+      ? Array.from(new Set([...policy.authorizedReviewerIds, operatorId]))
+      : policy.authorizedReviewerIds.filter((candidate) => candidate !== operatorId);
+    if (policy.enabled && authorizedReviewerIds.length === 0) {
+      throw new Error(`“${policy.localeName}”至少需要 1 名授权审核人`);
+    }
+    return { ...policy, authorizedReviewerIds };
+  });
+
+  return update((current) => ({
+    ...current,
+    operators: current.operators.map((candidate) =>
+      candidate.id === operatorId
+        ? { ...candidate, permissions: [...permissions] }
+        : candidate,
+    ),
+    languageReviewPolicies: nextPolicies,
+  }));
+};
 
 export const updateMessageCategory = (
   code: MessageCategory["code"],
