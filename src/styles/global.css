@@ -1134,21 +1134,6 @@ select {
 .rule-grid > div strong {
   flex: 1;
 }
-.role-matrix {
-  display: grid;
-  grid-template-columns: 1.4fr repeat(6, 1fr);
-  gap: 1px;
-  background: var(--mc-border);
-  border: 1px solid var(--mc-border);
-}
-.role-matrix > * {
-  padding: 12px;
-  background: white;
-  text-align: center;
-}
-.role-matrix strong {
-  background: #f9fafb;
-}
 .detailed-form-modal {
   max-height: 68vh;
   overflow-y: auto;
@@ -2109,10 +2094,6 @@ select {
   }
   .rule-grid {
     grid-template-columns: 1fr;
-  }
-  .role-matrix {
-    overflow-x: auto;
-    min-width: 680px;
   }
   .estimate-strip {
     grid-template-columns: 1fr;

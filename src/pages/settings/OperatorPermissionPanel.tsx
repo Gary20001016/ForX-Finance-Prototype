@@ -241,7 +241,9 @@ export default function OperatorPermissionPanel() {
                     value: policy.localeCode,
                     label: `${policy.localeName} · ${policy.localeCode}`,
                   }))}
-                onChange={setReviewLocaleCodes}
+                onChange={(values) =>
+                  setReviewLocaleCodes(values as string[])
+                }
               />
               <p className="muted">
                 修改后会同步更新“语言审核策略”中的授权审核人。
