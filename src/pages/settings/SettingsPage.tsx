@@ -6,7 +6,9 @@ import StatusTag from '../../components/StatusTag';
 import type { LinkAllowlistEntry, MessageCategory, MessageNature, MessageRisk } from '../../domain/types';
 import { addAllowlistEntry, updateAllowlistEntry, updateMessageCategory, usePrototypeStore } from '../../store/prototypeStore';
 import LanguageReviewPolicyPanel from './LanguageReviewPolicyPanel';
+import OperatorPermissionPanel from './OperatorPermissionPanel';
 import TestAccountPanel from './TestAccountPanel';
+import { CURRENT_REVIEW_OPERATOR_ID } from '../../domain/reviewOperators';
 
 type CategoryConfig={code:MessageCategory['code'];name:string;nature:MessageNature;risk:MessageRisk;retention:number;status:boolean};
 
@@ -18,16 +20,19 @@ function AllowlistEditor({entry,visible,onClose}:{entry?:LinkAllowlistEntry;visi
 
 export default function SettingsPage(){
   const store=usePrototypeStore();const categories:CategoryConfig[]=store.categories.map((category)=>({code:category.code,name:category.name,nature:category.defaultNature,risk:category.defaultRisk,retention:category.defaultRetentionDays,status:category.enabled}));const [editingCategory,setEditingCategory]=useState<CategoryConfig>();const [editingLink,setEditingLink]=useState<LinkAllowlistEntry|'new'>();const [keyword,setKeyword]=useState('');
+  const currentOperator=store.operators.find((operator)=>operator.id===CURRENT_REVIEW_OPERATOR_ID);
+  const isSuperAdmin=Boolean(currentOperator?.isSuperAdmin);
   const requestedTab=new URLSearchParams(window.location.search).get('tab');
-  const initialTab=requestedTab==='test-accounts'?'test-accounts':'categories';
+  const allowedTabs=['categories','links','language-review','test-accounts','audit',...(isSuperAdmin?['operator-permissions']:[])];
+  const initialTab=requestedTab&&allowedTabs.includes(requestedTab)?requestedTab:'categories';
   const links=store.allowlist.filter((entry)=>`${entry.name}${entry.pattern}`.toLowerCase().includes(keyword.toLowerCase()));
   const saveCategory=(values:CategoryConfig)=>{if(!editingCategory)return;updateMessageCategory(editingCategory.code,{defaultNature:values.nature,defaultRisk:values.risk,defaultRetentionDays:values.retention,enabled:values.status});setEditingCategory(undefined);Message.success('分类默认性质、风险、保留期与状态已更新');};
-  return <section className="page-stack"><PageHeader title="系统配置" description="维护消息分类、个人测试账号、跳转白名单、语言审核策略、角色权限和审计日志。"/><Tabs type="card" defaultActiveTab={initialTab}>
+  return <section className="page-stack"><PageHeader title="系统配置" description="维护消息分类、个人测试账号、跳转白名单、语言审核策略、人员权限和审计日志。"/><Tabs type="card" defaultActiveTab={initialTab}>
     <Tabs.TabPane key="categories" title="消息分类"><Card bordered={false} className="surface" title="分类字典"><div className="settings-list">{categories.map((item)=><div key={item.name}><strong>{item.name}</strong><Tag>{item.nature}</Tag><span>默认风险：{item.risk}</span><span>保留 {item.retention} 天</span><StatusTag status={item.status?'可用':'停用'}/><Button type="text" onClick={()=>setEditingCategory(item)}>编辑</Button></div>)}</div></Card></Tabs.TabPane>
     <Tabs.TabPane key="links" title="跳转白名单"><Card bordered={false} className="surface" title="Deep Link 与 Web URL 白名单" extra={<Button type="primary" icon={<IconPlus/>} onClick={()=>setEditingLink('new')}>新增白名单</Button>}><Input.Search value={keyword} onChange={setKeyword} allowClear placeholder="搜索路径或域名" style={{marginBottom:16}}/><div className="allowlist-table"><div className="allowlist-head"><strong>规则</strong><strong>类型 / 平台</strong><strong>参数规则</strong><strong>生效时间</strong><strong>失效时间</strong><strong>状态 / 操作</strong></div>{links.map((entry)=><div key={entry.id}><div><strong>{entry.name}</strong><code>{entry.pattern}</code></div><div><Tag>{entry.type}</Tag><span>{entry.platforms.join(' / ')}</span></div><span>{entry.parameterRule}</span><span>{entry.effectiveAt}</span><span>{entry.expiresAt}</span><Space><StatusTag status={entry.status}/><Button type="text" onClick={()=>setEditingLink(entry)}>编辑</Button><Button type="text" status={entry.status==='启用'?'danger':'success'} onClick={()=>updateAllowlistEntry(entry.id,{status:entry.status==='启用'?'停用':'启用'})}>{entry.status==='启用'?'停用':'启用'}</Button></Space></div>)}</div></Card></Tabs.TabPane>
     <Tabs.TabPane key="language-review" title="语言审核策略"><LanguageReviewPolicyPanel/></Tabs.TabPane>
     <Tabs.TabPane key="test-accounts" title="测试账号"><TestAccountPanel/></Tabs.TabPane>
-    <Tabs.TabPane key="roles" title="角色权限"><Card bordered={false} className="surface"><div className="role-matrix"><strong>角色</strong><strong>创建</strong><strong>提交</strong><strong>变量维护</strong><strong>翻译审核</strong><strong>一级审核</strong><strong>风控审核</strong>{[['内容编辑','✓','✓','—','—','—','—'],['语言审核','—','—','—','✓','—','—'],['运营负责人','✓','✓','✓','—','✓','—'],['风控审核','—','—','—','—','✓','✓']].flatMap((row)=>row.map((cell,index)=><span key={`${row[0]}-${index}`}>{cell}</span>))}</div></Card></Tabs.TabPane>
+    {isSuperAdmin&&<Tabs.TabPane key="operator-permissions" title="人员权限"><OperatorPermissionPanel/></Tabs.TabPane>}
     <Tabs.TabPane key="audit" title="审计日志"><Card bordered={false} className="surface"><Timeline>{['18:12 Gary Ma 新增 Deep Link 白名单 · LINK-004','18:03 赵辰使无效 Push Token 进入抑制名单','17:58 林夏提交夏季交易赛任务 · MSG-260712-002','16:32 Gary Ma 导出脱敏发送记录 · EXP-2201'].map((item)=><Timeline.Item key={item}>{item}</Timeline.Item>)}</Timeline></Card></Tabs.TabPane>
   </Tabs>
   <AllowlistEditor visible={Boolean(editingLink)} entry={editingLink==='new'?undefined:editingLink} onClose={()=>setEditingLink(undefined)}/>
