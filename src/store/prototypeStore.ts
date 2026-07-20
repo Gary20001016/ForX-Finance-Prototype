@@ -102,22 +102,20 @@ const controlledVariableSeed: ControlledTemplateVariable[] = [
 }));
 
 const languageReviewPolicySeed: LanguageReviewPolicy[] = [
-  ["en-US", "英语", false, undefined, 1, true, 8, "提醒"],
-  ["zh-TW", "繁体中文", false, undefined, 1, true, 8, "提醒"],
-  ["fr-FR", "法语", false, undefined, 1, true, 12, "提醒"],
-  ["es-ES", "西班牙语", false, undefined, 1, true, 12, "提醒"],
-  ["ja-JP", "日语", true, "日韩专项审核组", 2, false, 8, "阻断发布"],
-  ["ko-KR", "韩语", true, "日韩专项审核组", 2, false, 8, "阻断发布"],
-  ["tr-TR", "土耳其语", true, "小语种专项审核组", 1, false, 12, "升级"],
-  ["ru-RU", "俄语", true, "小语种专项审核组", 1, false, 12, "升级"],
+  ["en-US", "英语", false, ["admin-01", "reviewer-en-01"], 8, "提醒"],
+  ["zh-TW", "繁体中文", false, ["admin-01", "reviewer-zh-01"], 8, "提醒"],
+  ["fr-FR", "法语", false, ["admin-01", "reviewer-fr-01"], 12, "提醒"],
+  ["es-ES", "西班牙语", false, ["admin-01", "reviewer-es-01"], 12, "提醒"],
+  ["ja-JP", "日语", true, ["admin-01", "reviewer-ja-01"], 8, "阻断发布"],
+  ["ko-KR", "韩语", true, ["admin-01", "reviewer-ko-01"], 8, "阻断发布"],
+  ["tr-TR", "土耳其语", true, ["admin-01", "reviewer-tr-01"], 12, "升级"],
+  ["ru-RU", "俄语", true, ["admin-01", "reviewer-ru-01"], 12, "升级"],
 ].map(
-  ([localeCode, localeName, specialReviewRequired, reviewGroup, reviewerCount, allowSubmitterReview, reviewSlaHours, timeoutAction]) => ({
+  ([localeCode, localeName, specialReviewRequired, authorizedReviewerIds, reviewSlaHours, timeoutAction]) => ({
     localeCode: localeCode as string,
     localeName: localeName as string,
     specialReviewRequired: specialReviewRequired as boolean,
-    reviewGroup: reviewGroup as string | undefined,
-    reviewerCount: reviewerCount as 1 | 2,
-    allowSubmitterReview: allowSubmitterReview as boolean,
+    authorizedReviewerIds: authorizedReviewerIds as string[],
     reviewSlaHours: reviewSlaHours as number,
     timeoutAction: timeoutAction as LanguageReviewPolicy["timeoutAction"],
     enabled: true,
@@ -154,7 +152,9 @@ export const normalizeTranslationBatches = (
           subjectId: item.subjectId || batch.subjectId || batch.templateId,
           subjectName: item.subjectName || batch.subjectName || item.templateName,
           specialReviewRequired: policy?.specialReviewRequired || false,
-          reviewGroup: policy?.reviewGroup,
+          authorizedReviewerIds: item.authorizedReviewerIds?.length
+            ? item.authorizedReviewerIds
+            : policy?.authorizedReviewerIds || [],
           reviewSlaHours: policy?.reviewSlaHours,
         };
       });
@@ -1050,6 +1050,16 @@ type SingleLanguagePreparationInput = {
 export const getLanguageReviewPolicy = (locale: string) =>
   state.languageReviewPolicies.find((policy) => policy.localeCode === locale);
 
+export const getTranslationReviewerIds = (item: TranslationItem) =>
+  item.authorizedReviewerIds?.length
+    ? item.authorizedReviewerIds
+    : getLanguageReviewPolicy(item.targetLocale)?.authorizedReviewerIds || [];
+
+export const canReviewTranslation = (
+  item: TranslationItem,
+  operatorId: string,
+) => getTranslationReviewerIds(item).includes(operatorId);
+
 export const requiresSpecialLanguageReview = (locale: string) => {
   const policy = getLanguageReviewPolicy(locale);
   return Boolean(policy?.enabled && policy.specialReviewRequired);
@@ -1059,7 +1069,10 @@ export const prepareSingleLanguageContent = (
   input: SingleLanguagePreparationInput,
 ): { requiresReview: boolean; batch?: TranslationBatch } => {
   const policy = getLanguageReviewPolicy(input.sourceLocale);
-  if (policy?.specialReviewRequired && (!policy.enabled || !policy.reviewGroup)) {
+  if (
+    policy?.specialReviewRequired &&
+    (!policy.enabled || !policy.authorizedReviewerIds.length)
+  ) {
     throw new Error(`${input.sourceLocale} 的专项语言审核配置不可用`);
   }
 
@@ -1128,7 +1141,7 @@ export const prepareSingleLanguageContent = (
     submitter: input.createdBy,
     variablesValid: true,
     specialReviewRequired: true,
-    reviewGroup: policy?.reviewGroup,
+    authorizedReviewerIds: policy?.authorizedReviewerIds || [],
     reviewSlaHours: policy?.reviewSlaHours,
   };
   const batch: TranslationBatch = {
@@ -1289,7 +1302,7 @@ export const createTranslationBatch = (
         submitter: createdBy,
         variablesValid: true,
         specialReviewRequired: policy?.specialReviewRequired || false,
-        reviewGroup: policy?.reviewGroup,
+        authorizedReviewerIds: policy?.authorizedReviewerIds || [],
         reviewSlaHours: policy?.reviewSlaHours,
       };
     }),

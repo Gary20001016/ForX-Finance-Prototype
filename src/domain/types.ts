@@ -282,9 +282,7 @@ export interface LanguageReviewPolicy {
   localeCode: string;
   localeName: string;
   specialReviewRequired: boolean;
-  reviewGroup?: string;
-  reviewerCount: 1 | 2;
-  allowSubmitterReview: boolean;
+  authorizedReviewerIds: string[];
   reviewSlaHours?: number;
   timeoutAction: "提醒" | "升级" | "阻断发布";
   enabled: boolean;
@@ -332,7 +330,7 @@ export interface TranslationItem {
   submitter: string;
   variablesValid: boolean;
   specialReviewRequired?: boolean;
-  reviewGroup?: string;
+  authorizedReviewerIds?: string[];
   reviewSlaHours?: number;
   changedFields?: Array<"title" | "summary" | "body">;
 }
