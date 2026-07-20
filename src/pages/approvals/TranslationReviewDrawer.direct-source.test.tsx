@@ -43,3 +43,24 @@ it("reviews directly authored source text without machine-translation metadata",
   expect(screen.queryByText("翻译尝试")).not.toBeInTheDocument();
   expect(screen.queryByText("机器翻译与人工修订")).not.toBeInTheDocument();
 });
+
+it("omits redundant guidance alerts from machine translation review", () => {
+  const item = getPrototypeState().translationBatches
+    .flatMap((batch) => batch.items)
+    .find((candidate) => candidate.status === "翻译返回待审核");
+
+  render(
+    <TranslationReviewDrawer
+      item={item}
+      visible
+      onClose={() => undefined}
+      currentAdmin={item?.submitter}
+      reviewMode="legacy"
+    />,
+  );
+
+  expect(screen.queryByText("职责分离限制")).not.toBeInTheDocument();
+  expect(
+    screen.queryByText("翻译成功后必须人工审核"),
+  ).not.toBeInTheDocument();
+});

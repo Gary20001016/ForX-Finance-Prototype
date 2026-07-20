@@ -11,6 +11,7 @@ import {
   saveTranslationDraft,
   usePrototypeStore,
 } from "../../store/prototypeStore";
+import { haveSameVariableOccurrences } from "../../domain/manualMessageVariables";
 
 const hasContent = (content?: TranslationContentLayer) =>
   Boolean(content?.title || content?.summary || content?.body);
@@ -109,6 +110,17 @@ export default function MultilingualResultPanel({
   const approve = () => {
     if (!item.variablesValid) {
       Message.error("模板变量校验失败，禁止通过");
+      return;
+    }
+    if (
+      !haveSameVariableOccurrences(
+        [sourceContent.title, sourceContent.summary, sourceContent.body]
+          .filter(Boolean)
+          .join("\n"),
+        [title, summary, body].filter(Boolean).join("\n"),
+      )
+    ) {
+      Message.error("人工修订不能修改或遗漏模板变量");
       return;
     }
     approveOrdinaryTranslation(item.id, {

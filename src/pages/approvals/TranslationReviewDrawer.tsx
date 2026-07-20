@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import {
-  Alert,
   Button,
   Descriptions,
   Drawer,
@@ -14,6 +13,7 @@ import MarkdownContent, {
   hasUnsafeMarkdownLinks,
 } from "../../components/MarkdownContent";
 import MarkdownEditor from "../../components/MarkdownEditor";
+import { haveSameVariableOccurrences } from "../../domain/manualMessageVariables";
 import type { TranslationItem } from "../../domain/types";
 import {
   approveOrdinaryTranslation,
@@ -70,6 +70,13 @@ export default function TranslationReviewDrawer({
   const isSelf = current?.submitter === currentAdmin;
   const sourceBody =
     batch?.sourceContent?.body || template?.content?.web.body || "";
+  const sourceVariableText = [
+    batch?.sourceContent?.title,
+    batch?.sourceContent?.summary,
+    sourceBody,
+  ]
+    .filter(Boolean)
+    .join("\n");
 
   const reject = () => {
     if (!current) return;
@@ -102,6 +109,15 @@ export default function TranslationReviewDrawer({
     }
     if (!current.variablesValid) {
       Message.error("模板变量校验失败，禁止通过");
+      return;
+    }
+    if (
+      !haveSameVariableOccurrences(
+        sourceVariableText,
+        [title, summary, body].filter(Boolean).join("\n"),
+      )
+    ) {
+      Message.error("人工修订不能修改或遗漏模板变量");
       return;
     }
     if (hasUnsafeMarkdownLinks(body)) {
@@ -170,27 +186,6 @@ export default function TranslationReviewDrawer({
     >
       {current && (
         <div className="translation-review">
-          {isSelf && (
-            <Alert
-              type="warning"
-              title="职责分离限制"
-              content={
-                directSource
-                  ? "原文提交人与语言审核人必须不同，请转交其他语言审核人。"
-                  : "机翻任务提交人与人工审核人必须不同，请转交其他语言审核人。"
-              }
-            />
-          )}
-          <Alert
-            type="info"
-            showIcon
-            title={directSource ? "单语言原文审核" : "翻译成功后必须人工审核"}
-            content={
-              directSource
-                ? "内容未经过机器翻译。请直接核对措辞、数字、币种、交易对、Markdown 结构和模板变量，审核稿与提交原文分别留档。"
-                : "核对数字、币种、交易对、风险措辞、Markdown 结构和模板变量；修订内容与机翻原文分别留档。"
-            }
-          />
           <Descriptions
             column={3}
             border
