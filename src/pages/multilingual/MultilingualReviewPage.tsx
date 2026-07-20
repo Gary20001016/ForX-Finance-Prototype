@@ -6,7 +6,16 @@ import FilterBar from "../../components/FilterBar";
 import ResourceTable from "../../components/ResourceTable";
 import StatusTag from "../../components/StatusTag";
 import type { TranslationItem, TranslationSubjectType } from "../../domain/types";
-import { startSpecialReview, usePrototypeStore } from "../../store/prototypeStore";
+import {
+  CURRENT_REVIEW_OPERATOR_ID,
+  reviewOperatorName,
+} from "../../domain/reviewOperators";
+import {
+  canReviewTranslation,
+  getTranslationReviewerIds,
+  startSpecialReview,
+  usePrototypeStore,
+} from "../../store/prototypeStore";
 import TranslationReviewDrawer from "../approvals/TranslationReviewDrawer";
 import { localeName } from "./MultilingualProgressCell";
 
@@ -21,7 +30,6 @@ export default function MultilingualReviewPage() {
   const [keyword, setKeyword] = useState("");
   const [source, setSource] = useState<string>();
   const [locale, setLocale] = useState<string>();
-  const [group, setGroup] = useState<string>();
   const [selected, setSelected] = useState<TranslationItem>();
   const data = useMemo(
     () =>
@@ -31,14 +39,14 @@ export default function MultilingualReviewPage() {
           (item) =>
             item.specialReviewRequired &&
             item.status === "翻译返回待审核" &&
+            canReviewTranslation(item, CURRENT_REVIEW_OPERATOR_ID) &&
             `${item.subjectName || item.templateName}${item.targetLocale}${item.externalTaskId || ""}`
               .toLowerCase()
               .includes(keyword.toLowerCase()) &&
             (!source || item.subjectType === source) &&
-            (!locale || item.targetLocale === locale) &&
-            (!group || item.reviewGroup === group),
+            (!locale || item.targetLocale === locale),
         ),
-    [group, keyword, locale, source, store.translationBatches],
+    [keyword, locale, source, store.translationBatches],
   );
 
   const columns: TableColumnProps<TranslationItem>[] = [
@@ -66,7 +74,19 @@ export default function MultilingualReviewPage() {
         </div>
       ),
     },
-    { title: "审核组", dataIndex: "reviewGroup", width: 170 },
+    {
+      title: "授权审核人",
+      width: 220,
+      render: (_, item) => (
+        <Space wrap>
+          {getTranslationReviewerIds(item).map((operatorId) => (
+            <Tag key={operatorId} color="arcoblue">
+              {reviewOperatorName(operatorId)}
+            </Tag>
+          ))}
+        </Space>
+      ),
+    },
     {
       title: "审核 SLA",
       width: 100,
@@ -131,7 +151,6 @@ export default function MultilingualReviewPage() {
           setKeyword("");
           setSource(undefined);
           setLocale(undefined);
-          setGroup(undefined);
         }}
       >
         <Input.Search
@@ -158,27 +177,13 @@ export default function MultilingualReviewPage() {
             .filter((policy) => policy.specialReviewRequired)
             .map((policy) => ({ value: policy.localeCode, label: policy.localeName }))}
         />
-        <Select
-          value={group}
-          onChange={setGroup}
-          allowClear
-          placeholder="审核组"
-          style={{ width: 190 }}
-          options={Array.from(
-            new Set(
-              store.languageReviewPolicies
-                .filter((policy) => policy.reviewGroup)
-                .map((policy) => policy.reviewGroup!),
-            ),
-          ).map((value) => ({ value, label: value }))}
-        />
       </FilterBar>
       <ResourceTable data={data} columns={columns} rowKey="id" />
       <TranslationReviewDrawer
         item={selected}
         visible={Boolean(selected)}
         onClose={() => setSelected(undefined)}
-        currentAdmin="special-reviewer-02"
+        currentAdmin={CURRENT_REVIEW_OPERATOR_ID}
         reviewMode="special"
       />
     </section>
