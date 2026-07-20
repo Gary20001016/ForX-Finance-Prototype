@@ -66,6 +66,27 @@ export function validateVariableTokens(
   };
 }
 
+export function haveSameVariableOccurrences(
+  source: string,
+  target: string,
+): boolean {
+  const count = (text: string) => {
+    const result = new Map<string, number>();
+    extractVariableNames(text).forEach((name) =>
+      result.set(name, (result.get(name) || 0) + 1),
+    );
+    return result;
+  };
+  const sourceCount = count(source);
+  const targetCount = count(target);
+  return (
+    sourceCount.size === targetCount.size &&
+    Array.from(sourceCount).every(
+      ([name, occurrences]) => targetCount.get(name) === occurrences,
+    )
+  );
+}
+
 export function insertVariableToken(
   value: string,
   name: string,

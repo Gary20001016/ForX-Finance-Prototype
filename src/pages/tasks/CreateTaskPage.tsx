@@ -27,7 +27,12 @@ import { useLocation, useNavigate } from "react-router-dom";
 import PageHeader from "../../components/PageHeader";
 import MessagePreview from "../../components/MessagePreview";
 import MarkdownEditor from "../../components/MarkdownEditor";
+import VariableTextArea from "../../components/VariableTextArea";
 import { hasUnsafeMarkdownLinks } from "../../components/MarkdownContent";
+import {
+  extractVariableNames,
+  validateVariableTokens,
+} from "../../domain/manualMessageVariables";
 import TranslationWorkflowPanel from "../templates/TranslationWorkflowPanel";
 import type {
   Channel,
@@ -456,6 +461,34 @@ export default function CreateTaskPage() {
     store.events.find((item) => item.id === eventId),
     selectedTemplate,
   );
+  const temporaryVariableText = [
+    channels.includes("站内信") ? temporary.web.body : "",
+    channels.includes("Push") ? temporary.push.body : "",
+  ].join("\n");
+  const temporaryVariableNames = Array.from(
+    new Set(extractVariableNames(temporaryVariableText)),
+  );
+  const temporaryVariableValidation = validateVariableTokens(
+    temporaryVariableText,
+    store.templateVariables,
+  );
+  const validateTemporaryVariables = () => {
+    if (contentMode !== "temporary" || temporaryVariableValidation.valid)
+      return true;
+    const detail = [
+      temporaryVariableValidation.invalid.length
+        ? `不存在：${temporaryVariableValidation.invalid.join("、")}`
+        : "",
+      temporaryVariableValidation.inactive.length
+        ? `已停用：${temporaryVariableValidation.inactive.join("、")}`
+        : "",
+      temporaryVariableValidation.malformed ? "占位符格式不完整" : "",
+    ]
+      .filter(Boolean)
+      .join("；");
+    Message.error(`正文模板变量校验失败；${detail}`);
+    return false;
+  };
   const next = async () => {
     if (current === 0) {
       try {
@@ -479,6 +512,7 @@ export default function CreateTaskPage() {
         Message.warning("请完整填写所选发送渠道的消息内容");
         return;
       }
+      if (!validateTemporaryVariables()) return;
     }
     if (current === 1 && triggerType === "manual" && audienceType === "uid") {
       if (uidAudienceValue.csvFileName && !uidAudienceValue.csvConfirmed) {
@@ -551,6 +585,12 @@ export default function CreateTaskPage() {
   });
   const saveDraft = () => {
     try {
+      if (
+        contentMode === "temporary" &&
+        !temporaryVariableValidation.valid
+      ) {
+        Message.warning("草稿已保留正文中的变量问题，提交审核前必须修复");
+      }
       saveTaskDraft(submission(), editingTask ? copiedTask?.id : undefined);
       Message.success(
         editingTask
@@ -574,6 +614,7 @@ export default function CreateTaskPage() {
       Message.warning("请完整填写所选发送渠道的消息内容");
       return;
     }
+    if (!validateTemporaryVariables()) return;
     if (triggerType === "manual" && audienceType === "uid") {
       if (uidAudienceValue.csvFileName && !uidAudienceValue.csvConfirmed) {
         Message.warning("请先确认 UID CSV 导入结果");
@@ -648,6 +689,7 @@ export default function CreateTaskPage() {
       Message.warning("请先完整填写所选发送渠道的默认语言文案");
       return;
     }
+    if (!validateTemporaryVariables()) return;
     const currentContent = {
       ...temporary,
       sourceLocale: temporarySourceLocale,
@@ -683,13 +725,7 @@ export default function CreateTaskPage() {
           locales: currentContent.locales,
           sourceLocale: temporarySourceLocale,
           content: currentContent,
-          variables: [
-            "user_nickname",
-            "amount",
-            "currency",
-            "symbol",
-            "occurred_at",
-          ],
+          variables: temporaryVariableNames,
           owner: "临时任务",
           usageScope: "manual",
         })
@@ -1010,6 +1046,7 @@ export default function CreateTaskPage() {
                               <MarkdownEditor
                                 value={temporary.web.body}
                                 onChange={(value) => patchWeb({ body: value })}
+                                variables={store.templateVariables}
                               />
                             </FormItem>
                             <FormItem label="风险提示">
@@ -1057,12 +1094,13 @@ export default function CreateTaskPage() {
                               />
                             </FormItem>
                             <FormItem label="Push 正文">
-                              <Input.TextArea
-                                aria-label="Push 正文"
+                              <VariableTextArea
+                                ariaLabel="Push 正文"
                                 value={temporary.push.body}
                                 onChange={(value) =>
                                   patchPush({ body: value })
                                 }
+                                variables={store.templateVariables}
                               />
                             </FormItem>
                             <FormItem label="Push 图片">

@@ -7,6 +7,9 @@ import {
   Tag,
 } from "@arco-design/web-react";
 import MarkdownContent from "./MarkdownContent";
+import VariablePicker from "./VariablePicker";
+import { variableToken } from "../domain/manualMessageVariables";
+import type { ControlledTemplateVariable } from "../domain/types";
 
 type TextAreaHandle = {
   blur: () => void;
@@ -22,6 +25,7 @@ export interface MarkdownEditorProps {
   placeholder?: string;
   minRows?: number;
   readOnly?: boolean;
+  variables?: ControlledTemplateVariable[];
 }
 
 const toolbarActions = [
@@ -44,6 +48,7 @@ export default function MarkdownEditor({
   placeholder = "使用 Markdown 编写站内信正文",
   minRows = 8,
   readOnly = false,
+  variables,
 }: MarkdownEditorProps) {
   const textareaRef = useRef<TextAreaHandle | null>(null);
   const [mode, setMode] = useState<EditorMode>(readOnly ? "split" : "edit");
@@ -141,6 +146,14 @@ export default function MarkdownEditor({
               {action.label}
             </Button>
           ))}
+          {!readOnly && variables && (
+            <VariablePicker
+              variables={variables}
+              onInsert={(name) =>
+                replaceSelection(() => variableToken(name))
+              }
+            />
+          )}
         </Space>
         <Space>
           <Tag>{value.length} 字符</Tag>

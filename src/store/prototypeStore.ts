@@ -85,9 +85,14 @@ const controlledVariableSeed: ControlledTemplateVariable[] = [
   ["VAR-001", "user_nickname", "用户昵称"],
   ["VAR-002", "uid", "用户 UID"],
   ["VAR-003", "vip_level", "用户当前 VIP 等级"],
-  ["VAR-004", "platform_name", "平台名称"],
-  ["VAR-005", "support_email", "客服邮箱"],
-].map(([id, name, description]) => ({
+  ["VAR-004", "effective_at", "生效时间"],
+  ["VAR-005", "amount", "金额"],
+  ["VAR-006", "currency", "币种"],
+  ["VAR-007", "symbol", "交易对"],
+  ["VAR-008", "occurred_at", "业务发生时间"],
+  ["VAR-009", "platform_name", "平台名称"],
+  ["VAR-010", "support_email", "客服邮箱"],
+].map<ControlledTemplateVariable>(([id, name, description]) => ({
   id,
   name,
   description,
@@ -813,8 +818,15 @@ export const addControlledVariable = (input: {
   if (!description) throw new Error("变量说明不能为空");
   if (state.templateVariables.some((item) => item.name === name))
     throw new Error("变量名已存在");
+  const nextId =
+    Math.max(
+      0,
+      ...state.templateVariables.map(
+        (item) => Number(item.id.replace(/\D/g, "")) || 0,
+      ),
+    ) + 1;
   const variable: ControlledTemplateVariable = {
-    id: `VAR-${Date.now().toString().slice(-7)}`,
+    id: `VAR-${String(nextId).padStart(3, "0")}`,
     name,
     description,
     status: "启用",

@@ -85,6 +85,104 @@ select {
   background: rgba(46, 144, 250, 0.18) !important;
   color: #84caff !important;
 }
+
+.variable-upload-zone {
+  min-height: 112px;
+  border: 1px dashed var(--color-border-3);
+  border-radius: 8px;
+  background: var(--color-fill-1);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.variable-upload-zone span {
+  color: var(--color-text-3);
+}
+
+.variable-import-heading,
+.variable-import-file,
+.variable-import-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.variable-import-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.variable-import-stats {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) repeat(3, auto);
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  border-radius: 8px;
+  background: var(--color-fill-1);
+}
+
+.variable-picker-panel {
+  width: 420px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.variable-picker-list {
+  max-height: 320px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.variable-picker-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border-2);
+  border-radius: 6px;
+}
+
+.variable-picker-row > div:first-child {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.variable-picker-row span {
+  color: var(--color-text-3);
+  font-size: 12px;
+}
+
+.variable-textarea {
+  border: 1px solid var(--color-border-2);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.variable-textarea-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  padding: 4px 8px;
+  background: var(--color-fill-1);
+  border-bottom: 1px solid var(--color-border-2);
+}
+
+.variable-textarea .arco-textarea {
+  border: 0;
+  border-radius: 0;
+}
 .sider-health {
   position: absolute;
   left: 16px;
@@ -1038,7 +1136,7 @@ select {
 }
 .role-matrix {
   display: grid;
-  grid-template-columns: 1.4fr repeat(5, 1fr);
+  grid-template-columns: 1.4fr repeat(6, 1fr);
   gap: 1px;
   background: var(--mc-border);
   border: 1px solid var(--mc-border);

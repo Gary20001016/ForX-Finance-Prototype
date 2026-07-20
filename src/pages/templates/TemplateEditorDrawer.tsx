@@ -14,7 +14,12 @@ import {
 } from "@arco-design/web-react";
 import MessagePreview from "../../components/MessagePreview";
 import MarkdownEditor from "../../components/MarkdownEditor";
+import VariableTextArea from "../../components/VariableTextArea";
 import { hasUnsafeMarkdownLinks } from "../../components/MarkdownContent";
+import {
+  extractVariableNames,
+  validateVariableTokens,
+} from "../../domain/manualMessageVariables";
 import type {
   Channel,
   LocalizedMessageContent,
@@ -156,6 +161,16 @@ export default function TemplateEditorDrawer({
     setSourceLocale(locale);
     setTargetLocales((current) => current.filter((item) => item !== locale));
   };
+  const manualVariableNames = Array.from(
+    new Set([
+      ...extractVariableNames(content.web.body),
+      ...extractVariableNames(content.push.body),
+    ]),
+  );
+  const manualVariableValidation = validateVariableTokens(
+    `${content.web.body}\n${content.push.body}`,
+    store.templateVariables,
+  );
   const save = async (mode: "draft" | "submit") => {
     try {
       const values = await form.validate();
@@ -181,6 +196,24 @@ export default function TemplateEditorDrawer({
         );
         return;
       }
+      if (entryScope === "manual" && !manualVariableValidation.valid) {
+        const detail = [
+          manualVariableValidation.invalid.length
+            ? `不存在：${manualVariableValidation.invalid.join("、")}`
+            : "",
+          manualVariableValidation.inactive.length
+            ? `已停用：${manualVariableValidation.inactive.join("、")}`
+            : "",
+          manualVariableValidation.malformed ? "占位符格式不完整" : "",
+        ]
+          .filter(Boolean)
+          .join("；");
+        if (mode === "submit") {
+          Message.error(`正文模板变量校验失败；${detail}`);
+          return;
+        }
+        Message.warning(`草稿已保留变量问题；${detail}`);
+      }
       setSubmitting(true);
       const payload = {
         name: values.name,
@@ -195,10 +228,13 @@ export default function TemplateEditorDrawer({
           sourceLocale,
           locales: [sourceLocale, ...targetLocales],
         },
-        variables: values.variables
-          .split(",")
-          .map((item: string) => item.trim())
-          .filter(Boolean),
+        variables:
+          entryScope === "manual"
+            ? manualVariableNames
+            : String(values.variables || "")
+                .split(",")
+                .map((item: string) => item.trim())
+                .filter(Boolean),
         owner: values.owner,
         usageScope: values.usageScope,
       };
@@ -429,13 +465,15 @@ export default function TemplateEditorDrawer({
             </Form.Item>
           </Grid.Col>
         </Grid.Row>
-        <Form.Item
-          label="模板变量"
-          field="variables"
-          extra="逗号分隔；提交机翻前后都会检查变量名称与数量"
-        >
-          <Input />
-        </Form.Item>
+        {entryScope === "event" && (
+          <Form.Item
+            label="模板变量"
+            field="variables"
+            extra="逗号分隔；提交机翻前后都会检查变量名称与数量"
+          >
+            <Input />
+          </Form.Item>
+        )}
       </Form>
       <Tabs defaultActiveTab="content">
         <Tabs.TabPane key="content" title="内容编辑">
@@ -462,6 +500,11 @@ export default function TemplateEditorDrawer({
                   <MarkdownEditor
                     value={content.web.body}
                     onChange={(value) => patchWeb({ body: value })}
+                    variables={
+                      entryScope === "manual"
+                        ? store.templateVariables
+                        : undefined
+                    }
                   />
                 </Form.Item>
                 <Form.Item label="风险提示">
@@ -503,11 +546,20 @@ export default function TemplateEditorDrawer({
                   />
                 </Form.Item>
                 <Form.Item label="Push 正文">
-                  <Input.TextArea
-                    aria-label="Push 正文"
-                    value={content.push.body}
-                    onChange={(value) => patchPush({ body: value })}
-                  />
+                  {entryScope === "manual" ? (
+                    <VariableTextArea
+                      ariaLabel="Push 正文"
+                      value={content.push.body}
+                      onChange={(value) => patchPush({ body: value })}
+                      variables={store.templateVariables}
+                    />
+                  ) : (
+                    <Input.TextArea
+                      aria-label="Push 正文"
+                      value={content.push.body}
+                      onChange={(value) => patchPush({ body: value })}
+                    />
+                  )}
                 </Form.Item>
                 <Form.Item label="Push 图片">
                   <Input
@@ -577,10 +629,14 @@ export default function TemplateEditorDrawer({
         visible={testSendVisible}
         content={content}
         channels={channels}
-        variables={String(form.getFieldValue("variables") || "")
-          .split(",")
-          .map((item) => item.trim())
-          .filter(Boolean)}
+        variables={
+          entryScope === "manual"
+            ? manualVariableNames
+            : String(form.getFieldValue("variables") || "")
+                .split(",")
+                .map((item) => item.trim())
+                .filter(Boolean)
+        }
         onClose={() => setTestSendVisible(false)}
       />
     </Drawer>

@@ -72,6 +72,12 @@ export const navigationGroups: NavigationGroup[] = [
         label: '人工消息模板',
         icon: <IconBook />,
       }),
+      groupedItem('manual-messaging', '人工消息', {
+        key: '/template-variables',
+        path: '/template-variables',
+        label: '模板变量',
+        icon: <IconArchive />,
+      }),
     ],
   },
   {
