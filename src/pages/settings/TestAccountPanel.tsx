@@ -89,9 +89,6 @@ export default function TestAccountPanel() {
                 <strong className="mono">{account.uid}</strong>
                 <div className="muted">{account.remark}</div>
               </div>
-              <Tag color={account.verified ? "green" : "orange"}>
-                {account.verified ? "校验通过" : "待校验"}
-              </Tag>
               <span>创建于 {account.createdAt}</span>
               <span>更新于 {account.updatedAt}</span>
               <Space>
