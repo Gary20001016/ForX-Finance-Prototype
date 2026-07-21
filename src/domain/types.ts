@@ -384,6 +384,8 @@ export interface ApprovalItem {
   step: string;
   submitter: string;
   submitterId: string;
+  assignee?: string;
+  assigneeId?: string;
   submittedAt: string;
   status: string;
   emergency?: boolean;
