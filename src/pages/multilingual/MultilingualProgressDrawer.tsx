@@ -18,10 +18,12 @@ export default function MultilingualProgressDrawer({
   batch,
   visible,
   onClose,
+  readOnly = false,
 }: {
   batch?: TranslationBatch;
   visible: boolean;
   onClose: () => void;
+  readOnly?: boolean;
 }) {
   const navigate = useNavigate();
   const store = usePrototypeStore();
@@ -123,6 +125,7 @@ export default function MultilingualProgressDrawer({
                       <Button
                         size="small"
                         type="primary"
+                        disabled={readOnly}
                         onClick={() => navigate(`/multilingual-review?item=${item.id}`)}
                       >
                         {directSource ? "前往语言审核" : "前往专审"}
@@ -132,7 +135,7 @@ export default function MultilingualProgressDrawer({
                 </div>
                 {expandedView?.itemId === item.id &&
                   (expandedView.mode === "content" ? (
-                    <MultilingualResultPanel batch={liveBatch} item={item} />
+                    <MultilingualResultPanel batch={liveBatch} item={item} readOnly={readOnly} />
                   ) : (
                     <MultilingualMessagePreview batch={liveBatch} item={item} />
                   ))}

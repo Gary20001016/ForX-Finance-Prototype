@@ -42,6 +42,8 @@ import { getEventRuleOperations } from "./automationLifecycle";
 import MultilingualProgressCell from "../multilingual/MultilingualProgressCell";
 import MultilingualProgressDrawer from "../multilingual/MultilingualProgressDrawer";
 import { templateSupportsScope } from "../templates/templateScope";
+import WritePermissionButton from "../../components/WritePermissionButton";
+import { useCurrentPagePermission } from "../../components/PagePermissionBoundary";
 
 const localeOptions = ["en-US", "ja-JP", "ko-KR", "fr-FR", "es-ES"];
 
@@ -56,6 +58,7 @@ const versionAction = (
 };
 
 export default function AutomationRuleListPage() {
+  const { canWrite } = useCurrentPagePermission();
   const location = useLocation();
   const routeEventId = (location.state as { eventId?: string } | null)?.eventId;
   const store = usePrototypeStore();
@@ -66,7 +69,7 @@ export default function AutomationRuleListPage() {
   const [status, setStatus] = useState<string>();
   const [eventId, setEventId] = useState<string>();
   const [selectedId, setSelectedId] = useState<string>();
-  const [creating, setCreating] = useState(Boolean(routeEventId));
+  const [creating, setCreating] = useState(Boolean(routeEventId) && canWrite);
   const [versionEditor, setVersionEditor] = useState(false);
   const [progressBatchId, setProgressBatchId] = useState<string>();
   const [versionDraft, setVersionDraft] = useState({
@@ -112,6 +115,10 @@ export default function AutomationRuleListPage() {
   };
 
   const saveNewVersion = () => {
+    if (!canWrite) {
+      Message.warning("当前账号无写权限");
+      return;
+    }
     if (!selected || !versionDraft.title.trim() || !versionDraft.body.trim()) {
       Message.error("请填写消息标题和正文");
       return;
@@ -123,6 +130,10 @@ export default function AutomationRuleListPage() {
   };
 
   const createRule = async () => {
+    if (!canWrite) {
+      Message.warning("当前账号无写权限");
+      return;
+    }
     try {
       const values = await form.validate();
       const template = store.templates.find((item) => item.id === values.templateId);
@@ -149,6 +160,10 @@ export default function AutomationRuleListPage() {
   };
 
   const operateRule = (rule: EventNotificationRule, operation: string) => {
+    if (!canWrite) {
+      Message.warning("当前账号无写权限");
+      return;
+    }
     if (operation === "创建内容版本") return openVersionEditor();
     if (operation === "提交审核" || operation === "撤回审核") {
       changeEventRuleStatus(rule.id, operation);
@@ -177,6 +192,10 @@ export default function AutomationRuleListPage() {
     version: RuleContentVersion,
     operation: RuleContentVersionOperation | "发布版本",
   ) => {
+    if (!canWrite) {
+      Message.warning("当前账号无写权限");
+      return;
+    }
     if (operation === "提交机翻") {
       const batch = createRuleTranslationBatch(version.id);
       setProgressBatchId(batch.id);
@@ -285,9 +304,9 @@ export default function AutomationRuleListPage() {
         title="事件通知规则"
         description="配置事件监听、触发条件、目标用户、渠道与内容版本；单次发送结果不会改变规则状态。"
         actions={
-          <Button type="primary" icon={<IconPlus />} onClick={() => setCreating(true)}>
+          <WritePermissionButton type="primary" icon={<IconPlus />} onClick={() => setCreating(true)}>
             创建通知规则
-          </Button>
+          </WritePermissionButton>
         }
       />
       <Alert
@@ -342,29 +361,29 @@ export default function AutomationRuleListPage() {
             <Space>
               {selected.status === "待审核" && (
                 <>
-                  <Button status="danger" onClick={() => reviewEventRule(selected.id, "reject")}>
+                  <WritePermissionButton status="danger" onClick={() => reviewEventRule(selected.id, "reject")}>
                     驳回规则
-                  </Button>
-                  <Button
+                  </WritePermissionButton>
+                  <WritePermissionButton
                     type="primary"
                     disabled={!currentVersion || currentVersion.status !== "当前生效"}
                     onClick={() => reviewEventRule(selected.id, "approve")}
                   >
                     审核并启用
-                  </Button>
+                  </WritePermissionButton>
                 </>
               )}
               {getEventRuleOperations(selected.status)
                 .filter((operation) => !["查看详情", "编辑规则"].includes(operation))
                 .map((operation) => (
-                  <Button
+                  <WritePermissionButton
                     key={operation}
                     type={operation === "创建内容版本" ? "primary" : "default"}
                     status={operation === "停用规则" || operation === "取消规则" ? "danger" : "default"}
                     onClick={() => operateRule(selected, operation)}
                   >
                     {operation}
-                  </Button>
+                  </WritePermissionButton>
                 ))}
             </Space>
           ) : null
@@ -441,9 +460,9 @@ export default function AutomationRuleListPage() {
                       );
                       const action = versionAction(item, batch);
                       return action ? (
-                        <Button type="text" onClick={() => advanceVersion(item, action)}>
+                        <WritePermissionButton type="text" onClick={() => advanceVersion(item, action)}>
                           {action}
-                        </Button>
+                        </WritePermissionButton>
                       ) : (
                         <span className="muted">—</span>
                       );
@@ -488,6 +507,7 @@ export default function AutomationRuleListPage() {
         title="创建内容版本"
         okText="保存新版本"
         onOk={saveNewVersion}
+        okButtonProps={{ disabled: !canWrite }}
         onCancel={() => setVersionEditor(false)}
         style={{ width: 720 }}
       >
@@ -527,6 +547,7 @@ export default function AutomationRuleListPage() {
       <MultilingualProgressDrawer
         batch={store.translationBatches.find((batch) => batch.id === progressBatchId)}
         visible={Boolean(progressBatchId)}
+        readOnly={!canWrite}
         onClose={() => setProgressBatchId(undefined)}
       />
 
@@ -535,6 +556,7 @@ export default function AutomationRuleListPage() {
         title="创建事件通知规则"
         okText="保存草稿"
         onOk={createRule}
+        okButtonProps={{ disabled: !canWrite }}
         onCancel={() => setCreating(false)}
         style={{ width: 820 }}
         unmountOnExit

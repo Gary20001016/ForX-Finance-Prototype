@@ -26,8 +26,11 @@ import {
   templateSupportsScope,
 } from "./templateScope";
 import { isApprovedManualTemplateLocked } from "../../domain/templatePolicy";
+import WritePermissionButton from "../../components/WritePermissionButton";
+import { useCurrentPagePermission } from "../../components/PagePermissionBoundary";
 
 export default function TemplateListPage() {
+  const { canWrite } = useCurrentPagePermission();
   const [searchParams] = useSearchParams();
   const entryScope = searchParams.get("scope") === "event" ? "event" : "manual";
   const pageTitle = entryScope === "event" ? "事件消息模板" : "人工消息模板";
@@ -162,9 +165,11 @@ export default function TemplateListPage() {
         const locked = isApprovedManualTemplateLocked(r);
         return (
           <Space>
-            <Button type="text" onClick={() => setEditing(r)}>
-              {locked ? "查看详情" : "编辑"}
-            </Button>
+            {locked || !canWrite ? (
+              <Button type="text" onClick={() => setEditing(r)}>查看详情</Button>
+            ) : (
+              <WritePermissionButton type="text" onClick={() => setEditing(r)}>编辑</WritePermissionButton>
+            )}
             <Button type="text" onClick={() => setPreview(r)}>
               多语言流程
             </Button>
@@ -183,13 +188,13 @@ export default function TemplateListPage() {
             : "维护人工消息专用与通用模板，共享多语言、预览和审核能力。"
         }
         actions={
-          <Button
+          <WritePermissionButton
             type="primary"
             icon={<IconPlus />}
             onClick={() => setEditing("new")}
           >
             新建{pageTitle}
-          </Button>
+          </WritePermissionButton>
         }
       />
       <FilterBar
@@ -268,6 +273,7 @@ export default function TemplateListPage() {
                   preview,
               );
             }}
+            readOnly={!canWrite}
           />
         )}
       </Drawer>
@@ -322,12 +328,14 @@ export default function TemplateListPage() {
         visible={Boolean(editing)}
         template={editing === "new" ? undefined : editing}
         entryScope={entryScope}
+        readOnly={!canWrite}
         onClose={() => setEditing(undefined)}
         onCreated={(item) => setPreview(item)}
       />
       <MultilingualProgressDrawer
         batch={progressBatch}
         visible={Boolean(progressBatch)}
+        readOnly={!canWrite}
         onClose={() => setProgressBatch(undefined)}
       />
     </section>

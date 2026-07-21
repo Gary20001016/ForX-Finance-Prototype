@@ -86,12 +86,14 @@ export default function TemplateEditorDrawer({
   onClose,
   onCreated,
   entryScope,
+  readOnly = false,
 }: {
   visible: boolean;
   template?: MessageTemplate;
   entryScope: Exclude<TemplateUsageScope, "shared">;
   onClose: () => void;
   onCreated?: (template: MessageTemplate) => void;
+  readOnly?: boolean;
 }) {
   const [form] = Form.useForm();
   const store = usePrototypeStore();
@@ -102,7 +104,7 @@ export default function TemplateEditorDrawer({
   const [submitting, setSubmitting] = useState(false);
   const [testSendVisible, setTestSendVisible] = useState(false);
   const locked = Boolean(
-    template && isApprovedManualTemplateLocked(template),
+    readOnly || (template && isApprovedManualTemplateLocked(template)),
   );
   useEffect(() => {
     const next = template?.content || emptyContent;

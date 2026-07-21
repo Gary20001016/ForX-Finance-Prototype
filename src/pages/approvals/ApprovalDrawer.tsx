@@ -18,17 +18,20 @@ import type { ApprovalItem } from "../../domain/types";
 import StatusTag from "../../components/StatusTag";
 import MessagePreview from "../../components/MessagePreview";
 import { reviewApproval } from "../../store/prototypeStore";
+import WritePermissionButton from "../../components/WritePermissionButton";
 
 export default function ApprovalDrawer({
   item,
   visible,
   onClose,
   currentAdminId,
+  canWrite = true,
 }: {
   item?: ApprovalItem;
   visible: boolean;
   onClose: () => void;
   currentAdminId: string;
+  canWrite?: boolean;
 }) {
   const [decision, setDecision] = useState<"approve" | "reject">("approve");
   const [opinion, setOpinion] = useState("");
@@ -41,6 +44,10 @@ export default function ApprovalDrawer({
     setConfirmed(false);
   }, [item]);
   const submit = (next: "approve" | "reject") => {
+    if (!canWrite) {
+      Message.warning("当前账号无写权限");
+      return;
+    }
     setDecision(next);
     if (!item) return;
     if (isSelf) {
@@ -81,20 +88,22 @@ export default function ApprovalDrawer({
         item && (
           <div className="drawer-footer">
             <Button onClick={onClose}>取消</Button>
-            <Button
+            <WritePermissionButton
               status="danger"
+              allowed={canWrite}
               disabled={isSelf}
               onClick={() => submit("reject")}
             >
               驳回审核
-            </Button>
-            <Button
+            </WritePermissionButton>
+            <WritePermissionButton
               type="primary"
+              allowed={canWrite}
               disabled={isSelf}
               onClick={() => submit("approve")}
             >
               通过审核
-            </Button>
+            </WritePermissionButton>
           </div>
         )
       }
@@ -231,14 +240,14 @@ export default function ApprovalDrawer({
           </Tabs>
           <Form layout="vertical">
             <Form.Item label="审批结论">
-              <Radio.Group value={decision} onChange={setDecision}>
+              <Radio.Group value={decision} disabled={!canWrite} onChange={setDecision}>
                 <Radio value="approve">通过审核</Radio>
                 <Radio value="reject">驳回审核</Radio>
               </Radio.Group>
             </Form.Item>
             {highRisk && (
               <Form.Item>
-                <Checkbox checked={confirmed} onChange={setConfirmed}>
+                <Checkbox checked={confirmed} disabled={!canWrite} onChange={setConfirmed}>
                   我已核对目标范围、最终 Web/Push
                   内容、发送时间、有效期和失败策略
                 </Checkbox>
@@ -247,6 +256,7 @@ export default function ApprovalDrawer({
             <Form.Item label="审批意见" required={decision === "reject"}>
               <Input.TextArea
                 value={opinion}
+                disabled={!canWrite}
                 onChange={setOpinion}
                 placeholder={
                   decision === "reject"

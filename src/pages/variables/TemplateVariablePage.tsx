@@ -25,12 +25,16 @@ import {
   usePrototypeStore,
 } from "../../store/prototypeStore";
 import VariableCsvImportModal from "./VariableCsvImportModal";
+import WritePermissionButton from "../../components/WritePermissionButton";
+import { useCurrentPagePermission } from "../../components/PagePermissionBoundary";
 
 export default function TemplateVariablePage({
   canManageVariables = true,
 }: {
   canManageVariables?: boolean;
 }) {
+  const { canWrite } = useCurrentPagePermission();
+  const canManage = canManageVariables && canWrite;
   const store = usePrototypeStore();
   const [keyword, setKeyword] = useState("");
   const [status, setStatus] = useState<string>();
@@ -72,6 +76,10 @@ export default function TemplateVariablePage({
   };
 
   const save = async () => {
+    if (!canManage) {
+      Message.warning("当前账号无写权限");
+      return;
+    }
     try {
       const values = await form.validate();
       if (editing === "new") {
@@ -113,19 +121,19 @@ export default function TemplateVariablePage({
     { title: "更新人", dataIndex: "updatedBy", width: 120 },
     {
       title: "操作",
-      width: canManageVariables ? 260 : 110,
+      width: 260,
       render: (_, row) => (
         <Space>
           <Button type="text" onClick={() => void copyVariable(row.name)}>
             复制变量
           </Button>
-          {canManageVariables && (
             <>
-              <Button type="text" onClick={() => openEditor(row)}>
+              <WritePermissionButton type="text" allowed={canManage} onClick={() => openEditor(row)}>
                 编辑
-              </Button>
-              <Button
+              </WritePermissionButton>
+              <WritePermissionButton
                 type="text"
+                allowed={canManage}
                 status={row.status === "启用" ? "danger" : "success"}
                 onClick={() =>
                   updateControlledVariable(row.id, {
@@ -136,9 +144,8 @@ export default function TemplateVariablePage({
                 }
               >
                 {row.status === "启用" ? "停用" : "启用"}
-              </Button>
+              </WritePermissionButton>
             </>
-          )}
         </Space>
       ),
     },
@@ -150,23 +157,23 @@ export default function TemplateVariablePage({
         title="模板变量"
         description="维护人工消息可搜索、可复制、可插入正文的受控变量。"
         actions={
-          canManageVariables ? (
             <>
-              <Button
+              <WritePermissionButton
                 icon={<IconDownload />}
+                allowed={canManage}
                 onClick={() => setImportVisible(true)}
               >
                 CSV 导入
-              </Button>
-              <Button
+              </WritePermissionButton>
+              <WritePermissionButton
                 type="primary"
                 icon={<IconPlus />}
+                allowed={canManage}
                 onClick={() => openEditor("new")}
               >
                 新增变量
-              </Button>
+              </WritePermissionButton>
             </>
-          ) : undefined
         }
         tags={<Tag color="arcoblue">仅人工消息使用</Tag>}
       />
@@ -193,6 +200,7 @@ export default function TemplateVariablePage({
         visible={Boolean(editing)}
         onCancel={() => setEditing(undefined)}
         onOk={save}
+        okButtonProps={{ disabled: !canManage }}
         okText="保存变量"
         unmountOnExit
       >

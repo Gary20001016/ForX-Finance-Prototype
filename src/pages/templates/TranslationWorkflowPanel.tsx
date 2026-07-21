@@ -44,13 +44,16 @@ function LanguageAction({
   locked,
   directSource,
   onOrdinaryReview,
+  readOnly,
 }: {
   item: TranslationItem;
   locked: boolean;
   directSource?: boolean;
   onOrdinaryReview: () => void;
+  readOnly: boolean;
 }) {
   const navigate = useNavigate();
+  if (readOnly) return <Button size="small" disabled>无写权限</Button>;
   if (locked) return <Button size="small" disabled>已锁定</Button>;
   if (item.status === "无结果") {
     return (
@@ -96,11 +99,13 @@ export default function TranslationWorkflowPanel({
   batch,
   onEdit,
   context = "template",
+  readOnly = false,
 }: {
   template: MessageTemplate;
   batch?: TranslationBatch;
   onEdit?: () => void;
   context?: "template" | "temporary-task";
+  readOnly?: boolean;
 }) {
   const navigate = useNavigate();
   const [targets, setTargets] = useState<string[]>(["en-US"]);
@@ -129,10 +134,10 @@ export default function TranslationWorkflowPanel({
                   <p>单语言内容已完成语言准备，可以提交业务审核。</p>
                 </div>
                 <Space>
-                  <Button onClick={onEdit}>编辑源文案</Button>
+                  <Button disabled={readOnly} onClick={onEdit}>编辑源文案</Button>
                   <Button
                     type="primary"
-                    disabled={template.status === "已发布"}
+                    disabled={readOnly || template.status === "已发布"}
                     onClick={() => {
                       const approval = submitTemplateForApproval(template.id);
                       Message.success(`已提交业务审核 ${approval.id}`);
@@ -163,6 +168,7 @@ export default function TranslationWorkflowPanel({
               <Select
                 mode="multiple"
                 value={targets}
+                disabled={readOnly}
                 onChange={setTargets}
                 options={[
                   "en-US",
@@ -177,7 +183,7 @@ export default function TranslationWorkflowPanel({
               />
               <Button
                 type="primary"
-                disabled={!targets.length}
+                disabled={readOnly || !targets.length}
                 onClick={() => {
                   createTranslationBatch({
                     templateId: template.id,
@@ -300,6 +306,7 @@ export default function TranslationWorkflowPanel({
               item={item}
               locked={sourceEditingLocked}
               directSource={directSource}
+              readOnly={readOnly}
               onOrdinaryReview={() => setOrdinaryReviewId(item.id)}
             />
             {item.errorMessage && (
@@ -333,11 +340,11 @@ export default function TranslationWorkflowPanel({
                 <span><Button disabled>编辑源文案</Button></span>
               </Tooltip>
             ) : (
-              <Button onClick={onEdit}>编辑源文案</Button>
+              <Button disabled={readOnly} onClick={onEdit}>编辑源文案</Button>
             )}
             <Button
               type="primary"
-              disabled={!ready || template.status === "已发布"}
+              disabled={readOnly || !ready || template.status === "已发布"}
               onClick={() => {
                 const approval = submitTemplateForApproval(template.id);
                 Message.success(`已提交业务审核 ${approval.id}`);

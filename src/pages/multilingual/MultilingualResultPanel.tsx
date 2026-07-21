@@ -39,9 +39,11 @@ function ReadonlyContent({ content }: { content: TranslationContentLayer }) {
 export default function MultilingualResultPanel({
   batch,
   item,
+  readOnly = false,
 }: {
   batch: TranslationBatch;
   item: TranslationItem;
+  readOnly?: boolean;
 }) {
   const navigate = useNavigate();
   const store = usePrototypeStore();
@@ -87,9 +89,9 @@ export default function MultilingualResultPanel({
   );
   const waitingForOrdinaryReview =
     !item.specialReviewRequired && item.status === "翻译返回待审核";
-  const canEdit = waitingForOrdinaryReview && hasReviewPermission;
+  const canEdit = !readOnly && waitingForOrdinaryReview && hasReviewPermission;
   const canEnterSpecialReview =
-    item.specialReviewRequired && item.status === "翻译返回待审核";
+    !readOnly && item.specialReviewRequired && item.status === "翻译返回待审核";
   const machineResultReady = directSource
     ? hasContent(sourceContent) || hasContent(item.humanDraft)
     : hasContent(machineContent);

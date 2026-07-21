@@ -8,8 +8,10 @@ import StatusTag from '../../components/StatusTag';
 import ApprovalDrawer from './ApprovalDrawer';
 import type { ApprovalItem } from '../../domain/types';
 import { usePrototypeStore } from '../../store/prototypeStore';
+import { useCurrentPagePermission } from '../../components/PagePermissionBoundary';
 
 export default function ApprovalCenterPage({ currentAdminId='admin-01' }: { currentAdminId?:string }) {
+  const { canWrite } = useCurrentPagePermission();
   const store=usePrototypeStore();
   const approvals=store.approvals;
   const [tab,setTab]=useState('mine');
@@ -29,7 +31,7 @@ export default function ApprovalCenterPage({ currentAdminId='admin-01' }: { curr
     {title:'当前节点',dataIndex:'step',width:130},
     {title:'提交人',width:130,render:(_,item)=><div>{item.submitter}<div className="muted">{item.submittedAt}</div></div>},
     {title:'状态',width:110,render:(_,item)=><StatusTag status={item.status}/>},
-    {title:'操作',fixed:'right',width:90,render:(_,item)=><Button type="text" onClick={()=>setSelected(item)}>审核</Button>},
+    {title:'操作',fixed:'right',width:90,render:(_,item)=><Button type="text" onClick={()=>setSelected(item)}>{canWrite?'审核':'查看'}</Button>},
   ];
 
   return <section className="page-stack">
@@ -39,6 +41,6 @@ export default function ApprovalCenterPage({ currentAdminId='admin-01' }: { curr
     <Tabs activeTab={tab} onChange={setTab}><Tabs.TabPane key="mine" title={`待我审核 (${pendingApprovals.length})`}/><Tabs.TabPane key="all" title={`全部工单 (${approvals.length})`}/><Tabs.TabPane key="emergency" title={`紧急审批 (${pendingApprovals.filter((item)=>item.emergency).length})`}/></Tabs>
     <FilterBar onReset={()=>{setKeyword('');setFilterOne(undefined);setFilterTwo(undefined);}}><Input.Search value={keyword} onChange={setKeyword} placeholder="搜索审批单或对象" style={{width:280}}/><Select value={filterOne} onChange={setFilterOne} allowClear placeholder="风险等级" style={{width:140}} options={['低','中','高','关键'].map((value)=>({label:value,value}))}/><Select value={filterTwo} onChange={setFilterTwo} allowClear placeholder="对象类型" style={{width:150}} options={['消息任务','消息模板','紧急任务'].map((value)=>({label:value,value}))}/></FilterBar>
     <ResourceTable data={data} columns={approvalColumns} rowKey="id"/>
-    <ApprovalDrawer item={selected} visible={Boolean(selected)} onClose={()=>setSelected(undefined)} currentAdminId={currentAdminId}/>
+    <ApprovalDrawer item={selected} visible={Boolean(selected)} onClose={()=>setSelected(undefined)} currentAdminId={currentAdminId} canWrite={canWrite}/>
   </section>;
 }

@@ -31,10 +31,19 @@ import {
   testSystemEvent,
   usePrototypeStore,
 } from "../../store/prototypeStore";
+import WritePermissionButton from "../../components/WritePermissionButton";
+import { useCurrentPagePermission } from "../../components/PagePermissionBoundary";
+import { canWritePage } from "../../domain/pagePermissions";
+import { CURRENT_REVIEW_OPERATOR_ID } from "../../domain/reviewOperators";
 
 export default function EventListPage() {
+  const { canWrite } = useCurrentPagePermission();
   const navigate = useNavigate();
   const store = usePrototypeStore();
+  const currentOperator = store.operators.find(
+    (operator) => operator.id === CURRENT_REVIEW_OPERATOR_ID,
+  );
+  const canCreateRule = canWritePage(currentOperator, "event.rules");
   const [keyword, setKeyword] = useState("");
   const [line, setLine] = useState<string>();
   const [status, setStatus] = useState<string>();
@@ -57,6 +66,10 @@ export default function EventListPage() {
     [store.events, keyword, line, status],
   );
   const register = async () => {
+    if (!canWrite) {
+      Message.warning("当前账号无写权限");
+      return;
+    }
     try {
       const values = await form.validate();
       registerSystemEvent({
@@ -79,6 +92,10 @@ export default function EventListPage() {
     }
   };
   const sendTest = () => {
+    if (!canWrite) {
+      Message.warning("当前账号无写权限");
+      return;
+    }
     if (!selected) return;
     const result = testSystemEvent(selected.id);
     if (result.ok)
@@ -135,13 +152,13 @@ export default function EventListPage() {
         title="事件目录"
         description="只维护上游业务事件的编码、版本与字段 Schema；通知内容和发送策略由事件通知规则管理。"
         actions={
-          <Button
+          <WritePermissionButton
             type="primary"
             icon={<IconPlus />}
             onClick={() => setCreating(true)}
           >
             注册事件
-          </Button>
+          </WritePermissionButton>
         }
       />
       <FilterBar
@@ -250,7 +267,8 @@ export default function EventListPage() {
         footer={
           selected && (
             <Space>
-              <Button
+              <WritePermissionButton
+                allowed={canCreateRule}
                 onClick={() =>
                   Message.success("事件 Schema 与字段定义校验通过")
                 }
@@ -263,10 +281,10 @@ export default function EventListPage() {
                 }
               >
                 创建通知规则
-              </Button>
-              <Button type="primary" onClick={sendTest}>
+              </WritePermissionButton>
+              <WritePermissionButton type="primary" onClick={sendTest}>
                 发送测试事件
-              </Button>
+              </WritePermissionButton>
             </Space>
           )
         }
@@ -321,6 +339,7 @@ export default function EventListPage() {
         title="注册业务事件"
         onCancel={() => setCreating(false)}
         onOk={register}
+        okButtonProps={{ disabled: !canWrite }}
         okText="注册并待联调"
         style={{ width: 780 }}
         unmountOnExit
