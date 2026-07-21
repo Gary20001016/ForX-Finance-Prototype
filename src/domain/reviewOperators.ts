@@ -4,31 +4,12 @@ import {
   type PagePermissionMap,
 } from "./pagePermissions";
 
-/** @deprecated Transitional field for legacy persisted capability data. */
-export type OperatorPermission =
-  | "content.create"
-  | "content.submit"
-  | "variable.manage"
-  | "business.review"
-  | "risk.review";
-
-/** @deprecated Page permissions replace these labels in the personnel UI. */
-export const operatorPermissionLabels: Record<OperatorPermission, string> = {
-  "content.create": "创建内容",
-  "content.submit": "提交审核",
-  "variable.manage": "模板变量维护",
-  "business.review": "一级业务审核",
-  "risk.review": "风控审核",
-};
-
 export interface ReviewOperator {
   id: string;
   name: string;
   team: string;
   enabled: boolean;
   isSuperAdmin: boolean;
-  /** @deprecated Kept until the personnel permission panel migration is complete. */
-  permissions: OperatorPermission[];
   pagePermissions: PagePermissionMap;
 }
 
@@ -41,7 +22,6 @@ export const reviewOperators: ReviewOperator[] = [
     team: "系统管理",
     enabled: true,
     isSuperAdmin: true,
-    permissions: Object.keys(operatorPermissionLabels) as OperatorPermission[],
     pagePermissions: fullPagePermissions(),
   },
   {
@@ -50,7 +30,6 @@ export const reviewOperators: ReviewOperator[] = [
     team: "消息运营",
     enabled: true,
     isSuperAdmin: false,
-    permissions: ["content.create", "content.submit"],
     pagePermissions: createPagePermissions(undefined, [
       "manual.tasks",
       "manual.templates",
@@ -62,7 +41,6 @@ export const reviewOperators: ReviewOperator[] = [
     team: "消息运营",
     enabled: true,
     isSuperAdmin: false,
-    permissions: ["content.create", "content.submit", "business.review"],
     pagePermissions: createPagePermissions(undefined, [
       "manual.tasks",
       "manual.templates",
@@ -75,7 +53,6 @@ export const reviewOperators: ReviewOperator[] = [
     team: "内容审核",
     enabled: true,
     isSuperAdmin: false,
-    permissions: [],
     pagePermissions: createPagePermissions(),
   },
   {
@@ -84,7 +61,6 @@ export const reviewOperators: ReviewOperator[] = [
     team: "内容审核",
     enabled: true,
     isSuperAdmin: false,
-    permissions: [],
     pagePermissions: createPagePermissions(),
   },
   {
@@ -93,7 +69,6 @@ export const reviewOperators: ReviewOperator[] = [
     team: "内容审核",
     enabled: true,
     isSuperAdmin: false,
-    permissions: [],
     pagePermissions: createPagePermissions(),
   },
   {
@@ -102,7 +77,6 @@ export const reviewOperators: ReviewOperator[] = [
     team: "内容审核",
     enabled: true,
     isSuperAdmin: false,
-    permissions: [],
     pagePermissions: createPagePermissions(),
   },
   {
@@ -111,7 +85,6 @@ export const reviewOperators: ReviewOperator[] = [
     team: "内容审核",
     enabled: true,
     isSuperAdmin: false,
-    permissions: [],
     pagePermissions: createPagePermissions(),
   },
   {
@@ -120,7 +93,6 @@ export const reviewOperators: ReviewOperator[] = [
     team: "内容审核",
     enabled: true,
     isSuperAdmin: false,
-    permissions: [],
     pagePermissions: createPagePermissions(),
   },
 ];

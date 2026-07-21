@@ -6,11 +6,12 @@ import {
 import { useCurrentPagePermission } from "./PagePermissionBoundary";
 
 export default function WritePermissionButton({
+  allowed,
   disabled,
   ...props
-}: ButtonProps) {
+}: ButtonProps & { allowed?: boolean }) {
   const { canWrite } = useCurrentPagePermission();
-  const permissionDisabled = !canWrite;
+  const permissionDisabled = allowed === undefined ? !canWrite : !allowed;
   const button = (
     <Button {...props} disabled={permissionDisabled || disabled} />
   );

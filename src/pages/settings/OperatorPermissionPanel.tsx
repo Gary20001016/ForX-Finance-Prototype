@@ -15,24 +15,32 @@ import {
 import type { TableColumnProps } from "@arco-design/web-react";
 import ResourceTable from "../../components/ResourceTable";
 import {
-  operatorPermissionLabels,
-  type OperatorPermission,
-  type ReviewOperator,
-} from "../../domain/reviewOperators";
+  fullPagePermissions,
+  normalizePagePermissions,
+  pagePermissionGroups,
+  pagePermissionKeys,
+  readOnlyPagePermissions,
+  type PagePermissionKey,
+  type PagePermissionMap,
+} from "../../domain/pagePermissions";
+import type { ReviewOperator } from "../../domain/reviewOperators";
 import {
   updateOperatorPermissions,
   usePrototypeStore,
 } from "../../store/prototypeStore";
 
-const permissionOptions = Object.entries(operatorPermissionLabels).map(
-  ([value, label]) => ({ value, label }),
-);
+const clonePermissions = (permissions: PagePermissionMap) =>
+  Object.fromEntries(
+    pagePermissionKeys.map((key) => [key, { ...permissions[key] }]),
+  ) as PagePermissionMap;
 
 export default function OperatorPermissionPanel() {
   const store = usePrototypeStore();
   const [keyword, setKeyword] = useState("");
   const [editing, setEditing] = useState<ReviewOperator>();
-  const [permissions, setPermissions] = useState<OperatorPermission[]>([]);
+  const [pagePermissions, setPagePermissions] = useState<PagePermissionMap>(
+    readOnlyPagePermissions(),
+  );
   const [reviewLocaleCodes, setReviewLocaleCodes] = useState<string[]>([]);
 
   const operatorLocales = (operatorId: string) =>
@@ -42,11 +50,17 @@ export default function OperatorPermissionPanel() {
 
   useEffect(() => {
     if (!editing) {
-      setPermissions([]);
+      setPagePermissions(readOnlyPagePermissions());
       setReviewLocaleCodes([]);
       return;
     }
-    setPermissions([...editing.permissions]);
+    setPagePermissions(
+      clonePermissions(
+        editing.isSuperAdmin
+          ? fullPagePermissions()
+          : normalizePagePermissions(editing.pagePermissions),
+      ),
+    );
     setReviewLocaleCodes(operatorLocales(editing.id));
   }, [editing?.id]);
 
@@ -84,24 +98,29 @@ export default function OperatorPermissionPanel() {
       ),
     },
     {
-      title: "已授权能力",
-      width: 360,
-      render: (_, operator) =>
-        operator.permissions.length ? (
-          <Space wrap>
-            {operator.permissions.map((permission) => (
-              <Tag key={permission} color="arcoblue">
-                {operatorPermissionLabels[permission]}
-              </Tag>
-            ))}
+      title: "页面权限概览",
+      width: 240,
+      render: (_, operator) => {
+        const permissions = operator.isSuperAdmin
+          ? fullPagePermissions()
+          : normalizePagePermissions(operator.pagePermissions);
+        const readable = pagePermissionKeys.filter(
+          (key) => permissions[key].read,
+        ).length;
+        const writable = pagePermissionKeys.filter(
+          (key) => permissions[key].write,
+        ).length;
+        return (
+          <Space>
+            <Tag color="arcoblue">可读 {readable}</Tag>
+            <Tag color="green">可写 {writable}</Tag>
           </Space>
-        ) : (
-          <span className="muted">未授权功能权限</span>
-        ),
+        );
+      },
     },
     {
       title: "可审核语言",
-      width: 260,
+      width: 300,
       render: (_, operator) => {
         const locales = store.languageReviewPolicies.filter((policy) =>
           policy.authorizedReviewerIds.includes(operator.id),
@@ -131,16 +150,41 @@ export default function OperatorPermissionPanel() {
     },
   ];
 
+  const changePagePermission = (
+    key: PagePermissionKey,
+    field: "read" | "write",
+    checked: boolean,
+  ) => {
+    setPagePermissions((current) => {
+      const next = clonePermissions(current);
+      if (field === "write") {
+        next[key] = { read: checked || next[key].read, write: checked };
+      } else {
+        next[key] = {
+          read: checked,
+          write: checked ? next[key].write : false,
+        };
+      }
+      return next;
+    });
+  };
+
   const save = () => {
     if (!editing) return;
     try {
-      updateOperatorPermissions(editing.id, permissions, reviewLocaleCodes);
+      updateOperatorPermissions(
+        editing.id,
+        pagePermissions,
+        reviewLocaleCodes,
+      );
       Message.success("人员权限已更新");
       setEditing(undefined);
     } catch (error) {
       Message.error(error instanceof Error ? error.message : "权限更新失败");
     }
   };
+
+  const matrixDisabled = Boolean(!editing?.enabled || editing?.isSuperAdmin);
 
   return (
     <>
@@ -154,7 +198,7 @@ export default function OperatorPermissionPanel() {
           type="info"
           showIcon
           title="权限按人员独立配置"
-          content="权限与岗位无关；可审核语言与“语言审核策略”使用同一份授权数据。"
+          content="每个页面分别配置读、写权限；语言审核仍按具体语言单独授权，与岗位无关。"
           style={{ marginBottom: 16 }}
         />
         <Input.Search
@@ -164,15 +208,11 @@ export default function OperatorPermissionPanel() {
           placeholder="搜索姓名或操作者 ID"
           style={{ width: 320, marginBottom: 16 }}
         />
-        <ResourceTable
-          data={data}
-          columns={columns}
-          rowKey="id"
-        />
+        <ResourceTable data={data} columns={columns} rowKey="id" />
       </Card>
 
       <Drawer
-        width={680}
+        width={760}
         visible={Boolean(editing)}
         title={editing ? `编辑权限 · ${editing.name}` : "编辑人员权限"}
         onCancel={() => setEditing(undefined)}
@@ -215,17 +255,45 @@ export default function OperatorPermissionPanel() {
                 content="停用账号的权限仅供查看，请先在账号系统中启用后再修改。"
               />
             )}
-            <section>
-              <h3>功能权限</h3>
-              <Checkbox.Group
-                value={permissions}
-                disabled={!editing.enabled}
-                options={permissionOptions}
-                onChange={(values) =>
-                  setPermissions(values as OperatorPermission[])
-                }
+            {editing.isSuperAdmin && (
+              <Alert
+                type="info"
+                showIcon
+                title="超级管理员固定拥有全部页面读写权限"
+                content="页面权限不可降级；仍可调整该账号的语言审核授权。"
               />
-            </section>
+            )}
+            {pagePermissionGroups.map((group) => (
+              <section key={group.key}>
+                <h3>{group.label}</h3>
+                <div className="permission-matrix">
+                  <div className="permission-matrix-row permission-matrix-head">
+                    <strong>页面 / Tab</strong>
+                    <strong>读</strong>
+                    <strong>写</strong>
+                  </div>
+                  {group.resources.map((resource) => (
+                    <div className="permission-matrix-row" key={resource.key}>
+                      <span>{resource.label}</span>
+                      <Checkbox
+                        checked={pagePermissions[resource.key].read}
+                        disabled={matrixDisabled}
+                        onChange={(checked) =>
+                          changePagePermission(resource.key, "read", checked)
+                        }
+                      />
+                      <Checkbox
+                        checked={pagePermissions[resource.key].write}
+                        disabled={matrixDisabled}
+                        onChange={(checked) =>
+                          changePagePermission(resource.key, "write", checked)
+                        }
+                      />
+                    </div>
+                  ))}
+                </div>
+              </section>
+            ))}
             <section>
               <h3>可审核语言</h3>
               <Select

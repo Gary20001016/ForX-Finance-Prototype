@@ -17,10 +17,11 @@ import {
   updateOperatorTestAccount,
   usePrototypeStore,
 } from "../../store/prototypeStore";
+import WritePermissionButton from "../../components/WritePermissionButton";
 
 const CURRENT_OPERATOR_ID = "admin-01";
 
-export default function TestAccountPanel() {
+export default function TestAccountPanel({ canWrite = true }: { canWrite?: boolean }) {
   const store = usePrototypeStore();
   const accounts = store.testAccounts.filter(
     (account) => account.operatorId === CURRENT_OPERATOR_ID,
@@ -35,6 +36,10 @@ export default function TestAccountPanel() {
   }, [editing]);
 
   const save = () => {
+    if (!canWrite) {
+      Message.warning("当前账号无写权限");
+      return;
+    }
     try {
       if (editing && editing !== "new") {
         updateOperatorTestAccount(editing.id, CURRENT_OPERATOR_ID, { remark });
@@ -64,14 +69,15 @@ export default function TestAccountPanel() {
             <Tag color={accounts.length >= 4 ? "orange" : "arcoblue"}>
               {accounts.length} / 4
             </Tag>
-            <Button
+            <WritePermissionButton
               type="primary"
               icon={<IconPlus />}
+              allowed={canWrite}
               disabled={accounts.length >= 4}
               onClick={() => setEditing("new")}
             >
               新增测试账号
-            </Button>
+            </WritePermissionButton>
           </Space>
         }
       >
@@ -92,19 +98,20 @@ export default function TestAccountPanel() {
               <span>创建于 {account.createdAt}</span>
               <span>更新于 {account.updatedAt}</span>
               <Space>
-                <Button type="text" onClick={() => setEditing(account)}>
+                <WritePermissionButton type="text" allowed={canWrite} onClick={() => setEditing(account)}>
                   编辑备注
-                </Button>
-                <Button
+                </WritePermissionButton>
+                <WritePermissionButton
                   type="text"
                   status="danger"
+                  allowed={canWrite}
                   onClick={() => {
                     removeOperatorTestAccount(account.id, CURRENT_OPERATOR_ID);
                     Message.success("测试账号已删除");
                   }}
                 >
                   删除
-                </Button>
+                </WritePermissionButton>
               </Space>
             </div>
           ))}
@@ -118,9 +125,9 @@ export default function TestAccountPanel() {
         footer={
           <Space>
             <Button onClick={() => setEditing(undefined)}>取消</Button>
-            <Button type="primary" onClick={save}>
+            <WritePermissionButton type="primary" allowed={canWrite} onClick={save}>
               保存测试账号
-            </Button>
+            </WritePermissionButton>
           </Space>
         }
         unmountOnExit

@@ -253,7 +253,6 @@ export const normalizeReviewOperators = (
       enabled: saved.enabled ?? seed?.enabled ?? true,
       isSuperAdmin,
       ...current,
-      permissions: saved.permissions || seed?.permissions || [],
       pagePermissions,
     } as ReviewOperator;
   });
