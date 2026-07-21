@@ -31,6 +31,12 @@ import {
 import { openPrototypeDialog } from '../utils/prototypeActions';
 import { CURRENT_REVIEW_OPERATOR_ID } from '../domain/reviewOperators';
 import { usePrototypeStore } from '../store/prototypeStore';
+import {
+  canReadPage,
+  hasAnySettingsReadAccess,
+} from '../domain/pagePermissions';
+import { firstReadableSettingsPath } from '../app/routePermissions';
+import PagePermissionBoundary from '../components/PagePermissionBoundary';
 
 const { Sider, Header, Content } = Layout;
 
@@ -42,6 +48,42 @@ export default function AdminLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
+  const hasLanguageReviewAccess = Boolean(
+    currentOperator?.enabled &&
+      store.languageReviewPolicies.some(
+        (policy) =>
+          policy.enabled &&
+          policy.authorizedReviewerIds.includes(currentOperator.id),
+      ),
+  );
+  const visibleGroups = useMemo(
+    () =>
+      navigationGroups
+        .map((group) => ({
+          ...group,
+          children: group.children.filter((item) =>
+            item.path === '/multilingual-review'
+              ? hasLanguageReviewAccess
+              : Boolean(
+                  item.permissionKey &&
+                    canReadPage(currentOperator, item.permissionKey),
+                ),
+          ),
+        }))
+        .filter((group) => group.children.length > 0),
+    [currentOperator, hasLanguageReviewAccess],
+  );
+  const showDashboard = Boolean(
+    dashboardNavigationItem.permissionKey &&
+      canReadPage(currentOperator, dashboardNavigationItem.permissionKey),
+  );
+  const showAudience = Boolean(
+    audienceNavigationItem.permissionKey &&
+      canReadPage(currentOperator, audienceNavigationItem.permissionKey),
+  );
+  const showSettings = Boolean(
+    currentOperator?.isSuperAdmin || hasAnySettingsReadAccess(currentOperator),
+  );
   const activeNavigation = useMemo(
     () => navigationContextForLocation(location.pathname, location.search),
     [location.pathname, location.search],
@@ -78,17 +120,23 @@ export default function AdminLayout() {
           theme="dark"
           selectedKeys={[activeNavigation?.key ?? '/dashboard']}
           openKeys={openKeys}
-          onClickMenuItem={(key) => navigate(key)}
+          onClickMenuItem={(key) =>
+            navigate(
+              key === settingsNavigationItem.key
+                ? firstReadableSettingsPath(currentOperator)
+                : key,
+            )
+          }
           onClickSubMenu={(_, keys) => setOpenKeys(keys)}
           className="admin-menu"
         >
-          <Menu.Item key={dashboardNavigationItem.key} data-testid={`nav-${dashboardNavigationItem.key}`}>
+          {showDashboard && <Menu.Item key={dashboardNavigationItem.key} data-testid={`nav-${dashboardNavigationItem.key}`}>
             {dashboardNavigationItem.icon}{dashboardNavigationItem.label}
-          </Menu.Item>
-          <Menu.Item key={audienceNavigationItem.key} data-testid={`nav-${audienceNavigationItem.key}`}>
+          </Menu.Item>}
+          {showAudience && <Menu.Item key={audienceNavigationItem.key} data-testid={`nav-${audienceNavigationItem.key}`}>
             {audienceNavigationItem.icon}{audienceNavigationItem.label}
-          </Menu.Item>
-          {navigationGroups.map((group) => (
+          </Menu.Item>}
+          {visibleGroups.map((group) => (
             <Menu.SubMenu
               key={group.key}
               title={<>{group.icon}{group.label}</>}
@@ -100,9 +148,9 @@ export default function AdminLayout() {
               ))}
             </Menu.SubMenu>
           ))}
-          <Menu.Item key={settingsNavigationItem.key} data-testid={`nav-${settingsNavigationItem.key}`}>
+          {showSettings && <Menu.Item key={settingsNavigationItem.key} data-testid={`nav-${settingsNavigationItem.key}`}>
             {settingsNavigationItem.icon}{settingsNavigationItem.label}
-          </Menu.Item>
+          </Menu.Item>}
         </Menu>
         {!collapsed && (
           <div className="sider-health">
@@ -151,7 +199,9 @@ export default function AdminLayout() {
             </Dropdown>
           </div>
         </Header>
-        <Content className="admin-content"><Outlet /></Content>
+        <Content className="admin-content">
+          <PagePermissionBoundary><Outlet /></PagePermissionBoundary>
+        </Content>
       </Layout>
     </Layout>
   );

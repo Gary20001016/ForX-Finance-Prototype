@@ -10,6 +10,7 @@ import {
   IconSettings,
   IconUserGroup,
 } from '@arco-design/web-react/icon';
+import type { PagePermissionKey } from '../domain/pagePermissions';
 
 export interface NavigationItem {
   key: string;
@@ -18,6 +19,7 @@ export interface NavigationItem {
   icon: ReactNode;
   groupKey?: string;
   groupLabel?: string;
+  permissionKey?: PagePermissionKey;
 }
 
 export interface NavigationGroup {
@@ -38,6 +40,7 @@ export const dashboardNavigationItem: NavigationItem = {
   path: '/dashboard',
   label: '工作台',
   icon: <IconDashboard />,
+  permissionKey: 'dashboard',
 };
 
 export const audienceNavigationItem: NavigationItem = {
@@ -45,6 +48,7 @@ export const audienceNavigationItem: NavigationItem = {
   path: '/segments',
   label: '用户与受众',
   icon: <IconUserGroup />,
+  permissionKey: 'audiences',
 };
 
 export const settingsNavigationItem: NavigationItem = {
@@ -65,18 +69,21 @@ export const navigationGroups: NavigationGroup[] = [
         path: '/tasks',
         label: '人工消息任务',
         icon: <IconEmail />,
+        permissionKey: 'manual.tasks',
       }),
       groupedItem('manual-messaging', '人工消息', {
         key: '/templates?scope=manual',
         path: '/templates',
         label: '人工消息模板',
         icon: <IconBook />,
+        permissionKey: 'manual.templates',
       }),
       groupedItem('manual-messaging', '人工消息', {
         key: '/template-variables',
         path: '/template-variables',
         label: '模板变量',
         icon: <IconArchive />,
+        permissionKey: 'manual.variables',
       }),
     ],
   },
@@ -90,24 +97,28 @@ export const navigationGroups: NavigationGroup[] = [
         path: '/automation',
         label: '事件通知规则',
         icon: <IconExperiment />,
+        permissionKey: 'event.rules',
       }),
       groupedItem('event-automation', '事件自动化', {
         key: '/templates?scope=event',
         path: '/templates',
         label: '事件消息模板',
         icon: <IconBook />,
+        permissionKey: 'event.templates',
       }),
       groupedItem('event-automation', '事件自动化', {
         key: '/events',
         path: '/events',
         label: '事件目录',
         icon: <IconExperiment />,
+        permissionKey: 'event.catalog',
       }),
       groupedItem('event-automation', '事件自动化', {
         key: '/triggers',
         path: '/triggers',
         label: '触发记录',
         icon: <IconArchive />,
+        permissionKey: 'event.triggers',
       }),
     ],
   },
@@ -127,18 +138,21 @@ export const navigationGroups: NavigationGroup[] = [
         path: '/approvals',
         label: '审核中心',
         icon: <IconCheckCircle />,
+        permissionKey: 'operations.approvals',
       }),
       groupedItem('operations-governance', '运营与治理', {
         key: '/deliveries',
         path: '/deliveries',
         label: '发送记录',
         icon: <IconArchive />,
+        permissionKey: 'operations.deliveries',
       }),
       groupedItem('operations-governance', '运营与治理', {
         key: '/analytics',
         path: '/analytics',
         label: '数据分析',
         icon: <IconArrowRise />,
+        permissionKey: 'operations.analytics',
       }),
     ],
   },
