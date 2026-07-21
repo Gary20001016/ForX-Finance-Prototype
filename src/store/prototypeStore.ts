@@ -65,9 +65,16 @@ import {
 import {
   CURRENT_REVIEW_OPERATOR_ID,
   reviewOperators,
-  type OperatorPermission,
   type ReviewOperator,
 } from "../domain/reviewOperators";
+import {
+  createPagePermissions,
+  fullPagePermissions,
+  normalizePagePermissions,
+  readOnlyPagePermissions,
+  type PagePermissionKey,
+  type PagePermissionMap,
+} from "../domain/pagePermissions";
 
 export interface PrototypeState {
   messages: UserMessage[];
@@ -184,6 +191,82 @@ export const normalizeLanguageReviewPolicies = (
       } as LanguageReviewPolicy;
     });
   return [...knownPolicies, ...extraPolicies];
+};
+
+type LegacyOperatorPermission =
+  | "content.create"
+  | "content.submit"
+  | "variable.manage"
+  | "business.review"
+  | "risk.review";
+
+type PersistedReviewOperator = Partial<ReviewOperator> & {
+  id: string;
+  permissions?: LegacyOperatorPermission[];
+};
+
+const legacyWritePermissionKeys = (
+  permissions: LegacyOperatorPermission[] = [],
+): PagePermissionKey[] => {
+  const keys = new Set<PagePermissionKey>();
+  if (
+    permissions.includes("content.create") ||
+    permissions.includes("content.submit")
+  ) {
+    keys.add("manual.tasks");
+    keys.add("manual.templates");
+  }
+  if (permissions.includes("variable.manage")) {
+    keys.add("manual.variables");
+  }
+  if (
+    permissions.includes("business.review") ||
+    permissions.includes("risk.review")
+  ) {
+    keys.add("operations.approvals");
+  }
+  return Array.from(keys);
+};
+
+export const normalizeReviewOperators = (
+  operators: PersistedReviewOperator[] = [],
+): ReviewOperator[] => {
+  const source = operators.length ? operators : reviewOperators;
+  const normalized = source.map((saved) => {
+    const seed = reviewOperators.find((candidate) => candidate.id === saved.id);
+    const isSuperAdmin = Boolean(saved.isSuperAdmin ?? seed?.isSuperAdmin);
+    const legacyFallback = createPagePermissions(
+      undefined,
+      legacyWritePermissionKeys(saved.permissions),
+    );
+    const pagePermissions = isSuperAdmin
+      ? fullPagePermissions()
+      : normalizePagePermissions(
+          saved.pagePermissions,
+          saved.permissions ? legacyFallback : readOnlyPagePermissions(),
+        );
+    const { permissions: _legacyPermissions, ...current } = saved;
+    return {
+      id: saved.id,
+      name: saved.name || seed?.name || saved.id,
+      team: saved.team || seed?.team || "未分组",
+      enabled: saved.enabled ?? seed?.enabled ?? true,
+      isSuperAdmin,
+      ...current,
+      permissions: saved.permissions || seed?.permissions || [],
+      pagePermissions,
+    } as ReviewOperator;
+  });
+
+  for (const seed of reviewOperators) {
+    if (!normalized.some((operator) => operator.id === seed.id)) {
+      normalized.push({
+        ...seed,
+        pagePermissions: normalizePagePermissions(seed.pagePermissions),
+      });
+    }
+  }
+  return normalized;
 };
 
 export const normalizeTranslationBatches = (
@@ -827,7 +910,9 @@ const migrateSavedState = (saved: PrototypeState): PrototypeState => {
     ruleVersions: mergedRuleVersions,
     triggerRecords: saved.triggerRecords || fresh.triggerRecords,
     templateVariables: saved.templateVariables || fresh.templateVariables,
-    operators: saved.operators || fresh.operators,
+    operators: normalizeReviewOperators(
+      (saved.operators || fresh.operators) as PersistedReviewOperator[],
+    ),
   };
 };
 
@@ -1665,7 +1750,7 @@ export const updateLanguageReviewPolicy = (
 
 export const updateOperatorPermissions = (
   operatorId: string,
-  permissions: OperatorPermission[],
+  pagePermissions: PagePermissionMap,
   reviewLocaleCodes: string[],
 ) => {
   const operator = state.operators.find((candidate) => candidate.id === operatorId);
@@ -1687,7 +1772,12 @@ export const updateOperatorPermissions = (
     ...current,
     operators: current.operators.map((candidate) =>
       candidate.id === operatorId
-        ? { ...candidate, permissions: [...permissions] }
+        ? {
+            ...candidate,
+            pagePermissions: candidate.isSuperAdmin
+              ? fullPagePermissions()
+              : normalizePagePermissions(pagePermissions),
+          }
         : candidate,
     ),
     languageReviewPolicies: nextPolicies,
