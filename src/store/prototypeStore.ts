@@ -63,6 +63,7 @@ import {
   normalizeTranslationStatus,
 } from "../domain/translationStatus";
 import {
+  CURRENT_REVIEW_OPERATOR_ID,
   reviewOperators,
   type OperatorPermission,
   type ReviewOperator,
@@ -127,6 +128,63 @@ const languageReviewPolicySeed: LanguageReviewPolicy[] = [
     enabled: true,
   }),
 );
+
+type LegacyLanguageReviewPolicy = Partial<LanguageReviewPolicy> & {
+  reviewerCount?: number;
+  allowSubmitterReview?: boolean;
+  reviewGroup?: string;
+};
+
+export const normalizeLanguageReviewPolicies = (
+  policies: LegacyLanguageReviewPolicy[] = [],
+): LanguageReviewPolicy[] => {
+  const knownPolicies = languageReviewPolicySeed.map((seed) => {
+    const saved = policies.find(
+      (policy) => policy.localeCode === seed.localeCode,
+    );
+    if (!saved) return { ...seed, authorizedReviewerIds: [...seed.authorizedReviewerIds] };
+    const {
+      reviewerCount: _reviewerCount,
+      allowSubmitterReview: _allowSubmitterReview,
+      reviewGroup: _reviewGroup,
+      ...current
+    } = saved;
+    return {
+      ...seed,
+      ...current,
+      authorizedReviewerIds:
+        Array.isArray(current.authorizedReviewerIds) &&
+        current.authorizedReviewerIds.length > 0
+          ? [...current.authorizedReviewerIds]
+          : [...seed.authorizedReviewerIds],
+    };
+  });
+  const extraPolicies = policies
+    .filter(
+      (policy) =>
+        policy.localeCode &&
+        !languageReviewPolicySeed.some(
+          (seed) => seed.localeCode === policy.localeCode,
+        ),
+    )
+    .map((policy) => {
+      const {
+        reviewerCount: _reviewerCount,
+        allowSubmitterReview: _allowSubmitterReview,
+        reviewGroup: _reviewGroup,
+        ...current
+      } = policy;
+      return {
+        ...current,
+        authorizedReviewerIds:
+          Array.isArray(current.authorizedReviewerIds) &&
+          current.authorizedReviewerIds.length > 0
+            ? [...current.authorizedReviewerIds]
+            : [CURRENT_REVIEW_OPERATOR_ID],
+      } as LanguageReviewPolicy;
+    });
+  return [...knownPolicies, ...extraPolicies];
+};
 
 export const normalizeTranslationBatches = (
   batches: TranslationBatch[],
@@ -684,6 +742,9 @@ const createSeed = (): PrototypeState => {
 
 const migrateSavedState = (saved: PrototypeState): PrototypeState => {
   const fresh = createSeed();
+  const normalizedLanguageReviewPolicies = normalizeLanguageReviewPolicies(
+    saved.languageReviewPolicies || fresh.languageReviewPolicies,
+  );
   const savedTemplates = saved.templates || [];
   const mergedTemplateCandidates = normalizeTemplateTranslationReadiness([
     ...savedTemplates.map((template) => ({
@@ -758,11 +819,10 @@ const migrateSavedState = (saved: PrototypeState): PrototypeState => {
     testAccounts: saved.testAccounts || fresh.testAccounts,
     translationBatches: normalizeTranslationBatches(
       mergedTranslationBatches,
-      saved.languageReviewPolicies || fresh.languageReviewPolicies,
+      normalizedLanguageReviewPolicies,
       mergedTemplates,
     ),
-    languageReviewPolicies:
-      saved.languageReviewPolicies || fresh.languageReviewPolicies,
+    languageReviewPolicies: normalizedLanguageReviewPolicies,
     rules: saved.rules || fresh.rules,
     ruleVersions: mergedRuleVersions,
     triggerRecords: saved.triggerRecords || fresh.triggerRecords,
@@ -1388,12 +1448,12 @@ const approveTranslationWithMode = (
     .flatMap((batch) => batch.items)
     .find((item) => item.id === itemId);
   if (!currentItem) throw new Error("翻译任务不存在");
-  if (!canReviewTranslation(currentItem, values.reviewer))
-    throw new Error("无该语言审核权限");
   if (mode === "ordinary" && currentItem.specialReviewRequired)
     throw new Error("该语言必须进入小语种专审");
   if (mode === "special" && !currentItem.specialReviewRequired)
     throw new Error("该语言无需小语种专审");
+  if (!canReviewTranslation(currentItem, values.reviewer))
+    throw new Error("无该语言审核权限");
 
   return update((current) => {
     const batches = current.translationBatches.map((batch) =>

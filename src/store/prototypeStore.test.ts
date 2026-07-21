@@ -336,7 +336,7 @@ describe("prototype store workflow transitions", () => {
       title: "Retrait réussi",
       summary: "Le retrait est arrivé.",
       body: "Votre retrait est arrivé.",
-      reviewer: "Gary Ma",
+      reviewer: "admin-01",
     });
     expect(
       getPrototypeState().translationBatches.find(
@@ -397,7 +397,7 @@ describe("prototype store workflow transitions", () => {
         title: "出金完了",
         summary: "",
         body: "出金が完了しました。",
-        reviewer: "reviewer-02",
+        reviewer: "admin-01",
       }),
     ).toThrow("该语言必须进入小语种专审");
 
@@ -405,13 +405,13 @@ describe("prototype store workflow transitions", () => {
       title: "Withdrawal completed",
       summary: "",
       body: "Your withdrawal is complete.",
-      reviewer: "operator-01",
+      reviewer: "admin-01",
     });
     approveSpecialReview(japanese.id, {
       title: "出金完了",
       summary: "",
       body: "出金が完了しました。",
-      reviewer: "jp-reviewer-02",
+      reviewer: "admin-01",
     });
 
     expect(
@@ -427,7 +427,7 @@ describe("prototype store workflow transitions", () => {
     });
     const itemId = batch.items[0].id;
 
-    rejectTranslation(itemId, "术语不准确");
+    rejectTranslation(itemId, "术语不准确", "admin-01");
     expect(
       getPrototypeState().translationBatches
         .flatMap((item) => item.items)
@@ -451,7 +451,7 @@ describe("prototype store workflow transitions", () => {
   it("updates the special-language review policy", () => {
     updateLanguageReviewPolicy("fr-FR", {
       specialReviewRequired: true,
-      reviewGroup: "法语专项审核组",
+      authorizedReviewerIds: ["admin-01", "reviewer-fr-01"],
       reviewSlaHours: 8,
     });
 
@@ -461,7 +461,7 @@ describe("prototype store workflow transitions", () => {
       ),
     ).toMatchObject({
       specialReviewRequired: true,
-      reviewGroup: "法语专项审核组",
+      authorizedReviewerIds: ["admin-01", "reviewer-fr-01"],
       reviewSlaHours: 8,
     });
   });
@@ -508,7 +508,7 @@ describe("prototype store workflow transitions", () => {
         .find((item) => item.targetLocale === "tr-TR"),
     ).toMatchObject({
       specialReviewRequired: true,
-      reviewGroup: "小语种专项审核组",
+      authorizedReviewerIds: ["admin-01", "reviewer-tr-01"],
       status: "翻译返回待审核",
     });
   });
@@ -838,7 +838,7 @@ describe("prototype store workflow transitions", () => {
         title: item.machineTitle || "Translated title",
         summary: item.machineSummary || "Translated summary",
         body: item.machineBody || "Translated body",
-        reviewer: "Reviewer 02",
+        reviewer: "admin-01",
       }),
     );
     expect(

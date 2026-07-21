@@ -37,7 +37,7 @@ export default function LanguageReviewPolicyPanel() {
             />
             <Select
               mode="multiple"
-              allowSearch
+              showSearch
               value={policy.authorizedReviewerIds}
               placeholder="选择可审核该语言的操作者"
               onChange={(authorizedReviewerIds) => {

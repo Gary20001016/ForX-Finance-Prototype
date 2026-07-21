@@ -230,7 +230,7 @@ export default function OperatorPermissionPanel() {
               <h3>可审核语言</h3>
               <Select
                 mode="multiple"
-                allowSearch
+                showSearch
                 value={reviewLocaleCodes}
                 disabled={!editing.enabled}
                 placeholder="选择该人员可审核的语言"
