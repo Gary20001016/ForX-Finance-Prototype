@@ -1,6 +1,5 @@
 import {
   Card,
-  InputNumber,
   Message,
   Select,
   Space,
@@ -24,7 +23,7 @@ export default function LanguageReviewPolicyPanel({ canWrite = true }: { canWrit
       <div className="language-policy-table">
         <div className="language-policy-head">
           <strong>语言</strong><strong>专项审核</strong><strong>授权审核人</strong>
-          <strong>SLA</strong><strong>超时动作</strong><strong>状态</strong>
+          <strong>状态</strong>
         </div>
         {store.languageReviewPolicies.map((policy) => (
           <div className="language-policy-row" key={policy.localeCode}>
@@ -60,19 +59,6 @@ export default function LanguageReviewPolicyPanel({ canWrite = true }: { canWrit
                   value: operator.id,
                   label: `${operator.name} · ${operator.id} · ${operator.team}`,
                 }))}
-            />
-            <InputNumber
-              value={policy.reviewSlaHours}
-              disabled={!canWrite}
-              min={1}
-              suffix="小时"
-              onChange={(reviewSlaHours) => updateLanguageReviewPolicy(policy.localeCode, { reviewSlaHours })}
-            />
-            <Select
-              value={policy.timeoutAction}
-              disabled={!canWrite}
-              onChange={(timeoutAction) => updateLanguageReviewPolicy(policy.localeCode, { timeoutAction })}
-              options={["提醒", "升级", "阻断发布"].map((value) => ({ value, label: value }))}
             />
             <Space>
               <Switch

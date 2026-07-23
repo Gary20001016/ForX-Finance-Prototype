@@ -6,9 +6,12 @@ import {
   addControlledVariable,
   addOperatorTestAccount,
   advanceRuleContentVersion,
+  changeEventRuleStatus,
+  createEventRule,
   createRuleTranslationBatch,
   createRuleContentVersion,
   createTranslationBatch,
+  canReviewTranslation,
   getPrototypeState,
   markMessageRead,
   getOperatorTestAccounts,
@@ -26,14 +29,18 @@ import {
   sendTemplateTest,
   submitTask,
   reviewApproval,
+  reviewEventRule,
   saveTaskDraft,
+  submitEventRuleForReview,
   submitTemplateForApproval,
   testSystemEvent,
   updateLanguageReviewPolicy,
+  updateOperatorPermissions,
   updateControlledVariable,
   updateOperatorTestAccount,
 } from "./prototypeStore";
 import { translationBatches as legacyTranslationBatches } from "../mocks/data";
+import { createPagePermissions } from "../domain/pagePermissions";
 
 describe("prototype store workflow transitions", () => {
   beforeEach(() => resetPrototypeStore());
@@ -180,6 +187,34 @@ describe("prototype store workflow transitions", () => {
     expect(batch.items[0].status).toBe("翻译返回待审核");
   });
 
+  it("assigns each special-language item to exactly one authorized reviewer", () => {
+    updateLanguageReviewPolicy("ja-JP", {
+      specialReviewRequired: true,
+      authorizedReviewerIds: ["admin-01", "reviewer-ja-01"],
+    });
+    const batch = createTranslationBatch({
+      subject: {
+        type: "manual_task_content",
+        id: "TASK-ASSIGN",
+        name: "日语唯一指派",
+        version: "draft-1",
+        returnPath: "/tasks/create",
+      },
+      sourceLocale: "zh-CN",
+      sourceContent: { title: "通知", body: "正文" },
+      targetLocales: ["ja-JP"],
+      createdBy: "admin-01",
+    });
+    const item = batch.items[0];
+
+    expect(["admin-01", "reviewer-ja-01"]).toContain(item.assigneeId);
+    expect(
+      ["admin-01", "reviewer-ja-01"].filter((operatorId) =>
+        canReviewTranslation(item, operatorId),
+      ),
+    ).toEqual([item.assigneeId]);
+  });
+
   it("freezes selected channels and creates channel-specific translation output", () => {
     const sourceChannelContent = {
       sourceLocale: "zh-CN",
@@ -295,6 +330,39 @@ describe("prototype store workflow transitions", () => {
       translationReadiness: "已通过",
       locales: ["zh-CN"],
     });
+  });
+
+  it("uses the four-state lifecycle for an artificial message template", () => {
+    prepareSingleLanguageContent({
+      subject: {
+        type: "template_version",
+        id: "TPL-1004",
+        name: "网络维护公告",
+        version: "v8",
+        returnPath: "/templates?scope=manual",
+      },
+      sourceLocale: "zh-CN",
+      sourceContent: { title: "系统公告", summary: "摘要", body: "正文" },
+      createdBy: "Gary Ma",
+    });
+
+    expect(
+      getPrototypeState().templates.find((item) => item.id === "TPL-1004")
+        ?.status,
+    ).toBe("审核中");
+
+    const approval = submitTemplateForApproval("TPL-1004");
+    reviewApproval(approval.id, {
+      decision: "reject",
+      reviewerId: approval.assigneeId!,
+      reviewer: approval.assignee || "审核人",
+      opinion: "内容需要修改",
+    });
+
+    expect(
+      getPrototypeState().templates.find((item) => item.id === "TPL-1004")
+        ?.status,
+    ).toBe("驳回");
   });
 
   it("uses the configured language policy for direct source review", () => {
@@ -599,11 +667,133 @@ describe("prototype store workflow transitions", () => {
     expect(task.approvalStatus).toBe("审核中");
     expect(task.deliveryResult).toBe("未开始");
     expect(approval?.name).toBe("临时风险消息");
+    expect(approval?.assigneeId).toBeTruthy();
+    expect(approval?.assigneeId).not.toBe(approval?.submitterId);
+    expect(
+      getPrototypeState().operators.find(
+        (operator) => operator.id === approval?.assigneeId,
+      )?.pagePermissions["operations.approvals"].write,
+    ).toBe(true);
+  });
+
+  it("rejects approval from a reviewer who is not assigned", () => {
+    const approval = getPrototypeState().approvals.find(
+      (item) => item.id === "APR-8812",
+    )!;
+
+    expect(() =>
+      reviewApproval(approval.id, {
+        decision: "approve",
+        reviewerId: "reviewer-zh-01",
+        reviewer: "王璐",
+        opinion: "越权审核",
+      }),
+    ).toThrow("只有被指派的审核人可以处理该工单");
+  });
+
+  it("rejects self-review even when the submitter has approval write access", () => {
+    const approval = getPrototypeState().approvals.find(
+      (item) => item.id === "APR-8813",
+    )!;
+
+    expect(() =>
+      reviewApproval(approval.id, {
+        decision: "approve",
+        reviewerId: approval.submitterId!,
+        reviewer: approval.submitter,
+        opinion: "发起人自审",
+      }),
+    ).toThrow("审核内容的发起者不能自审");
+  });
+
+  it("reassigns pending approvals when the assigned reviewer loses write access", () => {
+    updateOperatorPermissions(
+      "reviewer-en-01",
+      createPagePermissions(undefined, ["operations.approvals"]),
+      ["en-US"],
+    );
+    const task = submitTask({
+      name: "权限失效改派测试",
+      category: "系统公告",
+      nature: "事务",
+      risk: "低",
+      template: "notice",
+      channels: ["站内信"],
+      audience: "指定用户",
+      audienceCount: 1,
+      schedule: "立即",
+      creator: "Gary Ma",
+      team: "消息运营",
+    });
+    const before = getPrototypeState().approvals.find(
+      (item) => item.taskId === task.id,
+    )!;
+    const previousAssigneeId = before.assigneeId!;
+    const reviewerLocales = getPrototypeState().languageReviewPolicies
+      .filter((policy) =>
+        policy.authorizedReviewerIds.includes(previousAssigneeId),
+      )
+      .map((policy) => policy.localeCode);
+
+    updateOperatorPermissions(
+      previousAssigneeId,
+      createPagePermissions(),
+      reviewerLocales,
+    );
+
+    const after = getPrototypeState().approvals.find(
+      (item) => item.id === before.id,
+    )!;
+    expect(after.assigneeId).not.toBe(previousAssigneeId);
+    expect(after.assigneeId).not.toBe(after.submitterId);
+    expect(
+      getPrototypeState().operators.find(
+        (operator) => operator.id === after.assigneeId,
+      )?.pagePermissions["operations.approvals"].write,
+    ).toBe(true);
+  });
+
+  it("blocks a permission change when no replacement reviewer exists", () => {
+    const task = submitTask({
+      name: "无替代审核人测试",
+      category: "系统公告",
+      nature: "事务",
+      risk: "低",
+      template: "notice",
+      channels: ["站内信"],
+      audience: "指定用户",
+      audienceCount: 1,
+      schedule: "立即",
+      creator: "Gary Ma",
+      team: "消息运营",
+    });
+    const approval = getPrototypeState().approvals.find(
+      (item) => item.taskId === task.id,
+    )!;
+    const reviewerLocales = getPrototypeState().languageReviewPolicies
+      .filter((policy) =>
+        policy.authorizedReviewerIds.includes(approval.assigneeId!),
+      )
+      .map((policy) => policy.localeCode);
+
+    expect(() =>
+      updateOperatorPermissions(
+        approval.assigneeId!,
+        createPagePermissions(),
+        reviewerLocales,
+      ),
+    ).toThrow("当前没有可用审核人");
+    expect(
+      getPrototypeState().operators.find(
+        (operator) => operator.id === approval.assigneeId,
+      )?.pagePermissions["operations.approvals"].write,
+    ).toBe(true);
   });
 
   it("records an approval decision and updates the linked task", () => {
     reviewApproval("APR-8812", {
       decision: "approve",
+      reviewerId: "admin-01",
       reviewer: "Gary Ma",
       opinion: "内容已核对",
     });
@@ -641,6 +831,7 @@ describe("prototype store workflow transitions", () => {
 
     reviewApproval(approval.id, {
       decision: "approve",
+      reviewerId: approval.assigneeId!,
       reviewer: "Reviewer 02",
       opinion: "通过",
     });
@@ -656,6 +847,7 @@ describe("prototype store workflow transitions", () => {
   it("moves a rejected artificial task to modification instead of an approval result state", () => {
     reviewApproval("APR-8812", {
       decision: "reject",
+      reviewerId: "admin-01",
       reviewer: "Reviewer 02",
       opinion: "需要修改受众",
     });
@@ -692,6 +884,7 @@ describe("prototype store workflow transitions", () => {
     )!;
     reviewApproval(approval.id, {
       decision: "approve",
+      reviewerId: approval.assigneeId!,
       reviewer: "Reviewer 02",
       opinion: "通过",
     });
@@ -724,12 +917,14 @@ describe("prototype store workflow transitions", () => {
 
   it("publishes a template only after business approval", () => {
     const approval = submitTemplateForApproval("TPL-1001");
+    expect(approval.objectType).toBe("事件消息模板");
     expect(
       getPrototypeState().templates.find((item) => item.id === "TPL-1001")
         ?.status,
     ).toBe("待业务审核");
     reviewApproval(approval.id, {
       decision: "approve",
+      reviewerId: approval.assigneeId!,
       reviewer: "Reviewer 02",
       opinion: "内容与变量已核对",
     });
@@ -813,6 +1008,7 @@ describe("prototype store workflow transitions", () => {
     )!;
     reviewApproval(approval.id, {
       decision: "approve",
+      reviewerId: approval.assigneeId!,
       reviewer: "Reviewer 02",
       opinion: "通过",
     });
@@ -823,6 +1019,163 @@ describe("prototype store workflow transitions", () => {
       getPrototypeState().approvals.find((item) => item.id === approval.id)
         ?.eventConfig?.eventId,
     ).toBe("withdrawal.succeeded");
+  });
+
+  it("atomically replaces selected event rules after approval", () => {
+    const template = getPrototypeState().templates.find(
+      (item) => item.id === "TPL-1001",
+    )!;
+    const rule = createEventRule({
+      name: "订单成交通知新版",
+      eventId: "order.filled",
+      conditionExpression: "filled_amount > 0",
+      subjectMapping: "payload.user_id → UID",
+      channels: ["站内信", "Push"],
+      templateId: template.id,
+      templateVersion: template.version,
+      title: template.content!.web.title,
+      body: template.content!.web.body,
+      targetLocales: ["en-US"],
+      owner: "交易运营",
+    });
+
+    submitEventRuleForReview(rule.id, ["RULE-001"]);
+    const approval = getPrototypeState().approvals.find(
+      (item) => item.ruleId === rule.id,
+    )!;
+    expect(approval).toMatchObject({
+      objectType: "事件通知规则",
+      ruleId: rule.id,
+      templateId: template.id,
+      status: "待审核",
+    });
+    expect(
+      getPrototypeState().rules.find((item) => item.id === rule.id),
+    ).toMatchObject({
+      status: "待审核",
+      replacementRuleIds: ["RULE-001"],
+    });
+
+    reviewApproval(approval.id, {
+      decision: "approve",
+      reviewerId: approval.assigneeId!,
+      reviewer: approval.assignee || "审核人",
+      opinion: "规则配置已核对",
+    });
+
+    expect(
+      getPrototypeState().rules.find((item) => item.id === rule.id),
+    ).toMatchObject({ status: "已启用" });
+    expect(
+      getPrototypeState().rules.find((item) => item.id === "RULE-001"),
+    ).toMatchObject({
+      status: "已停用",
+      replacedByRuleId: rule.id,
+    });
+  });
+
+  it("approves a new event rule without pausing another rule", () => {
+    const template = getPrototypeState().templates.find(
+      (item) => item.id === "TPL-1001",
+    )!;
+    const rule = createEventRule({
+      name: "充值到账通知 V2",
+      eventId: "deposit.credited",
+      conditionExpression: "事件到达即触发",
+      subjectMapping: "payload.user_id → UID",
+      channels: ["站内信"],
+      templateId: template.id,
+      templateVersion: template.version,
+      title: template.content!.web.title,
+      body: template.content!.web.body,
+      targetLocales: ["en-US"],
+      owner: "资产运营",
+    });
+
+    submitEventRuleForReview(rule.id, []);
+    reviewEventRule(rule.id, "approve");
+
+    expect(
+      getPrototypeState().rules.find((item) => item.id === rule.id)?.status,
+    ).toBe("已启用");
+    expect(
+      getPrototypeState().rules.find((item) => item.id === "RULE-001")?.status,
+    ).toBe("已启用");
+  });
+
+  it("rejects an unpublished template when creating an event rule", () => {
+    const template = getPrototypeState().templates.find(
+      (item) => item.id === "TPL-1005",
+    )!;
+
+    expect(() =>
+      createEventRule({
+        name: "强平风险通知规则",
+        eventId: "liquidation.warning",
+        conditionExpression: "事件到达即触发",
+        subjectMapping: "payload.user_id → UID",
+        channels: ["Push"],
+        templateId: template.id,
+        templateVersion: template.version,
+        title: template.content!.push.title,
+        body: template.content!.push.body,
+        targetLocales: ["en-US"],
+        owner: "风险运营",
+      }),
+    ).toThrow("只能选择已发布的消息模板");
+  });
+
+  it("rejects a published shared template when creating an event rule", () => {
+    const template = getPrototypeState().templates.find(
+      (item) => item.id === "TPL-1002",
+    )!;
+
+    expect(() =>
+      createEventRule({
+        name: "异常登录通知规则",
+        eventId: "withdrawal.failed",
+        conditionExpression: "事件到达即触发",
+        subjectMapping: "payload.user_id → UID",
+        channels: ["Push"],
+        templateId: template.id,
+        templateVersion: template.version,
+        title: template.content!.push.title,
+        body: template.content!.push.body,
+        targetLocales: ["en-US"],
+        owner: "安全运营",
+      }),
+    ).toThrow("只能选择已发布的事件消息模板");
+  });
+
+  it("does not partially approve when a replacement rule is no longer enabled", () => {
+    const template = getPrototypeState().templates.find(
+      (item) => item.id === "TPL-1001",
+    )!;
+    const rule = createEventRule({
+      name: "订单成交通知新版",
+      eventId: "order.filled",
+      conditionExpression: "filled_amount > 0",
+      subjectMapping: "payload.user_id → UID",
+      channels: ["站内信"],
+      templateId: template.id,
+      templateVersion: template.version,
+      title: template.content!.web.title,
+      body: template.content!.web.body,
+      targetLocales: ["en-US"],
+      owner: "交易运营",
+    });
+    submitEventRuleForReview(rule.id, ["RULE-001"]);
+    changeEventRuleStatus("RULE-001", "停用规则");
+
+    expect(() => reviewEventRule(rule.id, "approve")).toThrow(
+      "待暂停规则状态已变化，请重新提审",
+    );
+    expect(
+      getPrototypeState().rules.find((item) => item.id === rule.id)?.status,
+    ).toBe("待审核");
+    expect(
+      getPrototypeState().rules.find((item) => item.id === "RULE-001")?.status,
+    ).toBe("已停用");
   });
 
   it("publishes a new rule content version atomically while the rule stays enabled", () => {

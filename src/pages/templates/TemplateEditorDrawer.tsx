@@ -36,6 +36,7 @@ import {
 } from "../../store/prototypeStore";
 import { getMessageCategoryDefaultNature } from "../../domain/messageCategoryPolicy";
 import { isApprovedManualTemplateLocked } from "../../domain/templatePolicy";
+import { getEventTemplateVariables } from "../../domain/eventVariables";
 import TemplateReadOnlyDetails from "./TemplateReadOnlyDetails";
 import TemplateTestSendModal from "./TemplateTestSendModal";
 
@@ -61,6 +62,7 @@ const supportedLocales = [
   "de-DE",
 ];
 const defaultChannels: Channel[] = ["站内信", "Push"];
+const eventTemplateVariables = getEventTemplateVariables();
 const emptyContent: LocalizedMessageContent = {
   sourceLocale: "zh-CN",
   locales: ["zh-CN"],
@@ -130,15 +132,6 @@ export default function TemplateEditorDrawer({
       risk: template?.risk || "低",
       owner: template?.owner || "消息运营",
       usageScope: template?.usageScope || entryScope,
-      variables: (
-        template?.variables || [
-          "user_nickname",
-          "amount",
-          "currency",
-          "symbol",
-          "occurred_at",
-        ]
-      ).join(", "),
     });
   }, [template, visible, form, entryScope, store.categories]);
 
@@ -163,15 +156,17 @@ export default function TemplateEditorDrawer({
     setSourceLocale(locale);
     setTargetLocales((current) => current.filter((item) => item !== locale));
   };
-  const manualVariableNames = Array.from(
+  const availableTemplateVariables =
+    entryScope === "manual" ? store.templateVariables : eventTemplateVariables;
+  const referencedVariableNames = Array.from(
     new Set([
       ...extractVariableNames(content.web.body),
       ...extractVariableNames(content.push.body),
     ]),
   );
-  const manualVariableValidation = validateVariableTokens(
+  const templateVariableValidation = validateVariableTokens(
     `${content.web.body}\n${content.push.body}`,
-    store.templateVariables,
+    availableTemplateVariables,
   );
   const save = async (mode: "draft" | "submit") => {
     try {
@@ -198,15 +193,15 @@ export default function TemplateEditorDrawer({
         );
         return;
       }
-      if (entryScope === "manual" && !manualVariableValidation.valid) {
+      if (!templateVariableValidation.valid) {
         const detail = [
-          manualVariableValidation.invalid.length
-            ? `不存在：${manualVariableValidation.invalid.join("、")}`
+          templateVariableValidation.invalid.length
+            ? `不存在：${templateVariableValidation.invalid.join("、")}`
             : "",
-          manualVariableValidation.inactive.length
-            ? `已停用：${manualVariableValidation.inactive.join("、")}`
+          templateVariableValidation.inactive.length
+            ? `已停用：${templateVariableValidation.inactive.join("、")}`
             : "",
-          manualVariableValidation.malformed ? "占位符格式不完整" : "",
+          templateVariableValidation.malformed ? "占位符格式不完整" : "",
         ]
           .filter(Boolean)
           .join("；");
@@ -230,14 +225,11 @@ export default function TemplateEditorDrawer({
           sourceLocale,
           locales: [sourceLocale, ...targetLocales],
         },
-        variables:
-          entryScope === "manual"
-            ? manualVariableNames
-            : String(values.variables || "")
-                .split(",")
-                .map((item: string) => item.trim())
-                .filter(Boolean),
-        owner: values.owner,
+        variables: referencedVariableNames,
+        owner:
+          entryScope === "event"
+            ? values.owner
+            : template?.owner || "消息运营",
         usageScope: values.usageScope,
       };
       const entity = template
@@ -311,7 +303,7 @@ export default function TemplateEditorDrawer({
         {template && (
           <TemplateReadOnlyDetails
             template={template}
-            showVersion={entryScope === "event"}
+            showOwnerTeam={entryScope === "event"}
           />
         )}
       </Drawer>
@@ -359,7 +351,7 @@ export default function TemplateEditorDrawer({
       />
       <Form form={form} layout="vertical" className="template-editor-form">
         <Grid.Row gutter={16}>
-          <Grid.Col span={12}>
+          <Grid.Col span={entryScope === "event" ? 12 : 18}>
             <Form.Item
               label="模板名称"
               field="name"
@@ -369,25 +361,28 @@ export default function TemplateEditorDrawer({
               <Input placeholder="后台识别名称" />
             </Form.Item>
           </Grid.Col>
-          <Grid.Col span={6}>
-            <Form.Item label="所有者团队" field="owner" required>
-              <Select
-                options={["消息运营", "增长运营", "安全中心", "资金平台"].map(
-                  (value) => ({ label: value, value }),
-                )}
-              />
-            </Form.Item>
-          </Grid.Col>
+          {entryScope === "event" && (
+            <Grid.Col span={6}>
+              <Form.Item label="所有者团队" field="owner" required>
+                <Select
+                  options={["消息运营", "增长运营", "安全中心", "资金平台"].map(
+                    (value) => ({ label: value, value }),
+                  )}
+                />
+              </Form.Item>
+            </Grid.Col>
+          )}
           <Grid.Col span={6}>
             <Form.Item label="适用场景" field="usageScope" required>
               <Select
-                options={[
-                  {
-                    label: entryScope === "event" ? "事件通知" : "人工消息",
-                    value: entryScope,
-                  },
-                  { label: "通用", value: "shared" },
-                ]}
+                options={
+                  entryScope === "event"
+                    ? [{ label: "事件通知", value: "event" }]
+                    : [
+                        { label: "人工消息", value: "manual" },
+                        { label: "通用", value: "shared" },
+                      ]
+                }
               />
             </Form.Item>
           </Grid.Col>
@@ -467,15 +462,6 @@ export default function TemplateEditorDrawer({
             </Form.Item>
           </Grid.Col>
         </Grid.Row>
-        {entryScope === "event" && (
-          <Form.Item
-            label="模板变量"
-            field="variables"
-            extra="逗号分隔；提交机翻前后都会检查变量名称与数量"
-          >
-            <Input />
-          </Form.Item>
-        )}
       </Form>
       <Tabs defaultActiveTab="content">
         <Tabs.TabPane key="content" title="内容编辑">
@@ -502,11 +488,7 @@ export default function TemplateEditorDrawer({
                   <MarkdownEditor
                     value={content.web.body}
                     onChange={(value) => patchWeb({ body: value })}
-                    variables={
-                      entryScope === "manual"
-                        ? store.templateVariables
-                        : undefined
-                    }
+                    variables={availableTemplateVariables}
                   />
                 </Form.Item>
                 <Form.Item label="风险提示">
@@ -548,20 +530,12 @@ export default function TemplateEditorDrawer({
                   />
                 </Form.Item>
                 <Form.Item label="Push 正文">
-                  {entryScope === "manual" ? (
-                    <VariableTextArea
-                      ariaLabel="Push 正文"
-                      value={content.push.body}
-                      onChange={(value) => patchPush({ body: value })}
-                      variables={store.templateVariables}
-                    />
-                  ) : (
-                    <Input.TextArea
-                      aria-label="Push 正文"
-                      value={content.push.body}
-                      onChange={(value) => patchPush({ body: value })}
-                    />
-                  )}
+                  <VariableTextArea
+                    ariaLabel="Push 正文"
+                    value={content.push.body}
+                    onChange={(value) => patchPush({ body: value })}
+                    variables={availableTemplateVariables}
+                  />
                 </Form.Item>
                 <Form.Item label="Push 图片">
                   <Input
@@ -631,14 +605,7 @@ export default function TemplateEditorDrawer({
         visible={testSendVisible}
         content={content}
         channels={channels}
-        variables={
-          entryScope === "manual"
-            ? manualVariableNames
-            : String(form.getFieldValue("variables") || "")
-                .split(",")
-                .map((item) => item.trim())
-                .filter(Boolean)
-        }
+        variables={referencedVariableNames}
         onClose={() => setTestSendVisible(false)}
       />
     </Drawer>

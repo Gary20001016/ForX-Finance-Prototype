@@ -8,13 +8,13 @@ import {
 it('groups navigation by manual, event and governance workflows', () => {
   expect(navigationGroups.map((group) => group.label)).toEqual([
     '人工消息',
-    '事件自动化',
+    '事件通知',
     '运营与治理',
   ]);
   expect(navigationGroups.map((group) => group.children.map((item) => item.label))).toEqual([
     ['人工消息任务', '人工消息模板', '模板变量'],
     ['事件通知规则', '事件消息模板', '事件目录', '触发记录'],
-    ['多语言审核', '审核中心', '发送记录', '数据分析'],
+    ['多语言审核', '审核中心', '发送记录'],
   ]);
   expect(audienceNavigationItem).toMatchObject({
     key: '/segments',
@@ -48,7 +48,7 @@ it('resolves both template entries from one route', () => {
     navigationContextForLocation('/templates', '?scope=event'),
   ).toMatchObject({
     key: '/templates?scope=event',
-    groupLabel: '事件自动化',
+    groupLabel: '事件通知',
     label: '事件消息模板',
   });
   expect(navigationContextForLocation('/templates', '')).toMatchObject({

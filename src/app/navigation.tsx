@@ -1,7 +1,6 @@
 import type { ReactNode } from 'react';
 import {
   IconArchive,
-  IconArrowRise,
   IconBook,
   IconCheckCircle,
   IconDashboard,
@@ -89,31 +88,31 @@ export const navigationGroups: NavigationGroup[] = [
   },
   {
     key: 'event-automation',
-    label: '事件自动化',
+    label: '事件通知',
     icon: <IconExperiment />,
     children: [
-      groupedItem('event-automation', '事件自动化', {
+      groupedItem('event-automation', '事件通知', {
         key: '/automation',
         path: '/automation',
         label: '事件通知规则',
         icon: <IconExperiment />,
         permissionKey: 'event.rules',
       }),
-      groupedItem('event-automation', '事件自动化', {
+      groupedItem('event-automation', '事件通知', {
         key: '/templates?scope=event',
         path: '/templates',
         label: '事件消息模板',
         icon: <IconBook />,
         permissionKey: 'event.templates',
       }),
-      groupedItem('event-automation', '事件自动化', {
+      groupedItem('event-automation', '事件通知', {
         key: '/events',
         path: '/events',
         label: '事件目录',
         icon: <IconExperiment />,
         permissionKey: 'event.catalog',
       }),
-      groupedItem('event-automation', '事件自动化', {
+      groupedItem('event-automation', '事件通知', {
         key: '/triggers',
         path: '/triggers',
         label: '触发记录',
@@ -146,13 +145,6 @@ export const navigationGroups: NavigationGroup[] = [
         label: '发送记录',
         icon: <IconArchive />,
         permissionKey: 'operations.deliveries',
-      }),
-      groupedItem('operations-governance', '运营与治理', {
-        key: '/analytics',
-        path: '/analytics',
-        label: '数据分析',
-        icon: <IconArrowRise />,
-        permissionKey: 'operations.analytics',
       }),
     ],
   },

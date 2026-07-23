@@ -33,7 +33,7 @@ it('selects the event template entry and shows the complete breadcrumb', () => {
   expect(screen.getByTestId('nav-/templates?scope=event')).toHaveClass(
     'arco-menu-selected',
   );
-  expect(screen.getAllByText('事件自动化').length).toBeGreaterThan(0);
+  expect(screen.getAllByText('事件通知').length).toBeGreaterThan(0);
   expect(screen.getAllByText('事件消息模板').length).toBeGreaterThan(0);
 });
 

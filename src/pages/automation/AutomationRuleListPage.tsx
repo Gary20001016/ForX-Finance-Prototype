@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import {
   Alert,
   Button,
+  Checkbox,
   Descriptions,
   Drawer,
   Form,
@@ -17,77 +18,188 @@ import {
 } from "@arco-design/web-react";
 import { IconPlus } from "@arco-design/web-react/icon";
 import type { TableColumnProps } from "@arco-design/web-react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import PageHeader from "../../components/PageHeader";
 import FilterBar from "../../components/FilterBar";
 import ResourceTable from "../../components/ResourceTable";
 import StatusTag from "../../components/StatusTag";
-import type {
-  EventNotificationRule,
-  RuleContentVersion,
-  RuleContentVersionOperation,
-} from "../../domain/types";
+import type { EventNotificationRule } from "../../domain/types";
 import {
-  advanceRuleContentVersion,
+  CURRENT_REVIEW_OPERATOR_ID,
+  reviewOperatorName,
+} from "../../domain/reviewOperators";
+import {
   changeEventRuleStatus,
   createEventRule,
-  createRuleContentVersion,
-  createRuleTranslationBatch,
-  publishRuleContentVersion,
-  reviewEventRule,
-  updateRuleContentVersion,
+  submitEventRuleForReview,
+  updateEventRule,
   usePrototypeStore,
 } from "../../store/prototypeStore";
 import { getEventRuleOperations } from "./automationLifecycle";
-import MultilingualProgressCell from "../multilingual/MultilingualProgressCell";
-import MultilingualProgressDrawer from "../multilingual/MultilingualProgressDrawer";
-import { templateSupportsScope } from "../templates/templateScope";
 import WritePermissionButton from "../../components/WritePermissionButton";
 import { useCurrentPagePermission } from "../../components/PagePermissionBoundary";
 
-const localeOptions = ["en-US", "ja-JP", "ko-KR", "fr-FR", "es-ES"];
+type TriggerMode = "event" | "condition";
 
-const versionAction = (
-  version: RuleContentVersion,
-  batch?: ReturnType<typeof usePrototypeStore>["translationBatches"][number],
-): RuleContentVersionOperation | "发布版本" | undefined => {
-  if (version.status === "草稿" && !batch) return "提交机翻";
-  if (version.status === "待审核") return "通过审核";
-  if (version.status === "待生效") return "发布版本";
-  return undefined;
+const CURRENT_OPERATOR_NAME = reviewOperatorName(CURRENT_REVIEW_OPERATOR_ID);
+const numericVariablePattern =
+  /(amount|balance|price|quantity|count|rate|ratio|margin|points|commission|fund)/i;
+const dateVariablePattern = /(_at|time|date)$/i;
+
+const conditionRelations = (variable?: string) => {
+  if (!variable) return [];
+  if (numericVariablePattern.test(variable)) {
+    return [
+      { label: "等于（=）", value: "=" },
+      { label: "不等于（≠）", value: "!=" },
+      { label: "大于（>）", value: ">" },
+      { label: "大于等于（≥）", value: ">=" },
+      { label: "小于（<）", value: "<" },
+      { label: "小于等于（≤）", value: "<=" },
+    ];
+  }
+  if (dateVariablePattern.test(variable)) {
+    return [
+      { label: "等于（=）", value: "=" },
+      { label: "早于（<）", value: "<" },
+      { label: "晚于（>）", value: ">" },
+    ];
+  }
+  return [
+    { label: "等于（=）", value: "=" },
+    { label: "不等于（≠）", value: "!=" },
+    { label: "包含", value: "contains" },
+    { label: "不包含", value: "not_contains" },
+  ];
+};
+
+const parseConditionExpression = (expression: string) => {
+  if (!expression || expression === "事件到达即触发") {
+    return {
+      triggerMode: "event" as TriggerMode,
+      conditionVariable: undefined,
+      conditionOperator: undefined,
+      conditionThreshold: undefined,
+    };
+  }
+  const match = expression.match(
+    /^(\S+)\s+(not_contains|contains|>=|<=|!=|=|>|<)\s+(.+)$/,
+  );
+  return {
+    triggerMode: "condition" as TriggerMode,
+    conditionVariable: match?.[1],
+    conditionOperator: match?.[2],
+    conditionThreshold: match?.[3],
+  };
 };
 
 export default function AutomationRuleListPage() {
   const { canWrite } = useCurrentPagePermission();
   const location = useLocation();
+  const navigate = useNavigate();
   const routeEventId = (location.state as { eventId?: string } | null)?.eventId;
   const store = usePrototypeStore();
-  const eventTemplates = store.templates.filter((template) =>
-    templateSupportsScope(template, "event"),
+  const eventTemplates = store.templates.filter(
+    (template) =>
+      template.status === "已发布" &&
+      template.usageScope === "event",
   );
   const [keyword, setKeyword] = useState("");
   const [status, setStatus] = useState<string>();
   const [eventId, setEventId] = useState<string>();
   const [selectedId, setSelectedId] = useState<string>();
   const [creating, setCreating] = useState(Boolean(routeEventId) && canWrite);
-  const [versionEditor, setVersionEditor] = useState(false);
-  const [progressBatchId, setProgressBatchId] = useState<string>();
-  const [versionDraft, setVersionDraft] = useState({
-    title: "",
-    body: "",
-    targetLocales: ["en-US"],
-  });
+  const [editingRuleId, setEditingRuleId] = useState<string>();
+  const [triggerMode, setTriggerMode] = useState<TriggerMode>("event");
+  const [conditionEventId, setConditionEventId] = useState<string | undefined>(
+    routeEventId,
+  );
+  const [conditionVariable, setConditionVariable] = useState<string>();
+  const [reviewSubmitRuleId, setReviewSubmitRuleId] = useState<string>();
+  const [replacementRuleIds, setReplacementRuleIds] = useState<string[]>([]);
   const [form] = Form.useForm();
-  const selected = store.rules.find((item) => item.id === selectedId);
-  const currentVersion = selected
-    ? store.ruleVersions.find((item) => item.id === selected.currentVersionId)
+  const editingRule = store.rules.find((item) => item.id === editingRuleId);
+  const editingSnapshot = editingRule
+    ? store.ruleVersions.find(
+        (item) =>
+          item.ruleId === editingRule.id &&
+          (!editingRule.currentVersionId ||
+            item.id === editingRule.currentVersionId),
+      )
     : undefined;
-  const versions = selected
-    ? store.ruleVersions.filter((item) => item.ruleId === selected.id)
-    : [];
+  const editingCondition = editingRule
+    ? parseConditionExpression(editingRule.conditionExpression)
+    : undefined;
+  const selected = store.rules.find((item) => item.id === selectedId);
+  const selectedSnapshot = selected
+    ? store.ruleVersions.find(
+        (item) =>
+          item.ruleId === selected.id &&
+          (!selected.currentVersionId || item.id === selected.currentVersionId),
+      )
+    : undefined;
+  const selectedTemplate = selectedSnapshot
+    ? store.templates.find((item) => item.id === selectedSnapshot.templateId)
+    : undefined;
   const recentTriggers = selected
     ? store.triggerRecords.filter((item) => item.ruleId === selected.id)
     : [];
+  const reviewSubmitRule = store.rules.find(
+    (item) => item.id === reviewSubmitRuleId,
+  );
+  const replacementCandidates = reviewSubmitRule
+    ? store.rules.filter(
+        (item) =>
+          item.id !== reviewSubmitRule.id &&
+          item.status === "已启用",
+      )
+    : [];
+  const selectedConditionEvent = store.events.find(
+    (item) => item.id === conditionEventId,
+  );
+
+  const resetCreateForm = () => {
+    form.resetFields();
+    setTriggerMode("event");
+    setConditionEventId(routeEventId);
+    setConditionVariable(undefined);
+  };
+
+  const openCreateForm = () => {
+    resetCreateForm();
+    setEditingRuleId(undefined);
+    setCreating(true);
+  };
+
+  const closeRuleForm = () => {
+    setCreating(false);
+    setEditingRuleId(undefined);
+    resetCreateForm();
+  };
+
+  const openEditForm = (rule: EventNotificationRule) => {
+    if (!["草稿", "待修改"].includes(rule.status)) {
+      Message.warning("当前规则状态不可编辑");
+      return;
+    }
+    const snapshot = store.ruleVersions.find(
+      (item) =>
+        item.ruleId === rule.id &&
+        (!rule.currentVersionId || item.id === rule.currentVersionId),
+    );
+    if (!snapshot) {
+      Message.error("规则绑定内容不存在");
+      return;
+    }
+    const condition = parseConditionExpression(rule.conditionExpression);
+    resetCreateForm();
+    setTriggerMode(condition.triggerMode);
+    setConditionEventId(rule.eventId);
+    setConditionVariable(condition.conditionVariable);
+    setSelectedId(undefined);
+    setCreating(false);
+    setEditingRuleId(rule.id);
+  };
 
   const data = useMemo(
     () =>
@@ -102,34 +214,7 @@ export default function AutomationRuleListPage() {
     [store.rules, keyword, status, eventId],
   );
 
-  const openVersionEditor = () => {
-    if (!currentVersion) return;
-    setVersionDraft({
-      title: currentVersion.title,
-      body: currentVersion.body,
-      targetLocales: currentVersion.targetLocales.filter(
-        (locale) => locale !== currentVersion.sourceLocale,
-      ),
-    });
-    setVersionEditor(true);
-  };
-
-  const saveNewVersion = () => {
-    if (!canWrite) {
-      Message.warning("当前账号无写权限");
-      return;
-    }
-    if (!selected || !versionDraft.title.trim() || !versionDraft.body.trim()) {
-      Message.error("请填写消息标题和正文");
-      return;
-    }
-    const version = createRuleContentVersion(selected.id);
-    updateRuleContentVersion(version.id, versionDraft);
-    setVersionEditor(false);
-    Message.success(`${version.version} 已创建；现网规则继续使用原版本`);
-  };
-
-  const createRule = async () => {
+  const saveRule = async () => {
     if (!canWrite) {
       Message.warning("当前账号无写权限");
       return;
@@ -137,25 +222,73 @@ export default function AutomationRuleListPage() {
     try {
       const values = await form.validate();
       const template = store.templates.find((item) => item.id === values.templateId);
-      const rule = createEventRule({
+      if (!template || template.status !== "已发布") {
+        Message.error("只能选择已发布的消息模板");
+        return;
+      }
+      if (template.usageScope !== "event") {
+        Message.error("消息模板必须来自事件消息模板");
+        return;
+      }
+      if (!template?.content) {
+        Message.error("所选模板缺少可用内容");
+        return;
+      }
+      const conditionExpression =
+        values.triggerMode === "condition"
+          ? `${values.conditionVariable} ${values.conditionOperator} ${values.conditionThreshold}`
+          : "事件到达即触发";
+      const draftInput = {
         name: values.name,
         eventId: values.eventId,
-        conditionExpression: values.conditionExpression,
+        conditionExpression,
         subjectMapping: values.subjectMapping,
         channels: values.channels,
         templateId: values.templateId,
         templateVersion: template?.version || "v1",
-        title: values.title,
-        body: values.body,
-        targetLocales: values.targetLocales || [],
-        owner: values.owner,
-      });
-      setCreating(false);
-      form.resetFields();
+        title: template.content.web.title || template.content.push.title,
+        body: template.content.web.body || template.content.push.body,
+        targetLocales: template.locales.filter(
+          (locale) => locale !== template.sourceLocale,
+        ),
+      };
+      const rule = editingRuleId
+        ? updateEventRule(editingRuleId, draftInput)
+        : createEventRule({
+            ...draftInput,
+            owner: CURRENT_OPERATOR_NAME,
+          });
+      const wasEditing = Boolean(editingRuleId);
+      closeRuleForm();
       setSelectedId(rule.id);
-      Message.success("事件通知规则草稿已创建");
-    } catch {
-      // Form validation keeps the modal open.
+      Message.success(
+        wasEditing
+          ? "事件通知规则已保存"
+          : "事件通知规则草稿已创建",
+      );
+    } catch (error) {
+      if (error instanceof Error) Message.error(error.message);
+    }
+  };
+
+  const openReviewSubmission = (rule: EventNotificationRule) => {
+    setReviewSubmitRuleId(rule.id);
+    setReplacementRuleIds(rule.replacementRuleIds || []);
+  };
+
+  const submitRuleReview = () => {
+    if (!reviewSubmitRule) return;
+    try {
+      submitEventRuleForReview(reviewSubmitRule.id, replacementRuleIds);
+      setReviewSubmitRuleId(undefined);
+      setReplacementRuleIds([]);
+      Message.success(
+        replacementRuleIds.length
+          ? "规则已进入审核中心，审核通过后暂停规则已冻结"
+          : "规则已进入审核中心，审核通过后直接启用",
+      );
+    } catch (error) {
+      Message.error(error instanceof Error ? error.message : "规则提审失败");
     }
   };
 
@@ -164,59 +297,33 @@ export default function AutomationRuleListPage() {
       Message.warning("当前账号无写权限");
       return;
     }
-    if (operation === "创建内容版本") return openVersionEditor();
-    if (operation === "提交审核" || operation === "撤回审核") {
+    if (operation === "提交审核") {
+      openReviewSubmission(rule);
+      return;
+    }
+    if (operation === "撤回审核") {
       changeEventRuleStatus(rule.id, operation);
       Message.success(`规则已${operation}`);
       return;
     }
-    if (operation === "启用规则" || operation === "停用规则") {
+    if (operation === "编辑规则") {
+      openEditForm(rule);
+      return;
+    }
+    if (operation === "停用规则") {
       Modal.confirm({
         title: `${operation} · ${rule.name}`,
         content:
-          operation === "停用规则"
-            ? "停用后不再处理新事件，已生成的触发记录和发送记录不受影响。"
-            : "启用后将开始监听新事件，当前生效内容版本会立即用于触发。",
-        okText: `确认${operation.slice(0, 2)}`,
+          "停用后不再处理新事件，且不能再次启用；已生成的发送结果不受影响。",
+        okText: "确认停用",
         onOk: () => changeEventRuleStatus(rule.id, operation),
       });
       return;
     }
-    if (operation === "取消规则" || operation === "编辑规则") {
+    if (operation === "取消规则") {
       changeEventRuleStatus(rule.id, operation);
-      Message.success(operation === "编辑规则" ? "规则已回到草稿" : "规则已取消");
+      Message.success("规则已取消");
     }
-  };
-
-  const advanceVersion = (
-    version: RuleContentVersion,
-    operation: RuleContentVersionOperation | "发布版本",
-  ) => {
-    if (!canWrite) {
-      Message.warning("当前账号无写权限");
-      return;
-    }
-    if (operation === "提交机翻") {
-      const batch = createRuleTranslationBatch(version.id);
-      setProgressBatchId(batch.id);
-      Message.success(`${version.version} 已创建外部机翻任务`);
-      return;
-    }
-    if (operation === "发布版本") {
-      Modal.confirm({
-        title: `发布 ${version.version}`,
-        content:
-          "发布将原子切换当前内容版本；规则保持启用，新的事件使用新版本，已进入处理的事件仍使用冻结的旧版本。",
-        okText: "确认发布",
-        onOk: () => {
-          publishRuleContentVersion(version.id);
-          Message.success(`${version.version} 已成为当前生效版本`);
-        },
-      });
-      return;
-    }
-    advanceRuleContentVersion(version.id, operation);
-    Message.success(`${version.version}：${operation}`);
   };
 
   const columns: TableColumnProps<EventNotificationRule>[] = [
@@ -244,23 +351,6 @@ export default function AutomationRuleListPage() {
       },
     },
     { title: "触发条件", dataIndex: "conditionExpression", width: 210 },
-    {
-      title: "当前内容版本",
-      width: 180,
-      render: (_, rule) => {
-        const version = store.ruleVersions.find(
-          (item) => item.id === rule.currentVersionId,
-        );
-        return version ? (
-          <div>
-            <span className="mono">{version.version}</span>
-            <div className="muted">模板 {version.templateVersion}</div>
-          </div>
-        ) : (
-          <span className="muted">尚未发布</span>
-        );
-      },
-    },
     {
       title: "渠道",
       width: 150,
@@ -302,16 +392,16 @@ export default function AutomationRuleListPage() {
     <section className="page-stack">
       <PageHeader
         title="事件通知规则"
-        description="配置事件监听、触发条件、目标用户、渠道与内容版本；单次发送结果不会改变规则状态。"
+        description="配置事件监听、触发条件、目标用户、渠道与事件消息模板；单次发送结果不会改变规则状态。"
         actions={
-          <WritePermissionButton type="primary" icon={<IconPlus />} onClick={() => setCreating(true)}>
+          <WritePermissionButton type="primary" icon={<IconPlus />} onClick={openCreateForm}>
             创建通知规则
           </WritePermissionButton>
         }
       />
       <Alert
         type="info"
-        content="规则是长期自动化配置；内容通过独立版本完成外部机翻、人工审核与业务审批后原子切换，切换期间规则不中断。"
+        content="每条规则直接关联事件消息模板；模板修改并重新审核通过后，规则自动使用最新发布内容。"
       />
       <FilterBar
         onReset={() => {
@@ -360,25 +450,16 @@ export default function AutomationRuleListPage() {
           selected ? (
             <Space>
               {selected.status === "待审核" && (
-                <>
-                  <WritePermissionButton status="danger" onClick={() => reviewEventRule(selected.id, "reject")}>
-                    驳回规则
-                  </WritePermissionButton>
-                  <WritePermissionButton
-                    type="primary"
-                    disabled={!currentVersion || currentVersion.status !== "当前生效"}
-                    onClick={() => reviewEventRule(selected.id, "approve")}
-                  >
-                    审核并启用
-                  </WritePermissionButton>
-                </>
+                <Button type="primary" onClick={() => navigate("/approvals")}>
+                  前往审核中心
+                </Button>
               )}
               {getEventRuleOperations(selected.status)
-                .filter((operation) => !["查看详情", "编辑规则"].includes(operation))
+                .filter((operation) => operation !== "查看详情")
                 .map((operation) => (
                   <WritePermissionButton
                     key={operation}
-                    type={operation === "创建内容版本" ? "primary" : "default"}
+                    type="default"
                     status={operation === "停用规则" || operation === "取消规则" ? "danger" : "default"}
                     onClick={() => operateRule(selected, operation)}
                   >
@@ -399,78 +480,55 @@ export default function AutomationRuleListPage() {
                 { label: "规则状态", value: <StatusTag status={selected.status} /> },
                 { label: "负责人", value: selected.owner },
                 { label: "系统事件", value: selected.eventId },
+                {
+                  label: "消息模板",
+                  value: selectedTemplate
+                    ? `${selectedTemplate.name} · ${selectedTemplate.id}`
+                    : "未找到绑定模板",
+                },
                 { label: "触发条件", value: selected.conditionExpression },
                 { label: "主体映射", value: selected.subjectMapping },
                 { label: "幂等键", value: <span className="mono">ruleId:eventInstanceId</span> },
                 { label: "事件有效期", value: `${selected.eventTtlSeconds} 秒` },
                 { label: "失败重试", value: `最多 ${selected.maxRetries} 次` },
+                ...(selected.replacementRuleIds?.length
+                  ? [
+                      {
+                        label: "生效方式",
+                        value: "审核通过后启用，并暂停所选规则",
+                      },
+                      {
+                        label: "审核通过后暂停规则",
+                        value: (
+                          <Space direction="vertical" size="mini">
+                            {selected.replacementRuleIds.map((ruleId) => {
+                              const rule = store.rules.find(
+                                (item) => item.id === ruleId,
+                              );
+                              return (
+                                <span key={ruleId}>{`${rule?.name || "未知规则"} · ${ruleId}`}</span>
+                              );
+                            })}
+                          </Space>
+                        ),
+                      },
+                    ]
+                  : selected.status === "待审核"
+                    ? [
+                        { label: "生效方式", value: "审核通过后直接启用" },
+                        { label: "审核位置", value: "审核中心" },
+                      ]
+                    : []),
+                ...(selected.replacedByRuleId
+                  ? [
+                      {
+                        label: "暂停原因",
+                        value: `已由 ${selected.replacedByRuleId} 暂停`,
+                      },
+                    ]
+                  : []),
               ]}
             />
-            <div>
-              <div className="drawer-section-title">
-                <strong>内容版本</strong>
-                <span className="muted">新版本发布前，现网持续使用当前版本</span>
-              </div>
-              <Table
-                rowKey="id"
-                pagination={false}
-                data={versions}
-                columns={[
-                  { title: "版本", dataIndex: "version", width: 80 },
-                  {
-                    title: "标题",
-                    dataIndex: "title",
-                    ellipsis: true,
-                  },
-                  {
-                    title: "语言",
-                    width: 140,
-                    render: (_: unknown, item: RuleContentVersion) =>
-                      `${item.sourceLocale} + ${item.targetLocales.length}`,
-                  },
-                  {
-                    title: "多语言流程",
-                    width: 250,
-                    render: (_: unknown, item: RuleContentVersion) => {
-                      const batch = store.translationBatches.find(
-                        (candidate) => candidate.id === item.translationBatchId,
-                      );
-                      return (
-                        <MultilingualProgressCell
-                          batch={batch}
-                          onOpen={() => setProgressBatchId(batch?.id)}
-                        />
-                      );
-                    },
-                  },
-                  {
-                    title: "状态",
-                    width: 120,
-                    render: (_: unknown, item: RuleContentVersion) => (
-                      <StatusTag status={item.status} />
-                    ),
-                  },
-                  { title: "创建人", dataIndex: "createdBy", width: 110 },
-                  {
-                    title: "操作",
-                    width: 150,
-                    render: (_: unknown, item: RuleContentVersion) => {
-                      const batch = store.translationBatches.find(
-                        (candidate) => candidate.id === item.translationBatchId,
-                      );
-                      const action = versionAction(item, batch);
-                      return action ? (
-                        <WritePermissionButton type="text" onClick={() => advanceVersion(item, action)}>
-                          {action}
-                        </WritePermissionButton>
-                      ) : (
-                        <span className="muted">—</span>
-                      );
-                    },
-                  },
-                ]}
-              />
-            </div>
             <div>
               <div className="drawer-section-title">
                 <strong>最近触发</strong>
@@ -484,7 +542,6 @@ export default function AutomationRuleListPage() {
                   columns={[
                     { title: "触发编号", dataIndex: "id" },
                     { title: "事件实例", dataIndex: "eventInstanceId" },
-                    { title: "冻结内容", dataIndex: "contentVersionId" },
                     {
                       title: "结果",
                       render: (_: unknown, item: (typeof recentTriggers)[number]) => (
@@ -503,87 +560,124 @@ export default function AutomationRuleListPage() {
       </Drawer>
 
       <Modal
-        visible={versionEditor}
-        title="创建内容版本"
-        okText="保存新版本"
-        onOk={saveNewVersion}
-        okButtonProps={{ disabled: !canWrite }}
-        onCancel={() => setVersionEditor(false)}
+        visible={Boolean(reviewSubmitRule)}
+        title={
+          reviewSubmitRule
+            ? `提交规则审核 · ${reviewSubmitRule.name}`
+            : "提交规则审核"
+        }
+        okText="确认提审"
+        onOk={submitRuleReview}
+        onCancel={() => {
+          setReviewSubmitRuleId(undefined);
+          setReplacementRuleIds([]);
+        }}
+        unmountOnExit
         style={{ width: 720 }}
       >
-        <Alert
-          style={{ marginBottom: 16 }}
-          type="info"
-          content="保存后先进入草稿。目标语言将通过外部机翻任务生成，人工审核和业务审批通过后才能发布。"
-        />
         <Form layout="vertical">
-          <Form.Item label="消息标题" required>
-            <Input
-              aria-label="消息标题"
-              value={versionDraft.title}
-              onChange={(title) => setVersionDraft((value) => ({ ...value, title }))}
-            />
+          <Alert
+            type="info"
+            showIcon
+            style={{ marginBottom: 16 }}
+            content="此处只配置审核通过后的动作；提审和审核期间不会暂停任何规则。"
+          />
+          <Form.Item label="审核通过后暂停的规则（可选）">
+            {replacementCandidates.length ? (
+              <Space direction="vertical" style={{ width: "100%" }}>
+                {replacementCandidates.map((rule) => {
+                  const event = store.events.find(
+                    (item) => item.id === rule.eventId,
+                  );
+                  return (
+                    <Checkbox
+                      key={rule.id}
+                      checked={replacementRuleIds.includes(rule.id)}
+                      onChange={(checked) =>
+                        setReplacementRuleIds((ids) =>
+                          checked
+                            ? Array.from(new Set([...ids, rule.id]))
+                            : ids.filter((id) => id !== rule.id),
+                        )
+                      }
+                    >
+                      <strong>{rule.name}</strong>
+                      <span className="muted">
+                        {` · ${rule.id}｜${event?.name || rule.eventId}｜${rule.conditionExpression}｜${rule.channels.join("+")}`}
+                      </span>
+                    </Checkbox>
+                  );
+                })}
+              </Space>
+            ) : (
+              <span className="muted">当前没有其他已启用规则，可直接提审。</span>
+            )}
           </Form.Item>
-          <Form.Item label="消息正文" required>
-            <Input.TextArea
-              aria-label="消息正文"
-              value={versionDraft.body}
-              rows={6}
-              onChange={(body) => setVersionDraft((value) => ({ ...value, body }))}
+          {replacementRuleIds.length ? (
+            <Alert
+              type="warning"
+              showIcon
+              content={`审核通过时将先校验 ${replacementRuleIds.length} 条规则，随后在同一次状态变更中暂停所选规则并启用新规则。`}
             />
-          </Form.Item>
-          <Form.Item label="目标语言">
-            <Select
-              mode="multiple"
-              value={versionDraft.targetLocales}
-              onChange={(targetLocales) =>
-                setVersionDraft((value) => ({ ...value, targetLocales }))
-              }
-              options={localeOptions.map((value) => ({ label: value, value }))}
-            />
-          </Form.Item>
+          ) : (
+            <Alert type="info" content="未选择规则；审核通过后仅启用当前规则。" />
+          )}
         </Form>
       </Modal>
-      <MultilingualProgressDrawer
-        batch={store.translationBatches.find((batch) => batch.id === progressBatchId)}
-        visible={Boolean(progressBatchId)}
-        readOnly={!canWrite}
-        onClose={() => setProgressBatchId(undefined)}
-      />
 
       <Modal
-        visible={creating}
-        title="创建事件通知规则"
-        okText="保存草稿"
-        onOk={createRule}
+        visible={creating || Boolean(editingRuleId)}
+        title={editingRuleId ? "编辑事件通知规则" : "创建事件通知规则"}
+        okText={editingRuleId ? "保存修改" : "保存草稿"}
+        onOk={saveRule}
         okButtonProps={{ disabled: !canWrite }}
-        onCancel={() => setCreating(false)}
+        onCancel={closeRuleForm}
         style={{ width: 820 }}
         unmountOnExit
       >
         <Form
           form={form}
           layout="vertical"
-          initialValues={{
-            conditionExpression: "事件到达即触发",
-            subjectMapping: "payload.user_id → UID",
-            channels: ["站内信", "Push"],
-            sourceLocale: "zh-CN",
-            targetLocales: ["en-US"],
-            owner: "消息运营",
-            eventId: routeEventId,
-          }}
+          initialValues={
+            editingRule && editingSnapshot && editingCondition
+              ? {
+                  name: editingRule.name,
+                  eventId: editingRule.eventId,
+                  triggerMode: editingCondition.triggerMode,
+                  conditionVariable: editingCondition.conditionVariable,
+                  conditionOperator: editingCondition.conditionOperator,
+                  conditionThreshold: editingCondition.conditionThreshold,
+                  subjectMapping: editingRule.subjectMapping,
+                  templateId: editingSnapshot.templateId,
+                  channels: editingRule.channels,
+                }
+              : {
+                  triggerMode: "event",
+                  subjectMapping: "payload.user_id → UID",
+                  channels: ["站内信", "Push"],
+                  eventId: routeEventId,
+                }
+          }
         >
           <Grid.Row gutter={16}>
             <Grid.Col span={12}>
               <Form.Item label="规则名称" field="name" required rules={[{ required: true }]}>
-                <Input />
+                <Input placeholder="例如：提现成功通知 V2" />
               </Form.Item>
             </Grid.Col>
             <Grid.Col span={12}>
               <Form.Item label="系统事件" field="eventId" required rules={[{ required: true }]}>
                 <Select
                   showSearch
+                  onChange={(value) => {
+                    setConditionEventId(value);
+                    setConditionVariable(undefined);
+                    form.setFieldsValue({
+                      conditionVariable: undefined,
+                      conditionOperator: undefined,
+                      conditionThreshold: undefined,
+                    });
+                  }}
                   options={store.events.map((event) => ({
                     label: `${event.name} · ${event.id}`,
                     value: event.id,
@@ -592,8 +686,29 @@ export default function AutomationRuleListPage() {
               </Form.Item>
             </Grid.Col>
             <Grid.Col span={12}>
-              <Form.Item label="触发条件" field="conditionExpression">
-                <Input />
+              <Form.Item
+                label="触发方式"
+                field="triggerMode"
+                required
+                rules={[{ required: true }]}
+              >
+                <Select
+                  onChange={(value: TriggerMode) => {
+                    setTriggerMode(value);
+                    if (value === "event") {
+                      setConditionVariable(undefined);
+                      form.setFieldsValue({
+                        conditionVariable: undefined,
+                        conditionOperator: undefined,
+                        conditionThreshold: undefined,
+                      });
+                    }
+                  }}
+                  options={[
+                    { label: "事件触发", value: "event" },
+                    { label: "条件触发", value: "condition" },
+                  ]}
+                />
               </Form.Item>
             </Grid.Col>
             <Grid.Col span={12}>
@@ -601,11 +716,77 @@ export default function AutomationRuleListPage() {
                 <Input />
               </Form.Item>
             </Grid.Col>
+            {triggerMode === "condition" && (
+              <>
+                <Grid.Col span={8}>
+                  <Form.Item
+                    label="条件变量"
+                    field="conditionVariable"
+                    required
+                    rules={[{ required: true, message: "请选择条件变量" }]}
+                    extra="来自所选事件的字段 Schema"
+                  >
+                    <Select
+                      disabled={!selectedConditionEvent}
+                      placeholder={
+                        selectedConditionEvent
+                          ? "请选择变量"
+                          : "请先选择系统事件"
+                      }
+                      onChange={(value) => {
+                        setConditionVariable(value);
+                        form.setFieldsValue({
+                          conditionOperator: undefined,
+                          conditionThreshold: undefined,
+                        });
+                      }}
+                      options={(selectedConditionEvent?.variables || []).map(
+                        (variable) => ({
+                          label: variable,
+                          value: variable,
+                        }),
+                      )}
+                    />
+                  </Form.Item>
+                </Grid.Col>
+                <Grid.Col span={8}>
+                  <Form.Item
+                    label="关系"
+                    field="conditionOperator"
+                    required
+                    rules={[{ required: true, message: "请选择关系" }]}
+                  >
+                    <Select
+                      disabled={!conditionVariable}
+                      placeholder="请选择关系"
+                      options={conditionRelations(conditionVariable)}
+                    />
+                  </Form.Item>
+                </Grid.Col>
+                <Grid.Col span={8}>
+                  <Form.Item
+                    label="阈值"
+                    field="conditionThreshold"
+                    required
+                    rules={[{ required: true, message: "请输入阈值" }]}
+                  >
+                    <Input
+                      disabled={!conditionVariable}
+                      placeholder={
+                        numericVariablePattern.test(conditionVariable || "")
+                          ? "请输入数字"
+                          : "请输入比较值"
+                      }
+                    />
+                  </Form.Item>
+                </Grid.Col>
+              </>
+            )}
             <Grid.Col span={12}>
               <Form.Item label="消息模板" field="templateId" required rules={[{ required: true }]}>
                 <Select
                   options={eventTemplates.map((template) => ({
-                    label: `${template.name} · ${template.version}`,
+                    label: template.name,
                     value: template.id,
                   }))}
                 />
@@ -620,27 +801,11 @@ export default function AutomationRuleListPage() {
               </Form.Item>
             </Grid.Col>
           </Grid.Row>
-          <Form.Item label="中文标题" field="title" required rules={[{ required: true }]}>
-            <Input />
-          </Form.Item>
-          <Form.Item label="中文正文" field="body" required rules={[{ required: true }]}>
-            <Input.TextArea rows={4} />
-          </Form.Item>
-          <Grid.Row gutter={16}>
-            <Grid.Col span={12}>
-              <Form.Item label="目标语言" field="targetLocales">
-                <Select
-                  mode="multiple"
-                  options={localeOptions.map((value) => ({ label: value, value }))}
-                />
-              </Form.Item>
-            </Grid.Col>
-            <Grid.Col span={12}>
-              <Form.Item label="负责人" field="owner" required rules={[{ required: true }]}>
-                <Input />
-              </Form.Item>
-            </Grid.Col>
-          </Grid.Row>
+          <Alert
+            type="info"
+            style={{ marginBottom: 16 }}
+            content="内容与语言自动继承所选事件消息模板；模板修改并重新审核通过后，关联规则自动使用最新发布内容。"
+          />
         </Form>
       </Modal>
     </section>

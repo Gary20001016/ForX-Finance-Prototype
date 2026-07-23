@@ -10,17 +10,17 @@ describe("event automation lifecycle", () => {
   it("keeps long-lived rule operations separate from trigger outcomes", () => {
     expect(getEventRuleOperations("已启用")).toEqual([
       "查看详情",
-      "创建内容版本",
       "停用规则",
     ]);
     expect(getEventRuleOperations("已停用")).toEqual([
       "查看详情",
-      "编辑规则",
-      "启用规则",
       "取消规则",
     ]);
+    expect(getEventRuleOperations("草稿")).toContain("编辑规则");
+    expect(getEventRuleOperations("待修改")).toContain("编辑规则");
+    expect(getEventRuleOperations("待审核")).not.toContain("编辑规则");
+    expect(getEventRuleOperations("已启用")).not.toContain("编辑规则");
     expect(nextEventRuleStatus("已启用", "停用规则")).toBe("已停用");
-    expect(nextEventRuleStatus("已停用", "启用规则")).toBe("已启用");
   });
 
   it("keeps translation state in the translation batch and only models business approval here", () => {

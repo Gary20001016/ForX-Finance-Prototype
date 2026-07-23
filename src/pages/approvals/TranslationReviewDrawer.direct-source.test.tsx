@@ -42,6 +42,9 @@ it("reviews directly authored source text without machine-translation metadata",
   expect(screen.queryByText("外部任务 ID")).not.toBeInTheDocument();
   expect(screen.queryByText("翻译尝试")).not.toBeInTheDocument();
   expect(screen.queryByText("机器翻译与人工修订")).not.toBeInTheDocument();
+  expect(screen.queryByText("源内容哈希")).not.toBeInTheDocument();
+  expect(screen.getByText("审核完成时间")).toBeVisible();
+  expect(screen.queryByText("机翻完成时间")).not.toBeInTheDocument();
 });
 
 it("omits redundant guidance alerts from machine translation review", () => {
@@ -63,4 +66,7 @@ it("omits redundant guidance alerts from machine translation review", () => {
   expect(
     screen.queryByText("翻译成功后必须人工审核"),
   ).not.toBeInTheDocument();
+  expect(screen.queryByText("源内容哈希")).not.toBeInTheDocument();
+  expect(screen.getByText("审核完成时间")).toBeVisible();
+  expect(screen.getByText("机翻完成时间")).toBeVisible();
 });

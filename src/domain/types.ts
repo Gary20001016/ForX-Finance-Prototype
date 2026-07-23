@@ -65,10 +65,8 @@ export type EventRuleOperation =
   | "编辑规则"
   | "提交审核"
   | "撤回审核"
-  | "启用规则"
   | "停用规则"
-  | "取消规则"
-  | "创建内容版本";
+  | "取消规则";
 
 export type RuleContentVersionStatus =
   | "草稿"
@@ -93,6 +91,8 @@ export interface EventNotificationRule {
   subjectMapping: string;
   status: EventRuleStatus;
   currentVersionId?: string;
+  replacementRuleIds?: string[];
+  replacedByRuleId?: string;
   channels: Channel[];
   dedupeKey: string;
   frequencyCap: string;
@@ -232,7 +232,13 @@ export interface MessageTask {
   content?: LocalizedMessageContent;
   expiresAt?: string;
   retentionDays?: number;
-  audienceType?: "all" | "uid" | "vip" | "agent" | "campaign";
+  audienceType?:
+    | "all"
+    | "uid"
+    | "vip"
+    | "agent"
+    | "campaign"
+    | "segment";
   sampleUsers?: string[];
   translationBatchId?: string;
   createdAt?: string;
@@ -244,6 +250,7 @@ export interface MessageTask {
 }
 
 export type TemplateUsageScope = "manual" | "event" | "shared";
+export type ManualTemplateStatus = "草稿" | "审核中" | "驳回" | "已发布";
 
 export interface MessageTemplate {
   id: string;
@@ -331,6 +338,8 @@ export interface TranslationItem {
   variablesValid: boolean;
   specialReviewRequired?: boolean;
   authorizedReviewerIds?: string[];
+  assigneeId?: string;
+  assignee?: string;
   reviewSlaHours?: number;
   changedFields?: Array<"title" | "summary" | "body">;
 }
@@ -357,6 +366,22 @@ export interface TranslationBatch {
   items: TranslationItem[];
 }
 
+export interface SegmentEditChange {
+  field: string;
+  before: string;
+  after: string;
+}
+
+export interface SegmentEditLog {
+  id: string;
+  action: "创建分群" | "编辑规则";
+  operator: string;
+  operatedAt: string;
+  changes: SegmentEditChange[];
+}
+
+export type AudienceSegmentStatus = "计算中" | "可用";
+
 export interface AudienceSegment {
   id: string;
   name: string;
@@ -367,8 +392,11 @@ export interface AudienceSegment {
   refresh: string;
   updatedAt: string;
   owner: string;
-  status: string;
+  status: AudienceSegmentStatus;
   rule: string;
+  setOperation?: "union" | "intersection";
+  sourceSegmentIds?: string[];
+  editLogs?: SegmentEditLog[];
 }
 
 export interface ApprovalItem {
@@ -403,6 +431,9 @@ export interface ApprovalItem {
   triggerType?: TaskTriggerType;
   templateVersion?: string;
   eventConfig?: EventTriggerConfig;
+  ruleId?: string;
+  subjectMapping?: string;
+  replacementRuleIds?: string[];
 }
 
 export interface DeliveryRecord {

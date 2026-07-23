@@ -23,8 +23,15 @@ it("展示 V2 八个系统事件和关联通知规则", async () => {
   ]) {
     expect(screen.getByText(event)).toBeVisible();
   }
-  expect(screen.getByText("关联通知规则")).toBeVisible();
+  expect(
+    screen.getByRole("columnheader", { name: "关联通知规则" }),
+  ).toBeVisible();
   expect(screen.queryByText("绑定模板")).not.toBeInTheDocument();
   await user.click(screen.getAllByText("详情")[1]);
   expect(screen.getByRole("button", { name: "创建通知规则" })).toBeVisible();
+  expect(screen.getByRole("button", { name: "发送测试事件" })).toBeVisible();
+  expect(
+    screen.queryByRole("button", { name: "校验 Schema" }),
+  ).not.toBeInTheDocument();
+  expect(screen.getByText(/事件定义与 Schema 由后台同步/)).toBeVisible();
 });

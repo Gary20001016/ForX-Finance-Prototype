@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Button, Input, Select, Space, Tag, Typography } from "@arco-design/web-react";
+import { Button, Input, Select, Tabs, Tag, Typography } from "@arco-design/web-react";
 import type { TableColumnProps } from "@arco-design/web-react";
 import PageHeader from "../../components/PageHeader";
 import FilterBar from "../../components/FilterBar";
@@ -12,7 +12,6 @@ import {
 } from "../../domain/reviewOperators";
 import {
   canReviewTranslation,
-  getTranslationReviewerIds,
   startSpecialReview,
   usePrototypeStore,
 } from "../../store/prototypeStore";
@@ -31,6 +30,7 @@ export default function MultilingualReviewPage() {
   const [source, setSource] = useState<string>();
   const [locale, setLocale] = useState<string>();
   const [selected, setSelected] = useState<TranslationItem>();
+  const [tab, setTab] = useState("mine");
   const data = useMemo(
     () =>
       store.translationBatches
@@ -38,15 +38,35 @@ export default function MultilingualReviewPage() {
         .filter(
           (item) =>
             item.specialReviewRequired &&
-            item.status === "翻译返回待审核" &&
-            canReviewTranslation(item, CURRENT_REVIEW_OPERATOR_ID) &&
+            (tab === "all" ||
+              (item.status === "翻译返回待审核" &&
+                item.assigneeId === CURRENT_REVIEW_OPERATOR_ID)) &&
             `${item.subjectName || item.templateName}${item.targetLocale}${item.externalTaskId || ""}`
               .toLowerCase()
               .includes(keyword.toLowerCase()) &&
             (!source || item.subjectType === source) &&
             (!locale || item.targetLocale === locale),
         ),
-    [keyword, locale, source, store.translationBatches],
+    [keyword, locale, source, store.translationBatches, tab],
+  );
+  const mineCount = useMemo(
+    () =>
+      store.translationBatches
+        .flatMap((batch) => batch.items)
+        .filter(
+          (item) =>
+            item.specialReviewRequired &&
+            item.status === "翻译返回待审核" &&
+            item.assigneeId === CURRENT_REVIEW_OPERATOR_ID,
+        ).length,
+    [store.translationBatches],
+  );
+  const allCount = useMemo(
+    () =>
+      store.translationBatches
+        .flatMap((batch) => batch.items)
+        .filter((item) => item.specialReviewRequired).length,
+    [store.translationBatches],
   );
 
   const columns: TableColumnProps<TranslationItem>[] = [
@@ -75,22 +95,14 @@ export default function MultilingualReviewPage() {
       ),
     },
     {
-      title: "授权审核人",
-      width: 220,
+      title: "指派审核人",
+      width: 180,
       render: (_, item) => (
-        <Space wrap>
-          {getTranslationReviewerIds(item).map((operatorId) => (
-            <Tag key={operatorId} color="arcoblue">
-              {reviewOperatorName(operatorId)}
-            </Tag>
-          ))}
-        </Space>
+        <div>
+          {item.assignee || reviewOperatorName(item.assigneeId)}
+          <div className="mono muted">{item.assigneeId || "—"}</div>
+        </div>
       ),
-    },
-    {
-      title: "审核 SLA",
-      width: 100,
-      render: (_, item) => `${item.reviewSlaHours || "—"} 小时`,
     },
     {
       title: "内容生产方式",
@@ -130,11 +142,17 @@ export default function MultilingualReviewPage() {
         <Button
           type="text"
           onClick={() => {
-            startSpecialReview(item.id);
+            if (canReviewTranslation(item, CURRENT_REVIEW_OPERATOR_ID)) {
+              startSpecialReview(item.id);
+            }
             setSelected(item);
           }}
         >
-          {item.productionMode === "direct_source_review" ? "审核原文" : "审核译文"}
+          {canReviewTranslation(item, CURRENT_REVIEW_OPERATOR_ID)
+            ? item.productionMode === "direct_source_review"
+              ? "审核原文"
+              : "审核译文"
+            : "查看详情"}
         </Button>
       ),
     },
@@ -146,6 +164,10 @@ export default function MultilingualReviewPage() {
         title="多语言审核"
         description="集中处理需要语言专家复核的小语种；普通语言仍在模板、临时消息或规则内容页当场校对。"
       />
+      <Tabs activeTab={tab} onChange={setTab}>
+        <Tabs.TabPane key="mine" title={`待我审核 (${mineCount})`} />
+        <Tabs.TabPane key="all" title={`全部工单 (${allCount})`} />
+      </Tabs>
       <FilterBar
         onReset={() => {
           setKeyword("");

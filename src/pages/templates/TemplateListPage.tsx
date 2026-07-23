@@ -26,6 +26,7 @@ import {
   templateSupportsScope,
 } from "./templateScope";
 import { isApprovedManualTemplateLocked } from "../../domain/templatePolicy";
+import { MANUAL_TEMPLATE_STATUSES } from "../../domain/manualTemplateStatus";
 import WritePermissionButton from "../../components/WritePermissionButton";
 import { useCurrentPagePermission } from "../../components/PagePermissionBoundary";
 
@@ -43,16 +44,31 @@ export default function TemplateListPage() {
   const [nature, setNature] = useState<string>();
   const [channel, setChannel] = useState<string>();
   const store = usePrototypeStore();
-  const usageFor = (template: MessageTemplate) =>
-    store.tasks.filter(
-      (task) =>
+  const taskUsageFor = (template: MessageTemplate) =>
+    store.tasks.filter((task) => {
+      const matchesTemplate =
         task.templateId === template.id ||
-        task.template === `${template.code} ${template.version}`,
+        task.template === `${template.code} ${template.version}`;
+      const matchesEntry =
+        entryScope === "event"
+          ? task.triggerType === "event"
+          : task.triggerType !== "event";
+      return matchesTemplate && matchesEntry;
+    });
+  const eventRuleUsageFor = (template: MessageTemplate) => {
+    const relatedRuleIds = new Set(
+      store.ruleVersions
+        .filter((version) => version.templateId === template.id)
+        .map((version) => version.ruleId),
     );
+    return store.rules.filter((rule) => relatedRuleIds.has(rule.id));
+  };
   const data = store.templates.filter(
     (item) =>
       isReusableMessageTemplate(item) &&
-      templateSupportsScope(item, entryScope) &&
+      (entryScope === "event"
+        ? item.usageScope === "event"
+        : templateSupportsScope(item, entryScope)) &&
       `${item.id}${item.code}${item.name}`
         .toLowerCase()
         .includes(keyword.toLowerCase()) &&
@@ -121,42 +137,54 @@ export default function TemplateListPage() {
       },
     },
     ...(entryScope === "event"
-      ? [{ title: "版本", dataIndex: "version", width: 70 }]
+      ? [
+          {
+            title: "适用场景",
+            width: 100,
+            render: (_: unknown, template: MessageTemplate) => (
+              <Tag
+                color={
+                  template.usageScope === "shared" ? "green" : "arcoblue"
+                }
+              >
+                {template.usageScope === "event" ? "事件通知" : "通用"}
+              </Tag>
+            ),
+          },
+        ]
       : []),
-    {
-      title: "适用场景",
-      width: 100,
-      render: (_, template) => (
-        <Tag color={template.usageScope === "shared" ? "green" : "arcoblue"}>
-          {template.usageScope === "manual"
-            ? "人工消息"
-            : template.usageScope === "event"
-              ? "事件通知"
-              : "通用"}
-        </Tag>
-      ),
-    },
-    {
-      title: "使用任务",
-      width: 160,
-      render: (_, template) => {
-        const usage = usageFor(template);
-        const eventCount = usage.filter(
-          (task) => task.triggerType === "event",
-        ).length;
-        return (
-          <Button type="text" onClick={() => setUsageTemplate(template)}>
-            人工 {usage.length - eventCount} · 事件 {eventCount}
-          </Button>
-        );
-      },
-    },
+    entryScope === "event"
+      ? {
+          title: "关联通知规则",
+          width: 160,
+          render: (_: unknown, template: MessageTemplate) => (
+            <Button type="text" onClick={() => setUsageTemplate(template)}>
+              {eventRuleUsageFor(template).length} 条规则
+            </Button>
+          ),
+        }
+      : {
+          title: "使用任务",
+          width: 160,
+          render: (_: unknown, template: MessageTemplate) => (
+            <Button type="text" onClick={() => setUsageTemplate(template)}>
+              {taskUsageFor(template).length} 个任务
+            </Button>
+          ),
+        },
     {
       title: "状态",
       width: 100,
       render: (_, r) => <StatusTag status={r.status} />,
     },
-    { title: "更新时间", dataIndex: "updatedAt", width: 120 },
+    entryScope === "manual"
+      ? {
+          title: "发布时间",
+          width: 120,
+          render: (_, template) =>
+            template.status === "已发布" ? template.updatedAt : "—",
+        }
+      : { title: "更新时间", dataIndex: "updatedAt", width: 120 },
     {
       title: "操作",
       fixed: "right",
@@ -184,7 +212,7 @@ export default function TemplateListPage() {
         title={pageTitle}
         description={
           entryScope === "event"
-            ? "维护事件通知专用与通用模板，共享版本、多语言、预览和审核能力。"
+            ? "仅维护事件目录相关的事件通知模板，共享多语言、预览和审核能力。"
             : "维护人工消息专用与通用模板，共享多语言、预览和审核能力。"
         }
         actions={
@@ -236,9 +264,10 @@ export default function TemplateListPage() {
           onChange={setStatus}
           style={{ width: 140 }}
           allowClear
-          options={["草稿", "审核中", "待业务审核", "已发布", "已停用"].map(
-            (value) => ({ label: value, value }),
-          )}
+          options={(entryScope === "manual"
+            ? MANUAL_TEMPLATE_STATUSES
+            : ["草稿", "审核中", "待业务审核", "已发布", "已停用"]
+          ).map((value) => ({ label: value, value }))}
         />
       </FilterBar>
       <ResourceTable data={data} columns={columns} rowKey="id" />
@@ -246,9 +275,7 @@ export default function TemplateListPage() {
         width={820}
         title={
           preview
-            ? entryScope === "event"
-              ? `${preview.name} · ${preview.version} · 多语言生产`
-              : `${preview.name} · 多语言生产`
+            ? `${preview.name} · 多语言生产`
             : "多语言生产"
         }
         visible={Boolean(preview)}
@@ -282,9 +309,11 @@ export default function TemplateListPage() {
         title={
           usageTemplate
             ? entryScope === "event"
-              ? `${usageTemplate.name} · ${usageTemplate.version} · 使用任务`
+              ? `${usageTemplate.name} · 关联通知规则`
               : `${usageTemplate.name} · 使用任务`
-            : "使用任务"
+            : entryScope === "event"
+              ? "关联通知规则"
+              : "使用任务"
         }
         visible={Boolean(usageTemplate)}
         onCancel={() => setUsageTemplate(undefined)}
@@ -294,8 +323,34 @@ export default function TemplateListPage() {
       >
         {usageTemplate && (
           <Space direction="vertical" style={{ width: "100%" }}>
-            {usageFor(usageTemplate).length ? (
-              usageFor(usageTemplate).map((task) => (
+            {entryScope === "event" ? (
+              eventRuleUsageFor(usageTemplate).length ? (
+                eventRuleUsageFor(usageTemplate).map((rule) => {
+                  const event = store.events.find(
+                    (item) => item.id === rule.eventId,
+                  );
+                  return (
+                    <div className="template-usage-row" key={rule.id}>
+                      <div>
+                        <Typography.Text className="strong">
+                          {rule.name}
+                        </Typography.Text>
+                        <div className="mono muted">{rule.id}</div>
+                      </div>
+                      <Tag color="purple">事件通知规则</Tag>
+                      <span>
+                        {event?.name || rule.eventId}
+                        <div className="mono muted">{rule.eventId}</div>
+                      </span>
+                      <StatusTag status={rule.status} />
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="empty-state">当前模板尚未关联通知规则</div>
+              )
+            ) : taskUsageFor(usageTemplate).length ? (
+              taskUsageFor(usageTemplate).map((task) => (
                 <div className="template-usage-row" key={task.id}>
                   <div>
                     <Typography.Text className="strong">
@@ -315,11 +370,7 @@ export default function TemplateListPage() {
                 </div>
               ))
             ) : (
-              <div className="empty-state">
-                {entryScope === "event"
-                  ? "当前模板版本尚未被任务使用"
-                  : "当前模板尚未被任务使用"}
-              </div>
+              <div className="empty-state">当前模板尚未被任务使用</div>
             )}
           </Space>
         )}

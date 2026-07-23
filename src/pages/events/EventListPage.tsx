@@ -4,19 +4,14 @@ import {
   Button,
   Descriptions,
   Drawer,
-  Form,
-  Grid,
   Input,
-  InputNumber,
   Message,
-  Modal,
   Select,
   Space,
   Table,
   Tag,
   Typography,
 } from "@arco-design/web-react";
-import { IconPlus } from "@arco-design/web-react/icon";
 import { useNavigate } from "react-router-dom";
 import PageHeader from "../../components/PageHeader";
 import FilterBar from "../../components/FilterBar";
@@ -27,7 +22,6 @@ import type {
   SystemEventDefinition,
 } from "../../domain/types";
 import {
-  registerSystemEvent,
   testSystemEvent,
   usePrototypeStore,
 } from "../../store/prototypeStore";
@@ -35,6 +29,7 @@ import WritePermissionButton from "../../components/WritePermissionButton";
 import { useCurrentPagePermission } from "../../components/PagePermissionBoundary";
 import { canWritePage } from "../../domain/pagePermissions";
 import { CURRENT_REVIEW_OPERATOR_ID } from "../../domain/reviewOperators";
+import { getEventVariableDefinitions } from "../../domain/eventVariables";
 
 export default function EventListPage() {
   const { canWrite } = useCurrentPagePermission();
@@ -47,10 +42,12 @@ export default function EventListPage() {
   const [keyword, setKeyword] = useState("");
   const [line, setLine] = useState<string>();
   const [status, setStatus] = useState<string>();
+  const [ruleUsage, setRuleUsage] = useState<string>();
   const [selectedId, setSelectedId] = useState<string>();
-  const [creating, setCreating] = useState(false);
-  const [form] = Form.useForm();
   const selected = store.events.find((event) => event.id === selectedId);
+  const selectedVariables = selected
+    ? getEventVariableDefinitions(selected.id, selected.variables)
+    : [];
   const relatedRules = (eventId: string) =>
     store.rules.filter((rule) => rule.eventId === eventId);
   const data = useMemo(
@@ -61,36 +58,14 @@ export default function EventListPage() {
             .toLowerCase()
             .includes(keyword.toLowerCase()) &&
           (!line || event.line === line) &&
-          (!status || event.status === status),
+          (!status || event.status === status) &&
+          (!ruleUsage ||
+            (ruleUsage === "with"
+              ? relatedRules(event.id).length > 0
+              : relatedRules(event.id).length === 0)),
       ),
-    [store.events, keyword, line, status],
+    [store.events, store.rules, keyword, line, status, ruleUsage],
   );
-  const register = async () => {
-    if (!canWrite) {
-      Message.warning("当前账号无写权限");
-      return;
-    }
-    try {
-      const values = await form.validate();
-      registerSystemEvent({
-        id: values.id,
-        name: values.name,
-        line: values.line,
-        version: values.version,
-        caller: values.caller,
-        description: values.description,
-        variables: values.variables
-          .split(",")
-          .map((item: string) => item.trim())
-          .filter(Boolean),
-      });
-      Message.success("事件已注册并进入待联调状态");
-      setCreating(false);
-      form.resetFields();
-    } catch {
-      /* form validation */
-    }
-  };
   const sendTest = () => {
     if (!canWrite) {
       Message.warning("当前账号无写权限");
@@ -150,22 +125,15 @@ export default function EventListPage() {
     <section className="page-stack">
       <PageHeader
         title="事件目录"
-        description="只维护上游业务事件的编码、版本与字段 Schema；通知内容和发送策略由事件通知规则管理。"
-        actions={
-          <WritePermissionButton
-            type="primary"
-            icon={<IconPlus />}
-            onClick={() => setCreating(true)}
-          >
-            注册事件
-          </WritePermissionButton>
-        }
+        description="由后台事件注册中心统一维护；操作者可查询事件、查看字段，并用于创建通知规则。"
+        tags={<Tag color="arcoblue">后台同步 · 只读</Tag>}
       />
       <FilterBar
         onReset={() => {
           setKeyword("");
           setLine(undefined);
           setStatus(undefined);
+          setRuleUsage(undefined);
         }}
       >
         <Input.Search
@@ -186,7 +154,7 @@ export default function EventListPage() {
           }))}
         />
         <Select
-          placeholder="调用状态"
+          placeholder="运行状态"
           value={status}
           onChange={setStatus}
           allowClear
@@ -195,6 +163,17 @@ export default function EventListPage() {
             label: value,
             value,
           }))}
+        />
+        <Select
+          placeholder="关联通知规则"
+          value={ruleUsage}
+          onChange={setRuleUsage}
+          allowClear
+          style={{ width: 160 }}
+          options={[
+            { label: "有通知规则", value: "with" },
+            { label: "无通知规则", value: "without" },
+          ]}
         />
       </FilterBar>
       <ResourceTable
@@ -214,7 +193,15 @@ export default function EventListPage() {
             ),
           },
           { title: "业务线", dataIndex: "line", width: 90 },
-          { title: "版本", dataIndex: "version", width: 90 },
+          {
+            title: "可用消息变量",
+            width: 130,
+            render: (_: unknown, record: SystemEventDefinition) => (
+              <Button type="text" onClick={() => setSelectedId(record.id)}>
+                {record.variables.length} 个
+              </Button>
+            ),
+          },
           {
             title: "关联通知规则",
             width: 150,
@@ -231,17 +218,11 @@ export default function EventListPage() {
               );
             },
           },
-          {
-            title: "调用方",
-            dataIndex: "caller",
-            width: 170,
-            render: (value: unknown) => <Tag>{String(value)}</Tag>,
-          },
           { title: "近24h调用", dataIndex: "calls", width: 110 },
           { title: "失败率", dataIndex: "failure", width: 90 },
           { title: "最后调用", dataIndex: "last", width: 120 },
           {
-            title: "状态",
+            title: "运行状态",
             width: 110,
             render: (_: unknown, record: SystemEventDefinition) => (
               <StatusTag status={record.status} />
@@ -270,13 +251,6 @@ export default function EventListPage() {
               <WritePermissionButton
                 allowed={canCreateRule}
                 onClick={() =>
-                  Message.success("事件 Schema 与字段定义校验通过")
-                }
-              >
-                校验 Schema
-              </Button>
-              <Button
-                onClick={() =>
                   navigate("/automation", { state: { eventId: selected.id } })
                 }
               >
@@ -299,17 +273,35 @@ export default function EventListPage() {
                 { label: "版本", value: selected.version },
                 { label: "调用方", value: selected.caller },
                 { label: "业务线", value: selected.line },
-                { label: "变量数量", value: selected.variables.length },
+                { label: "变量数量", value: selectedVariables.length },
                 { label: "最近测试", value: selected.lastTestAt || "尚未测试" },
               ]}
             />
             <Alert
               style={{ margin: "16px 0" }}
               type="info"
-              title="事件字段 Schema"
-              content={selected.variables
-                .map((value) => `{{ ${value} }}`)
-                .join(" · ")}
+              title="事件字段 Schema（后台同步）"
+              content="事件定义与 Schema 由后台同步；下表说明当前事件可在通知模板正文中引用的变量。"
+            />
+            <div className="drawer-section-title">
+              <strong>可用消息变量</strong>
+              <span className="muted">模板通过插入变量引用，无需手工输入</span>
+            </div>
+            <Table
+              rowKey="name"
+              pagination={false}
+              data={selectedVariables}
+              columns={[
+                {
+                  title: "模板变量",
+                  width: 220,
+                  render: (_: unknown, record) => (
+                    <code>{`{{ ${record.name} }}`}</code>
+                  ),
+                },
+                { title: "说明", dataIndex: "description" },
+                { title: "示例", dataIndex: "example", width: 240 },
+              ]}
             />
             <div className="drawer-section-title">
               <strong>关联通知规则</strong>
@@ -334,88 +326,6 @@ export default function EventListPage() {
           </>
         )}
       </Drawer>
-      <Modal
-        visible={creating}
-        title="注册业务事件"
-        onCancel={() => setCreating(false)}
-        onOk={register}
-        okButtonProps={{ disabled: !canWrite }}
-        okText="注册并待联调"
-        style={{ width: 780 }}
-        unmountOnExit
-      >
-        <Form
-          form={form}
-          layout="vertical"
-          initialValues={{
-            version: "1.0.0",
-            line: "资产",
-            ttl: 300,
-            variables: "user_nickname, amount, currency, symbol, occurred_at",
-          }}
-        >
-          <Grid.Row gutter={16}>
-            <Grid.Col span={12}>
-              <Form.Item
-                label="事件编码"
-                field="id"
-                required
-                rules={[{ required: true }]}
-              >
-                <Input placeholder="deposit.credited" />
-              </Form.Item>
-            </Grid.Col>
-            <Grid.Col span={12}>
-              <Form.Item
-                label="事件名称"
-                field="name"
-                required
-                rules={[{ required: true }]}
-              >
-                <Input />
-              </Form.Item>
-            </Grid.Col>
-            <Grid.Col span={8}>
-              <Form.Item label="业务线" field="line">
-                <Select
-                  options={["资产", "交易", "风控", "奖励"].map((value) => ({
-                    label: value,
-                    value,
-                  }))}
-                />
-              </Form.Item>
-            </Grid.Col>
-            <Grid.Col span={8}>
-              <Form.Item label="事件版本" field="version">
-                <Input />
-              </Form.Item>
-            </Grid.Col>
-            <Grid.Col span={8}>
-              <Form.Item label="建议 TTL" field="ttl">
-                <InputNumber min={1} suffix="秒" style={{ width: "100%" }} />
-              </Form.Item>
-            </Grid.Col>
-          </Grid.Row>
-          <Form.Item
-            label="调用方"
-            field="caller"
-            required
-            rules={[{ required: true }]}
-          >
-            <Input />
-          </Form.Item>
-          <Form.Item label="事件说明" field="description">
-            <Input.TextArea />
-          </Form.Item>
-          <Form.Item
-            label="事件字段"
-            field="variables"
-            extra="逗号分隔；通知规则会将这些事件字段映射到模板变量"
-          >
-            <Input />
-          </Form.Item>
-        </Form>
-      </Modal>
     </section>
   );
 }

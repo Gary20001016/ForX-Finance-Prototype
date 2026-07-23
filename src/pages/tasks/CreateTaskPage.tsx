@@ -72,6 +72,7 @@ import {
   templateSupportsScope,
 } from "../templates/templateScope";
 import { getMessageCategoryDefaultNature } from "../../domain/messageCategoryPolicy";
+import { segments } from "../../mocks/data";
 import {
   sameChannels,
   templateCoversChannels,
@@ -158,6 +159,11 @@ const audienceMap: Record<
       "UID 72***01 · 已完成 · iOS",
       "UID 33***29 · 已报名 · Web",
     ],
+  },
+  segment: {
+    label: "用户分群",
+    count: 0,
+    samples: [],
   },
 };
 
@@ -265,6 +271,10 @@ export default function CreateTaskPage() {
   const [audienceType, setAudienceType] = useState(
     copiedTask?.audienceType || "all",
   );
+  const [selectedAudienceSegmentId, setSelectedAudienceSegmentId] = useState<
+    string | undefined
+  >();
+  const [excludedSegmentIds, setExcludedSegmentIds] = useState<string[]>([]);
   const [uidAudienceValue, setUidAudienceValue] = useState<UidAudienceValue>(
     () => {
       const saved = copiedTask?.uidAudience;
@@ -331,6 +341,9 @@ export default function CreateTaskPage() {
     }),
     [mergedUidAudience.finalUids],
   );
+  const selectedAudienceSegment = segments.find(
+    (segment) => segment.id === selectedAudienceSegmentId,
+  );
   const audience =
     triggerType === "event"
       ? {
@@ -340,7 +353,15 @@ export default function CreateTaskPage() {
         }
       : audienceType === "uid"
         ? specifiedUidAudience
-        : audienceMap[audienceType];
+        : audienceType === "segment"
+          ? selectedAudienceSegment
+            ? {
+                label: selectedAudienceSegment.name,
+                count: selectedAudienceSegment.count,
+                samples: [],
+              }
+            : audienceMap.segment
+          : audienceMap[audienceType];
   const translationScopeCurrent =
     !temporaryBatchId ||
     (sameChannels(temporaryBatchChannels, selectedChannels) &&
@@ -525,6 +546,15 @@ export default function CreateTaskPage() {
       }
     }
     if (
+      current === 1 &&
+      triggerType === "manual" &&
+      audienceType === "segment" &&
+      !selectedAudienceSegment
+    ) {
+      Message.warning("请选择用户分群");
+      return;
+    }
+    if (
       current === 2 &&
       triggerType === "manual" &&
       form.getFieldValue("scheduleMode") === "scheduled" &&
@@ -563,7 +593,13 @@ export default function CreateTaskPage() {
     audienceType:
       triggerType === "event"
         ? undefined
-        : (audienceType as "all" | "uid" | "vip" | "agent" | "campaign"),
+        : (audienceType as
+            | "all"
+            | "uid"
+            | "vip"
+            | "agent"
+            | "campaign"
+            | "segment"),
     sampleUsers: audience.samples,
     uidAudience:
       triggerType === "manual" && audienceType === "uid"
@@ -1231,6 +1267,7 @@ export default function CreateTaskPage() {
                       <Radio value="vip">指定 VIP</Radio>
                       <Radio value="agent">指定代理</Radio>
                       <Radio value="campaign">活动参与用户</Radio>
+                      <Radio value="segment">用户分群</Radio>
                     </Radio.Group>
                   </FormItem>
                   <Grid.Row gutter={20}>
@@ -1267,6 +1304,24 @@ export default function CreateTaskPage() {
                             ]}
                           />
                         </FormItem>
+                      ) : audienceType === "segment" ? (
+                        <FormItem label="选择用户分群" required>
+                          <Select
+                            value={selectedAudienceSegmentId}
+                            placeholder="从用户与受众模块选择分群"
+                            showSearch
+                            onChange={(segmentId) => {
+                              setSelectedAudienceSegmentId(segmentId);
+                              setExcludedSegmentIds((currentIds) =>
+                                currentIds.filter((id) => id !== segmentId),
+                              );
+                            }}
+                            options={segments.map((segment) => ({
+                              label: `${segment.name} · ${segment.count.toLocaleString()} 人`,
+                              value: segment.id,
+                            }))}
+                          />
+                        </FormItem>
                       ) : (
                         <FormItem label="全站范围">
                           <Select
@@ -1283,17 +1338,18 @@ export default function CreateTaskPage() {
                       <FormItem label="排除分群">
                         <Select
                           mode="multiple"
+                          value={excludedSegmentIds}
+                          onChange={setExcludedSegmentIds}
                           placeholder="选择排除分群"
-                          options={[
-                            {
-                              label: "高风险提现保护名单 · 120,480",
-                              value: "withdrawal-risk",
-                            },
-                            {
-                              label: "账户异常抑制名单 · 8,241",
-                              value: "account-risk",
-                            },
-                          ]}
+                          options={segments
+                            .filter(
+                              (segment) =>
+                                segment.id !== selectedAudienceSegmentId,
+                            )
+                            .map((segment) => ({
+                              label: `${segment.name} · ${segment.count.toLocaleString()} 人`,
+                              value: segment.id,
+                            }))}
                         />
                       </FormItem>
                     </Grid.Col>

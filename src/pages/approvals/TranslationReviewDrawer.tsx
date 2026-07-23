@@ -70,7 +70,7 @@ export default function TranslationReviewDrawer({
     setReason("");
   }, [current?.id]);
 
-  const isAuthorized = Boolean(
+  const canOperate = Boolean(
     current && canReviewTranslation(current, currentAdmin),
   );
   const sourceBody =
@@ -85,8 +85,8 @@ export default function TranslationReviewDrawer({
 
   const reject = () => {
     if (!current) return;
-    if (!isAuthorized) {
-      Message.warning("无该语言审核权限");
+    if (!canOperate) {
+      Message.warning("只有被指派的审核人可以处理该工单");
       return;
     }
     if (!reason.trim()) {
@@ -100,8 +100,8 @@ export default function TranslationReviewDrawer({
 
   const approve = () => {
     if (!current) return;
-    if (!isAuthorized) {
-      Message.warning("无该语言审核权限");
+    if (!canOperate) {
+      Message.warning("只有被指派的审核人可以处理该工单");
       return;
     }
     if (!current.variablesValid) {
@@ -137,8 +137,8 @@ export default function TranslationReviewDrawer({
 
   const saveDraft = () => {
     if (!current) return;
-    if (!isAuthorized) {
-      Message.warning("无该语言审核权限");
+    if (!canOperate) {
+      Message.warning("只有被指派的审核人可以处理该工单");
       return;
     }
     saveTranslationDraft(
@@ -163,7 +163,7 @@ export default function TranslationReviewDrawer({
         current && (
           <div className="drawer-footer">
             <Button onClick={onClose}>取消</Button>
-            {isAuthorized && (
+            {canOperate && (
               <>
                 <Button onClick={saveDraft}>{directSource ? "保存审核稿" : "保存修订"}</Button>
                 <Button status="danger" onClick={reject}>
@@ -188,12 +188,12 @@ export default function TranslationReviewDrawer({
     >
       {current && (
         <div className="translation-review">
-          {!isAuthorized && (
+          {!canOperate && (
             <Alert
-              type="warning"
+              type="info"
               showIcon
-              title="无该语言审核权限"
-              content="你可以查看内容，但不能修改、驳回或通过该语言的审核。请由系统配置中已授权的审核人处理。"
+              title={`工单已指派给 ${current.assignee || current.assigneeId || "其他审核人"}`}
+              content="你可以查看译文，但只有当前指派审核人可以保存、驳回或通过。"
             />
           )}
           <Descriptions
@@ -209,8 +209,8 @@ export default function TranslationReviewDrawer({
                     { label: "内容来源", value: "操作者直接编写" },
                     { label: "提交人", value: current.submitter },
                     {
-                      label: "源内容哈希",
-                      value: <span className="mono">{current.sourceContentHash}</span>,
+                      label: "审核完成时间",
+                      value: current.reviewedAt || "—",
                     },
                     {
                       label: "变量完整性",
@@ -233,8 +233,8 @@ export default function TranslationReviewDrawer({
                     },
                     { label: "翻译尝试", value: `第 ${current.attemptNo} 次` },
                     {
-                      label: "源内容哈希",
-                      value: <span className="mono">{current.sourceContentHash}</span>,
+                      label: "审核完成时间",
+                      value: current.reviewedAt || "—",
                     },
                     {
                       label: "变量完整性",
@@ -244,7 +244,10 @@ export default function TranslationReviewDrawer({
                         </Tag>
                       ),
                     },
-                    { label: "完成时间", value: current.translatedAt || "—" },
+                    {
+                      label: "机翻完成时间",
+                      value: current.translatedAt || "—",
+                    },
                   ]
             }
           />
@@ -289,17 +292,17 @@ export default function TranslationReviewDrawer({
               </div>
               <Form layout="vertical">
                 <Form.Item label="标题">
-                  <Input disabled={!isAuthorized} value={title} onChange={setTitle} />
+                  <Input disabled={!canOperate} value={title} onChange={setTitle} />
                 </Form.Item>
                 <Form.Item label="摘要">
-                  <Input.TextArea disabled={!isAuthorized} value={summary} onChange={setSummary} />
+                  <Input.TextArea disabled={!canOperate} value={summary} onChange={setSummary} />
                 </Form.Item>
                 <Form.Item label="正文 Markdown">
                   <MarkdownEditor
                     value={body}
                     onChange={setBody}
                     minRows={6}
-                    readOnly={!isAuthorized}
+                    readOnly={!canOperate}
                   />
                 </Form.Item>
               </Form>
@@ -324,7 +327,7 @@ export default function TranslationReviewDrawer({
               }
             >
               <Input.TextArea
-                disabled={!isAuthorized}
+                disabled={!canOperate}
                 value={reason}
                 onChange={setReason}
               />

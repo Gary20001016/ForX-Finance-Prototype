@@ -54,6 +54,7 @@ import {
   ruleEventIdempotencyKey,
 } from "../pages/automation/automationLifecycle";
 import { normalizeTemplateUsageScopes } from "../pages/templates/templateScope";
+import { normalizeManualTemplateStatuses } from "../domain/manualTemplateStatus";
 import {
   APPROVED_MANUAL_TEMPLATE_LOCK_MESSAGE,
   isApprovedManualTemplateLocked,
@@ -75,6 +76,16 @@ import {
   type PagePermissionKey,
   type PagePermissionMap,
 } from "../domain/pagePermissions";
+import {
+  assignApprovalReviewer,
+  canReviewAssignedApproval,
+  isPendingApproval,
+  reassignInvalidApprovals,
+} from "../domain/approvalAssignment";
+import {
+  canOperateAssignedTranslation,
+  reassignInvalidTranslationReview,
+} from "../domain/translationReviewAssignment";
 
 export interface PrototypeState {
   messages: UserMessage[];
@@ -231,7 +242,9 @@ const legacyWritePermissionKeys = (
 export const normalizeReviewOperators = (
   operators: PersistedReviewOperator[] = [],
 ): ReviewOperator[] => {
-  const source = operators.length ? operators : reviewOperators;
+  const source: PersistedReviewOperator[] = operators.length
+    ? operators
+    : reviewOperators;
   const normalized = source.map((saved) => {
     const seed = reviewOperators.find((candidate) => candidate.id === saved.id);
     const isSuperAdmin = Boolean(saved.isSuperAdmin ?? seed?.isSuperAdmin);
@@ -245,14 +258,18 @@ export const normalizeReviewOperators = (
           saved.pagePermissions,
           saved.permissions ? legacyFallback : readOnlyPagePermissions(),
         );
-    const { permissions: _legacyPermissions, ...current } = saved;
+    const {
+      id: savedId,
+      permissions: _legacyPermissions,
+      ...current
+    } = saved;
     return {
-      id: saved.id,
-      name: saved.name || seed?.name || saved.id,
+      ...current,
+      id: savedId,
+      name: saved.name || seed?.name || savedId,
       team: saved.team || seed?.team || "未分组",
       enabled: saved.enabled ?? seed?.enabled ?? true,
       isSuperAdmin,
-      ...current,
       pagePermissions,
     } as ReviewOperator;
   });
@@ -319,6 +336,28 @@ export const normalizeTranslationBatches = (
       items,
     };
   });
+
+const syncTranslationReviewAssignments = (
+  batches: TranslationBatch[],
+  policies: LanguageReviewPolicy[],
+  operators: ReviewOperator[],
+) =>
+  batches.map((batch) => ({
+    ...batch,
+    items: batch.items.map((item) => {
+      const policy = policies.find(
+        (candidate) => candidate.localeCode === item.targetLocale,
+      );
+      const synced = {
+        ...item,
+        specialReviewRequired: Boolean(
+          policy?.enabled && policy.specialReviewRequired,
+        ),
+        authorizedReviewerIds: policy?.authorizedReviewerIds || [],
+      };
+      return reassignInvalidTranslationReview(synced, operators);
+    }),
+  }));
 
 export const normalizeTemplateTranslationReadiness = (
   templates: MessageTemplate[],
@@ -714,10 +753,12 @@ const createSeed = (): PrototypeState => {
   const templateCandidates = enrichTemplates();
   const seededTasks = enrichTasks(templateCandidates);
   const automation = createAutomationSeed(templateCandidates);
-  const seededTemplates = normalizeTemplateUsageScopes(
-    templateCandidates,
-    seededTasks,
-    automation.versions,
+  const seededTemplates = normalizeManualTemplateStatuses(
+    normalizeTemplateUsageScopes(
+      templateCandidates,
+      seededTasks,
+      automation.versions,
+    ),
   );
   const firstPhaseApprovals: ApprovalItem[] = [
     ...approvals.filter(
@@ -737,6 +778,8 @@ const createSeed = (): PrototypeState => {
       step: "业务 + 风控双审",
       submitter: "赵辰",
       submitterId: "platform-11",
+      assignee: "Gary Ma",
+      assigneeId: "admin-01",
       submittedAt: "18:02",
       status: "紧急",
       emergency: true,
@@ -747,10 +790,14 @@ const createSeed = (): PrototypeState => {
     categories: JSON.parse(JSON.stringify(messageCategories)),
     tasks: seededTasks,
     templates: seededTemplates,
-    translationBatches: normalizeTranslationBatches(
-      translationBatches,
+    translationBatches: syncTranslationReviewAssignments(
+      normalizeTranslationBatches(
+        translationBatches,
+        languageReviewPolicySeed,
+        seededTemplates,
+      ),
       languageReviewPolicySeed,
-      seededTemplates,
+      reviewOperators,
     ),
     languageReviewPolicies: JSON.parse(JSON.stringify(languageReviewPolicySeed)),
     approvals: firstPhaseApprovals.map((item) => {
@@ -762,6 +809,7 @@ const createSeed = (): PrototypeState => {
       );
       return {
         ...item,
+        status: item.status === "待我审核" ? "待审核" : item.status,
         cost: "Web ¥0 · Push ¥0",
         taskId: task?.id,
         templateId: task?.templateId || template?.id,
@@ -824,6 +872,9 @@ const createSeed = (): PrototypeState => {
 
 const migrateSavedState = (saved: PrototypeState): PrototypeState => {
   const fresh = createSeed();
+  const normalizedOperators = normalizeReviewOperators(
+    (saved.operators || fresh.operators) as PersistedReviewOperator[],
+  );
   const normalizedLanguageReviewPolicies = normalizeLanguageReviewPolicies(
     saved.languageReviewPolicies || fresh.languageReviewPolicies,
   );
@@ -863,10 +914,12 @@ const migrateSavedState = (saved: PrototypeState): PrototypeState => {
     saved.ruleVersions || fresh.ruleVersions,
     mergedTemplateCandidates,
   );
-  const mergedTemplates = normalizeTemplateUsageScopes(
-    mergedTemplateCandidates,
-    mergedTasks,
-    mergedRuleVersions,
+  const mergedTemplates = normalizeManualTemplateStatuses(
+    normalizeTemplateUsageScopes(
+      mergedTemplateCandidates,
+      mergedTasks,
+      mergedRuleVersions,
+    ),
   );
   const mergedEvents = fresh.events.map((event) => {
     const persisted = saved.events?.find((item) => item.id === event.id);
@@ -880,16 +933,24 @@ const migrateSavedState = (saved: PrototypeState): PrototypeState => {
       mergedEvents.push(definition);
     }
   }
-  const mergedApprovals = (saved.approvals || fresh.approvals).map((approval) => {
+  const savedApprovals = saved.approvals || [];
+  const approvalCandidates = [
+    ...savedApprovals,
+    ...fresh.approvals.filter(
+      (seed) => !savedApprovals.some((approval) => approval.id === seed.id),
+    ),
+  ];
+  const mergedApprovals = reassignInvalidApprovals(approvalCandidates.map((approval) => {
     const task = mergedTasks.find((item) => item.id === approval.taskId || item.name === approval.name);
     return {
       ...approval,
+      status: approval.status === "待我审核" ? "待审核" : approval.status,
       triggerType: approval.triggerType || task?.triggerType,
       templateId: approval.templateId || task?.templateId,
       templateVersion: approval.templateVersion || task?.templateVersion,
       eventConfig: approval.eventConfig || task?.eventConfig,
     };
-  });
+  }), normalizedOperators);
   return {
     ...fresh,
     ...saved,
@@ -899,19 +960,21 @@ const migrateSavedState = (saved: PrototypeState): PrototypeState => {
     approvals: mergedApprovals,
     categories: saved.categories || fresh.categories,
     testAccounts: saved.testAccounts || fresh.testAccounts,
-    translationBatches: normalizeTranslationBatches(
-      mergedTranslationBatches,
+    translationBatches: syncTranslationReviewAssignments(
+      normalizeTranslationBatches(
+        mergedTranslationBatches,
+        normalizedLanguageReviewPolicies,
+        mergedTemplates,
+      ),
       normalizedLanguageReviewPolicies,
-      mergedTemplates,
+      normalizedOperators,
     ),
     languageReviewPolicies: normalizedLanguageReviewPolicies,
     rules: saved.rules || fresh.rules,
     ruleVersions: mergedRuleVersions,
     triggerRecords: saved.triggerRecords || fresh.triggerRecords,
     templateVariables: saved.templateVariables || fresh.templateVariables,
-    operators: normalizeReviewOperators(
-      (saved.operators || fresh.operators) as PersistedReviewOperator[],
-    ),
+    operators: normalizedOperators,
   };
 };
 
@@ -1210,7 +1273,15 @@ export const getTranslationReviewerIds = (item: TranslationItem) =>
 export const canReviewTranslation = (
   item: TranslationItem,
   operatorId: string,
-) => getTranslationReviewerIds(item).includes(operatorId);
+) => {
+  if (item.specialReviewRequired) {
+    return canOperateAssignedTranslation(
+      item,
+      state.operators.find((operator) => operator.id === operatorId),
+    );
+  }
+  return getTranslationReviewerIds(item).includes(operatorId);
+};
 
 export const requiresSpecialLanguageReview = (locale: string) => {
   const policy = getLanguageReviewPolicy(locale);
@@ -1246,7 +1317,8 @@ export const prepareSingleLanguageContent = (
                       locales: [input.sourceLocale],
                     }
                   : template.content,
-                status: "待业务审核",
+                status:
+                  template.usageScope === "event" ? "待业务审核" : "审核中",
                 updatedAt: "刚刚",
               }
             : template,
@@ -1274,7 +1346,7 @@ export const prepareSingleLanguageContent = (
 
   const stamp = Date.now().toString().slice(-7);
   const batchId = `LR-${stamp}`;
-  const item: TranslationItem = {
+  const item = reassignInvalidTranslationReview({
     id: `LRI-${stamp}`,
     batchId,
     templateId: input.subject.id,
@@ -1295,8 +1367,8 @@ export const prepareSingleLanguageContent = (
     specialReviewRequired: true,
     authorizedReviewerIds: policy?.authorizedReviewerIds || [],
     reviewSlaHours: policy?.reviewSlaHours,
-  };
-  const batch: TranslationBatch = {
+  } as TranslationItem, state.operators);
+  const rawBatch: TranslationBatch = {
     id: batchId,
     productionMode: "direct_source_review",
     subjectType: input.subject.type,
@@ -1315,6 +1387,11 @@ export const prepareSingleLanguageContent = (
     sourceContent: { ...input.sourceContent },
     items: [item],
   };
+  const batch = syncTranslationReviewAssignments(
+    [rawBatch],
+    state.languageReviewPolicies,
+    state.operators,
+  )[0];
 
   update((current) => ({
     ...current,
@@ -1378,7 +1455,7 @@ export const createTranslationBatch = (
   const targetLocales = input.targetLocales;
   const createdBy = input.createdBy;
   const stamp = Date.now().toString().slice(-7);
-  const batch: TranslationBatch = {
+  const rawBatch: TranslationBatch = {
     id: `MT-${stamp}`,
     productionMode: "machine_translation",
     subjectType: subject.type,
@@ -1459,6 +1536,11 @@ export const createTranslationBatch = (
       };
     }),
   };
+  const batch = syncTranslationReviewAssignments(
+    [rawBatch],
+    state.languageReviewPolicies,
+    state.operators,
+  )[0];
   update((current) => ({
     ...current,
     translationBatches: [batch, ...current.translationBatches],
@@ -1600,7 +1682,8 @@ const approveTranslationWithMode = (
           ? {
               ...candidate,
               translationReadiness: "已通过",
-              status: "待业务审核",
+              status:
+                candidate.usageScope === "event" ? "待业务审核" : "审核中",
             }
           : candidate,
       ),
@@ -1740,12 +1823,20 @@ export const updateLanguageReviewPolicy = (
   localeCode: string,
   values: Partial<LanguageReviewPolicy>,
 ) =>
-  update((current) => ({
-    ...current,
-    languageReviewPolicies: current.languageReviewPolicies.map((policy) =>
+  update((current) => {
+    const nextPolicies = current.languageReviewPolicies.map((policy) =>
       policy.localeCode === localeCode ? { ...policy, ...values } : policy,
-    ),
-  }));
+    );
+    return {
+      ...current,
+      languageReviewPolicies: nextPolicies,
+      translationBatches: syncTranslationReviewAssignments(
+        current.translationBatches,
+        nextPolicies,
+        current.operators,
+      ),
+    };
+  });
 
 export const updateOperatorPermissions = (
   operatorId: string,
@@ -1767,9 +1858,8 @@ export const updateOperatorPermissions = (
     return { ...policy, authorizedReviewerIds };
   });
 
-  return update((current) => ({
-    ...current,
-    operators: current.operators.map((candidate) =>
+  return update((current) => {
+    const nextOperators = current.operators.map((candidate) =>
       candidate.id === operatorId
         ? {
             ...candidate,
@@ -1778,9 +1868,24 @@ export const updateOperatorPermissions = (
               : normalizePagePermissions(pagePermissions),
           }
         : candidate,
-    ),
-    languageReviewPolicies: nextPolicies,
-  }));
+    );
+    const nextApprovals = reassignInvalidApprovals(
+      current.approvals,
+      nextOperators,
+    );
+    const nextTranslationBatches = syncTranslationReviewAssignments(
+      current.translationBatches,
+      nextPolicies,
+      nextOperators,
+    );
+    return {
+      ...current,
+      operators: nextOperators,
+      approvals: nextApprovals,
+      translationBatches: nextTranslationBatches,
+      languageReviewPolicies: nextPolicies,
+    };
+  });
 };
 
 export const updateMessageCategory = (
@@ -1938,6 +2043,8 @@ export const submitTask = (input: TaskSubmission, existingTaskId?: string) => {
       "UID 51***02 · en-US · Android",
     ],
   };
+  const submitterId = CURRENT_REVIEW_OPERATOR_ID;
+  const assignment = assignApprovalReviewer(state.operators, submitterId);
   const approval: ApprovalItem = {
     id: `APR-${Date.now().toString().slice(-6)}`,
     objectType: "消息任务",
@@ -1953,9 +2060,10 @@ export const submitTask = (input: TaskSubmission, existingTaskId?: string) => {
         ? "业务 + 风控双审"
         : "一级审核",
     submitter: task.creator,
-    submitterId: "admin-01",
+    submitterId,
+    ...assignment,
     submittedAt: "刚刚",
-    status: "待我审核",
+    status: "待审核",
     taskId: task.id,
     templateId: task.templateId,
     templateVersion: task.templateVersion,
@@ -2066,11 +2174,54 @@ export const performManualTaskOperation = (
 
 export const reviewApproval = (
   approvalId: string,
-  result: { decision: "approve" | "reject"; reviewer: string; opinion: string },
+  result: {
+    decision: "approve" | "reject";
+    reviewerId: string;
+    reviewer: string;
+    opinion: string;
+  },
 ) =>
   update((current) => {
     const approval = current.approvals.find((item) => item.id === approvalId);
+    if (!approval) throw new Error("审核工单不存在");
+    if (!isPendingApproval(approval))
+      throw new Error("当前工单不处于待审核状态");
+    if (approval.submitterId === result.reviewerId)
+      throw new Error("审核内容的发起者不能自审");
+    if (approval.assigneeId !== result.reviewerId)
+      throw new Error("只有被指派的审核人可以处理该工单");
+    const reviewer = current.operators.find(
+      (operator) => operator.id === result.reviewerId,
+    );
+    if (!reviewer || !canReviewAssignedApproval(approval, reviewer))
+      throw new Error("当前审核人已失去审核权限");
     const status = result.decision === "approve" ? "已通过" : "已驳回";
+    const isTaskApproval = ["消息任务", "紧急任务"].includes(
+      approval.objectType,
+    );
+    const isTemplateApproval = [
+      "消息模板",
+      "人工消息模板",
+      "事件消息模板",
+    ].includes(approval.objectType);
+    const reviewedRule = approval.ruleId
+      ? current.rules.find((rule) => rule.id === approval.ruleId)
+      : undefined;
+    if (approval.objectType === "事件通知规则") {
+      if (!reviewedRule) throw new Error("事件通知规则不存在");
+      if (reviewedRule.status !== "待审核")
+        throw new Error("当前规则不在待审核状态");
+      if (
+        result.decision === "approve" &&
+        (approval.replacementRuleIds || []).some(
+          (ruleId) =>
+            current.rules.find((rule) => rule.id === ruleId)?.status !==
+            "已启用",
+        )
+      ) {
+        throw new Error("待暂停规则状态已变化，请重新提审");
+      }
+    }
     return {
       ...current,
       approvals: current.approvals.map((item) =>
@@ -2078,14 +2229,15 @@ export const reviewApproval = (
           ? {
               ...item,
               status,
-              reviewer: result.reviewer,
+              reviewer: reviewer.name,
               reviewedAt: "刚刚",
               opinion: result.opinion,
             }
           : item,
       ),
       tasks: current.tasks.map((task) =>
-        task.id === approval?.taskId || task.name === approval?.name
+        isTaskApproval &&
+        (task.id === approval.taskId || task.name === approval.name)
           ? task.triggerType === "event"
             ? {
                 ...task,
@@ -2112,15 +2264,47 @@ export const reviewApproval = (
           : task,
       ),
       templates: current.templates.map((template) =>
-        template.id === approval?.templateId ||
-        (approval?.objectType === "消息模板" && template.name === approval.name)
+        isTemplateApproval &&
+        (template.id === approval.templateId ||
+          (approval.objectType === "消息模板" &&
+            template.name === approval.name))
           ? {
               ...template,
-              status: result.decision === "approve" ? "已发布" : "已驳回",
+              status:
+                result.decision === "approve"
+                  ? "已发布"
+                  : template.usageScope === "event"
+                    ? "已驳回"
+                    : "驳回",
               updatedAt: "刚刚",
             }
           : template,
       ),
+      rules: current.rules.map((rule) => {
+        if (approval.objectType !== "事件通知规则") return rule;
+        if (rule.id === approval.ruleId) {
+          return {
+            ...rule,
+            status:
+              result.decision === "approve"
+                ? ("已启用" as const)
+                : ("待修改" as const),
+            updatedAt: "刚刚",
+          };
+        }
+        if (
+          result.decision === "approve" &&
+          approval.replacementRuleIds?.includes(rule.id)
+        ) {
+          return {
+            ...rule,
+            status: "已停用" as const,
+            replacedByRuleId: approval.ruleId,
+            updatedAt: "刚刚",
+          };
+        }
+        return rule;
+      }),
     };
   });
 
@@ -2229,9 +2413,12 @@ export const submitTemplateForApproval = (templateId: string) => {
       ["待我审核", "待审核"].includes(item.status),
   );
   if (existing) return existing;
+  const submitterId = CURRENT_REVIEW_OPERATOR_ID;
+  const assignment = assignApprovalReviewer(state.operators, submitterId);
   const approval: ApprovalItem = {
     id: `APR-${Date.now().toString().slice(-6)}`,
-    objectType: "消息模板",
+    objectType:
+      template.usageScope === "event" ? "事件消息模板" : "消息模板",
     name: template.name,
     version: template.version,
     risk: template.risk,
@@ -2244,22 +2431,27 @@ export const submitTemplateForApproval = (templateId: string) => {
         ? "业务 + 风控双审"
         : "一级审核",
     submitter: "Gary Ma",
-    submitterId: "admin-01",
+    submitterId,
+    ...assignment,
     submittedAt: "刚刚",
-    status: "待我审核",
+    status: "待审核",
     templateId: template.id,
     channels: template.channels,
     locales: template.locales,
     content: template.content,
     expiresAt: "长期",
-    changes: ["全部目标语言已完成人工审核", "提交不可变模板版本发布"],
+    changes: ["全部目标语言已完成人工审核", "提交模板发布"],
   };
   update((current) => ({
     ...current,
     approvals: [approval, ...current.approvals],
     templates: current.templates.map((item) =>
       item.id === templateId
-        ? { ...item, status: "待业务审核", updatedAt: "刚刚" }
+        ? {
+            ...item,
+            status: item.usageScope === "event" ? "待业务审核" : "审核中",
+            updatedAt: "刚刚",
+          }
         : item,
     ),
   }));
@@ -2285,7 +2477,7 @@ export const updateAllowlistEntry = (
     ),
   }));
 
-export const createEventRule = (input: {
+type EventRuleDraftInput = {
   name: string;
   eventId: string;
   conditionExpression: string;
@@ -2296,11 +2488,19 @@ export const createEventRule = (input: {
   title: string;
   body: string;
   targetLocales: string[];
+};
+
+export const createEventRule = (input: EventRuleDraftInput & {
   owner: string;
 }) => {
   const stamp = Date.now().toString().slice(-6);
   const event = state.events.find((item) => item.id === input.eventId);
   if (!event) throw new Error("事件定义不存在");
+  const template = state.templates.find((item) => item.id === input.templateId);
+  if (!template || template.status !== "已发布")
+    throw new Error("只能选择已发布的消息模板");
+  if (template.usageScope !== "event")
+    throw new Error("只能选择已发布的事件消息模板");
   const ruleId = `RULE-${stamp}`;
   const versionId = `RV-${stamp}`;
   const rule: EventNotificationRule = {
@@ -2345,6 +2545,62 @@ export const createEventRule = (input: {
   return rule;
 };
 
+export const updateEventRule = (
+  ruleId: string,
+  input: EventRuleDraftInput,
+) => {
+  let updatedRule: EventNotificationRule | undefined;
+  update((current) => {
+    const rule = current.rules.find((item) => item.id === ruleId);
+    if (!rule) throw new Error("事件通知规则不存在");
+    if (!["草稿", "待修改"].includes(rule.status))
+      throw new Error("当前规则不可编辑");
+    const event = current.events.find((item) => item.id === input.eventId);
+    if (!event) throw new Error("事件定义不存在");
+    const template = current.templates.find(
+      (item) => item.id === input.templateId,
+    );
+    if (!template || template.status !== "已发布")
+      throw new Error("只能选择已发布的消息模板");
+    if (template.usageScope !== "event")
+      throw new Error("只能选择已发布的事件消息模板");
+
+    updatedRule = {
+      ...rule,
+      name: input.name,
+      eventId: input.eventId,
+      eventVersion: event.version,
+      conditionExpression:
+        input.conditionExpression || "事件到达即触发",
+      subjectMapping: input.subjectMapping || "payload.user_id → UID",
+      channels: input.channels,
+      replacementRuleIds: [],
+      updatedAt: "刚刚",
+    };
+
+    return {
+      ...current,
+      rules: current.rules.map((item) =>
+        item.id === ruleId ? updatedRule! : item,
+      ),
+      ruleVersions: current.ruleVersions.map((version) =>
+        version.ruleId === ruleId &&
+        (!rule.currentVersionId || version.id === rule.currentVersionId)
+          ? {
+              ...version,
+              templateId: input.templateId,
+              templateVersion: input.templateVersion,
+              targetLocales: input.targetLocales,
+              title: input.title,
+              body: input.body,
+            }
+          : version,
+      ),
+    };
+  });
+  return updatedRule!;
+};
+
 export const changeEventRuleStatus = (
   ruleId: string,
   operation: EventRuleOperation,
@@ -2360,24 +2616,180 @@ export const changeEventRuleStatus = (
           }
         : rule,
     ),
+    approvals: current.approvals.map((approval) =>
+      approval.ruleId === ruleId &&
+      operation === "撤回审核" &&
+      isPendingApproval(approval)
+        ? {
+            ...approval,
+            status: "已撤回",
+            reviewedAt: "刚刚",
+            opinion: "规则创建人撤回审核",
+          }
+        : approval,
+    ),
   }));
+
+export const submitEventRuleForReview = (
+  ruleId: string,
+  replacementRuleIds: string[],
+) => {
+  let submitted: EventNotificationRule | undefined;
+  update((current) => {
+    const rule = current.rules.find((item) => item.id === ruleId);
+    if (!rule) throw new Error("事件通知规则不存在");
+    if (!["草稿", "待修改"].includes(rule.status))
+      throw new Error("当前规则不可提交审核");
+    const uniqueIds = Array.from(new Set(replacementRuleIds));
+    const invalid = uniqueIds
+      .map((id) => current.rules.find((item) => item.id === id))
+      .find(
+        (candidate) =>
+          !candidate ||
+          candidate.id === rule.id ||
+          candidate.status !== "已启用",
+      );
+    if (invalid || uniqueIds.some((id) => !current.rules.some((item) => item.id === id)))
+      throw new Error("待暂停规则不可用，请重新选择");
+    const existingApproval = current.approvals.find(
+      (approval) =>
+        approval.ruleId === ruleId && isPendingApproval(approval),
+    );
+    if (existingApproval) {
+      submitted = rule;
+      return current;
+    }
+    const snapshot = current.ruleVersions.find(
+      (version) =>
+        version.ruleId === ruleId &&
+        (!rule.currentVersionId || version.id === rule.currentVersionId),
+    );
+    if (!snapshot) throw new Error("规则内容快照不存在");
+    const template = current.templates.find(
+      (item) => item.id === snapshot.templateId,
+    );
+    if (!template) throw new Error("规则绑定模板不存在");
+    const submitterId = CURRENT_REVIEW_OPERATOR_ID;
+    const submitter =
+      current.operators.find((operator) => operator.id === submitterId)?.name ||
+      rule.owner;
+    const assignment = assignApprovalReviewer(
+      current.operators,
+      submitterId,
+    );
+    const approval: ApprovalItem = {
+      id: `APR-${Date.now().toString().slice(-6)}`,
+      objectType: "事件通知规则",
+      name: rule.name,
+      version: snapshot.version,
+      risk: template.risk,
+      nature: template.nature,
+      audience: 1,
+      cost: "Web ¥0 · Push ¥0",
+      schedule: "事件到达时",
+      step:
+        template.risk === "高" || template.risk === "关键"
+          ? "业务 + 风控双审"
+          : "一级审核",
+      submitter,
+      submitterId,
+      ...assignment,
+      submittedAt: "刚刚",
+      status: "待审核",
+      triggerType: "event",
+      ruleId: rule.id,
+      templateId: template.id,
+      templateVersion: template.version,
+      channels: [...rule.channels],
+      locales: [...template.locales],
+      content: template.content,
+      subjectMapping: rule.subjectMapping,
+      replacementRuleIds: uniqueIds,
+      eventConfig: {
+        eventId: rule.eventId,
+        eventVersion: rule.eventVersion,
+        conditionExpression: rule.conditionExpression,
+        variableMappings: [],
+        dedupeKey: rule.dedupeKey,
+        eventTtlSeconds: rule.eventTtlSeconds,
+        maxRetries: rule.maxRetries,
+        retryBackoffSeconds: rule.retryBackoffSeconds,
+      },
+      expiresAt: "长期",
+      changes: [
+        "冻结事件、条件、主体映射、模板、渠道与多语言内容",
+        uniqueIds.length
+          ? `审核通过后暂停 ${uniqueIds.length} 条已启用规则`
+          : "审核通过后直接启用",
+      ],
+    };
+
+    const rules = current.rules.map((item) =>
+      item.id === ruleId
+        ? {
+            ...item,
+            status: "待审核" as const,
+            replacementRuleIds: uniqueIds,
+            updatedAt: "刚刚",
+          }
+        : item,
+    );
+    submitted = rules.find((item) => item.id === ruleId);
+    return {
+      ...current,
+      rules,
+      approvals: [approval, ...current.approvals],
+    };
+  });
+  return submitted!;
+};
 
 export const reviewEventRule = (
   ruleId: string,
   decision: "approve" | "reject",
 ) =>
-  update((current) => ({
-    ...current,
-    rules: current.rules.map((rule) =>
-      rule.id === ruleId
-        ? {
+  update((current) => {
+    const target = current.rules.find((rule) => rule.id === ruleId);
+    if (!target) throw new Error("事件通知规则不存在");
+    if (target.status !== "待审核") throw new Error("当前规则不在待审核状态");
+    const replacementIds = target.replacementRuleIds || [];
+    if (decision === "approve") {
+      const replacementRules = replacementIds.map((id) =>
+        current.rules.find((rule) => rule.id === id),
+      );
+      if (
+        replacementRules.some(
+          (rule) =>
+            !rule ||
+            rule.status !== "已启用",
+        )
+      ) {
+        throw new Error("待暂停规则状态已变化，请重新提审");
+      }
+    }
+
+    return {
+      ...current,
+      rules: current.rules.map((rule) => {
+        if (rule.id === ruleId) {
+          return {
             ...rule,
             status: decision === "approve" ? "已启用" : "待修改",
             updatedAt: "刚刚",
-          }
-        : rule,
-    ),
-  }));
+          };
+        }
+        if (decision === "approve" && replacementIds.includes(rule.id)) {
+          return {
+            ...rule,
+            status: "已停用",
+            replacedByRuleId: ruleId,
+            updatedAt: "刚刚",
+          };
+        }
+        return rule;
+      }),
+    };
+  });
 
 export const createRuleContentVersion = (ruleId: string) => {
   const rule = state.rules.find((item) => item.id === ruleId);
