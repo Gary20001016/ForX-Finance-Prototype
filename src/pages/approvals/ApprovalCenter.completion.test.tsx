@@ -11,10 +11,11 @@ import {
 } from "../../store/prototypeStore";
 
 it("shows object-bound Web/App inbox and Push previews in approval", async () => {
+  resetPrototypeStore();
   const user = userEvent.setup();
   render(
     <MemoryRouter>
-      <ApprovalCenterPage currentAdminId="reviewer-02" />
+      <ApprovalCenterPage currentAdminId="admin-01" />
     </MemoryRouter>,
   );
   await user.click(screen.getAllByText("审核")[0]);
@@ -36,7 +37,8 @@ it("shows the frozen event policy in approval details", async () => {
     "symbol",
     "occurred_at",
   ];
-  submitTask({
+  resetPrototypeStore();
+  const task = submitTask({
     name: "提现事件审批测试",
     triggerType: "event",
     category: "资产通知",
@@ -67,12 +69,16 @@ it("shows the frozen event policy in approval details", async () => {
       })),
     },
   });
+  const approval = getPrototypeState().approvals.find(
+    (item) => item.taskId === task.id,
+  )!;
   render(
     <MemoryRouter>
-      <ApprovalCenterPage currentAdminId="reviewer-02" />
+      <ApprovalCenterPage currentAdminId={approval.assigneeId} />
     </MemoryRouter>,
   );
-  await user.click(screen.getAllByText("审核")[0]);
+  const row = screen.getByText("提现事件审批测试").closest("tr")!;
+  await user.click(within(row).getByRole("button", { name: "审核" }));
   expect(screen.getByText("冻结的事件触发策略")).toBeVisible();
   expect(screen.getByText(/withdrawal\.succeeded/)).toBeVisible();
 });

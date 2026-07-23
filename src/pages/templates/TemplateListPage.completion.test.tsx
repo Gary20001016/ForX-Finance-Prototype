@@ -45,5 +45,7 @@ it("shows task usage instead of a direct event binding", () => {
   );
   expect(screen.getByText("使用任务")).toBeVisible();
   expect(screen.queryByText("事件编码")).not.toBeInTheDocument();
-  expect(screen.getAllByText(/人工 \d+ · 事件 \d+/).length).toBeGreaterThan(0);
+  expect(
+    screen.getAllByRole("button", { name: /\d+ 个任务/ }).length,
+  ).toBeGreaterThan(0);
 });

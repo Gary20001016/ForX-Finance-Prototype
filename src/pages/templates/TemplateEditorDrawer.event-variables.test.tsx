@@ -1,5 +1,5 @@
 import { beforeEach, expect, it } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { resetPrototypeStore } from "../../store/prototypeStore";
 import TemplateEditorDrawer from "./TemplateEditorDrawer";
@@ -22,7 +22,7 @@ it("uses explained insert-only variables for event template bodies", async () =>
 
   await user.click(insertButtons[0]);
   expect(screen.getByText("接收事件通知的用户昵称")).toBeVisible();
-  await user.click(screen.getByRole("button", { name: "插入 user_nickname" }));
+  fireEvent.click(screen.getByRole("button", { name: "插入 user_nickname" }));
 
   expect(screen.getByLabelText("Markdown 站内信正文")).toHaveValue(
     "{{ user_nickname }}",

@@ -1,6 +1,7 @@
 import { beforeEach, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { MemoryRouter } from "react-router-dom";
 import { resetPrototypeStore } from "../../store/prototypeStore";
 import SettingsPage from "./SettingsPage";
 
@@ -10,7 +11,11 @@ beforeEach(() => {
 });
 
 it("opens the personal test account tab from the settings query parameter", () => {
-  render(<SettingsPage />);
+  render(
+    <MemoryRouter initialEntries={["/settings?tab=test-accounts"]}>
+      <SettingsPage />
+    </MemoryRouter>,
+  );
 
   expect(screen.getByRole("tab", { name: "测试账号" })).toHaveAttribute(
     "aria-selected",
@@ -23,7 +28,11 @@ it("opens the personal test account tab from the settings query parameter", () =
 
 it("adds a test UID for the current operator", async () => {
   const user = userEvent.setup();
-  render(<SettingsPage />);
+  render(
+    <MemoryRouter initialEntries={["/settings?tab=test-accounts"]}>
+      <SettingsPage />
+    </MemoryRouter>,
+  );
 
   await user.click(screen.getByRole("button", { name: "新增测试账号" }));
   await user.type(screen.getByPlaceholderText("输入用户 UID"), "UID-TEST-9003");

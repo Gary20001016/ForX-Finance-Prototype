@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import TemplateListPage from './TemplateListPage';
 
-it('shows event and shared templates from the event entry', () => {
+it('shows only event templates from the event entry', () => {
   render(
     <MemoryRouter initialEntries={['/templates?scope=event']}>
       <TemplateListPage />
@@ -16,7 +16,7 @@ it('shows event and shared templates from the event entry', () => {
   ).not.toBeInTheDocument();
   expect(screen.getByRole('columnheader', { name: '适用场景' })).toBeVisible();
   expect(screen.getByText('提现成功通知')).toBeVisible();
-  expect(screen.getByText('夏季交易赛')).toBeVisible();
+  expect(screen.queryByText('夏季交易赛')).not.toBeInTheDocument();
   expect(screen.queryByText('网络维护公告')).not.toBeInTheDocument();
   expect(
     screen.getByRole('columnheader', { name: '关联通知规则' }),
