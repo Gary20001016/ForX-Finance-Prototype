@@ -473,7 +473,7 @@ describe("prototype store workflow transitions", () => {
       title: "Withdrawal completed",
       summary: "",
       body: "Your withdrawal is complete.",
-      reviewer: english.authorizedReviewerIds[0],
+      reviewer: english.authorizedReviewerIds?.[0]!,
     });
     approveSpecialReview(japanese.id, {
       title: "出金完了",
@@ -1193,7 +1193,7 @@ describe("prototype store workflow transitions", () => {
         body: item.machineBody || "Translated body",
         reviewer: item.specialReviewRequired
           ? item.assigneeId!
-          : item.authorizedReviewerIds[0],
+          : item.authorizedReviewerIds?.[0]!,
       }),
     );
     expect(
