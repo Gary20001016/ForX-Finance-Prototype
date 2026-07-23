@@ -25,7 +25,6 @@ export interface TaskSummaryData {
   content: LocalizedMessageContent;
   audienceCount: number;
   audienceLabel: string;
-  sampleUsers: string[];
   schedule: string;
   expiresAt: string;
   translationReady: boolean;
@@ -63,9 +62,14 @@ export default function TaskSummary({ data }: { data: TaskSummaryData }) {
             </Space>
           }
         >
-          <MessagePreview content={data.content} compact />
+          <MessagePreview
+            content={data.content}
+            channels={data.channels}
+            compact
+            showPushPriority={data.triggerType === "event"}
+          />
         </Card>
-        <Card title="受众计算与样例" bordered={false} className="inner-card">
+        <Card title="受众计算" bordered={false} className="inner-card">
           <Grid.Row gutter={12}>
             {[
               ["原始受众", data.audienceCount.toLocaleString()],
@@ -80,12 +84,6 @@ export default function TaskSummary({ data }: { data: TaskSummaryData }) {
               </Grid.Col>
             ))}
           </Grid.Row>
-          <div className="sample-user-list">
-            <strong>受众样例</strong>
-            {data.sampleUsers.map((user) => (
-              <Tag key={user}>{user}</Tag>
-            ))}
-          </div>
         </Card>
       </div>
       <div className="summary-side">

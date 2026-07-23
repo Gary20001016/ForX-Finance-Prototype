@@ -14,6 +14,8 @@ import InboxPage from '../pages/inbox/InboxPage';
 import MessageDetailPage from '../pages/inbox/MessageDetailPage';
 import AutomationRuleListPage from '../pages/automation/AutomationRuleListPage';
 import TriggerRecordPage from '../pages/triggers/TriggerRecordPage';
+import MultilingualReviewPage from '../pages/multilingual/MultilingualReviewPage';
+import TemplateVariablePage from '../pages/variables/TemplateVariablePage';
 
 export const appRouter = createBrowserRouter([
   { path:'/inbox', element:<InboxPage /> },
@@ -28,6 +30,8 @@ export const appRouter = createBrowserRouter([
       { path:'tasks/create', element:<CreateTaskPage /> },
       { path:'automation', element:<AutomationRuleListPage /> },
       { path:'templates', element:<TemplateListPage /> },
+      { path:'template-variables', element:<TemplateVariablePage /> },
+      { path:'multilingual-review', element:<MultilingualReviewPage /> },
       { path:'segments', element:<SegmentListPage /> },
       { path:'events', element:<EventListPage /> },
       { path:'triggers', element:<TriggerRecordPage /> },

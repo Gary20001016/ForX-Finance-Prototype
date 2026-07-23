@@ -13,15 +13,32 @@ import {
   Tabs,
 } from "@arco-design/web-react";
 import MessagePreview from "../../components/MessagePreview";
+import MarkdownEditor from "../../components/MarkdownEditor";
+import VariableTextArea from "../../components/VariableTextArea";
+import { hasUnsafeMarkdownLinks } from "../../components/MarkdownContent";
+import {
+  extractVariableNames,
+  validateVariableTokens,
+} from "../../domain/manualMessageVariables";
 import type {
+  Channel,
   LocalizedMessageContent,
   MessageTemplate,
+  TemplateUsageScope,
 } from "../../domain/types";
 import {
   createTranslationBatch,
+  prepareSingleLanguageContent,
+  requiresSpecialLanguageReview,
   saveTemplate,
   updateTemplate,
+  usePrototypeStore,
 } from "../../store/prototypeStore";
+import { getMessageCategoryDefaultNature } from "../../domain/messageCategoryPolicy";
+import { isApprovedManualTemplateLocked } from "../../domain/templatePolicy";
+import { getEventTemplateVariables } from "../../domain/eventVariables";
+import TemplateReadOnlyDetails from "./TemplateReadOnlyDetails";
+import TemplateTestSendModal from "./TemplateTestSendModal";
 
 const categories = [
   "系统公告",
@@ -32,7 +49,8 @@ const categories = [
   "活动通知",
   "风控通知",
 ];
-const locales = [
+const supportedLocales = [
+  "zh-CN",
   "en-US",
   "zh-TW",
   "ja-JP",
@@ -43,6 +61,8 @@ const locales = [
   "fr-FR",
   "de-DE",
 ];
+const defaultChannels: Channel[] = ["站内信", "Push"];
+const eventTemplateVariables = getEventTemplateVariables();
 const emptyContent: LocalizedMessageContent = {
   sourceLocale: "zh-CN",
   locales: ["zh-CN"],
@@ -67,45 +87,53 @@ export default function TemplateEditorDrawer({
   template,
   onClose,
   onCreated,
+  entryScope,
+  readOnly = false,
 }: {
   visible: boolean;
   template?: MessageTemplate;
+  entryScope: Exclude<TemplateUsageScope, "shared">;
   onClose: () => void;
   onCreated?: (template: MessageTemplate) => void;
+  readOnly?: boolean;
 }) {
   const [form] = Form.useForm();
+  const store = usePrototypeStore();
   const [content, setContent] = useState<LocalizedMessageContent>(emptyContent);
-  const [targetLocales, setTargetLocales] = useState<string[]>(["en-US"]);
+  const [channels, setChannels] = useState<Channel[]>(defaultChannels);
+  const [sourceLocale, setSourceLocale] = useState("zh-CN");
+  const [targetLocales, setTargetLocales] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [testSendVisible, setTestSendVisible] = useState(false);
+  const locked = Boolean(
+    readOnly || (template && isApprovedManualTemplateLocked(template)),
+  );
   useEffect(() => {
     const next = template?.content || emptyContent;
+    const nextSourceLocale = template?.sourceLocale || "zh-CN";
+    const nextCategory = template?.category || "系统公告";
+    const nextNature =
+      getMessageCategoryDefaultNature(store.categories, nextCategory) || "事务";
     setContent(JSON.parse(JSON.stringify(next)));
+    setSourceLocale(nextSourceLocale);
     setTargetLocales(
-      (template?.locales || ["zh-CN", "en-US"]).filter(
-        (item) => item !== (template?.sourceLocale || "zh-CN"),
-      ),
+      (template?.locales || []).filter((item) => item !== nextSourceLocale),
+    );
+    setChannels(
+      template?.channels?.length
+        ? [...template.channels]
+        : [...defaultChannels],
     );
     form.setFieldsValue({
-      code: template?.code,
       name: template?.name,
       description: "",
-      category: template?.category || "系统公告",
-      nature: template?.nature || "事务",
-      risk: template?.risk || "中",
-      sourceLocale: template?.sourceLocale || "zh-CN",
-      channels: template?.channels || ["站内信", "Push"],
+      category: nextCategory,
+      nature: nextNature,
+      risk: template?.risk || "低",
       owner: template?.owner || "消息运营",
-      variables: (
-        template?.variables || [
-          "user_nickname",
-          "amount",
-          "currency",
-          "symbol",
-          "occurred_at",
-        ]
-      ).join(", "),
+      usageScope: template?.usageScope || entryScope,
     });
-  }, [template, visible, form]);
+  }, [template, visible, form, entryScope, store.categories]);
 
   const patchWeb = (changes: Partial<LocalizedMessageContent["web"]>) =>
     setContent((current) => ({
@@ -117,64 +145,177 @@ export default function TemplateEditorDrawer({
       ...current,
       push: { ...current.push, ...changes },
     }));
-  const save = async (translate: boolean) => {
+  const updateChannels = (values: Channel[]) => {
+    if (!values.length) {
+      Message.warning("请至少保留一个正式渠道");
+      return;
+    }
+    setChannels(values);
+  };
+  const updateSourceLocale = (locale: string) => {
+    setSourceLocale(locale);
+    setTargetLocales((current) => current.filter((item) => item !== locale));
+  };
+  const availableTemplateVariables =
+    entryScope === "manual" ? store.templateVariables : eventTemplateVariables;
+  const referencedVariableNames = Array.from(
+    new Set([
+      ...extractVariableNames(content.web.body),
+      ...extractVariableNames(content.push.body),
+    ]),
+  );
+  const templateVariableValidation = validateVariableTokens(
+    `${content.web.body}\n${content.push.body}`,
+    availableTemplateVariables,
+  );
+  const save = async (mode: "draft" | "submit") => {
     try {
       const values = await form.validate();
-      if (
-        !content.web.title ||
-        !content.web.summary ||
-        !content.web.body ||
-        !content.push.title ||
-        !content.push.body
-      ) {
-        Message.warning("请完整填写站内信与 App Push 内容");
+      const resolvedNature =
+        getMessageCategoryDefaultNature(store.categories, values.category) ||
+        "事务";
+      const stationIncomplete =
+        channels.includes("站内信") &&
+        (!content.web.title || !content.web.summary || !content.web.body);
+      const pushIncomplete =
+        channels.includes("Push") &&
+        (!content.push.title || !content.push.body);
+      if (stationIncomplete || pushIncomplete) {
+        Message.warning("请完整填写已选正式渠道的内容");
         return;
       }
-      if (translate && targetLocales.length === 0) {
-        Message.warning("请至少选择一个目标语言");
+      if (
+        channels.includes("站内信") &&
+        hasUnsafeMarkdownLinks(content.web.body)
+      ) {
+        Message.error(
+          "站内信 Markdown 包含不允许的链接，仅支持 http、https 和 forxfinance 协议",
+        );
         return;
+      }
+      if (!templateVariableValidation.valid) {
+        const detail = [
+          templateVariableValidation.invalid.length
+            ? `不存在：${templateVariableValidation.invalid.join("、")}`
+            : "",
+          templateVariableValidation.inactive.length
+            ? `已停用：${templateVariableValidation.inactive.join("、")}`
+            : "",
+          templateVariableValidation.malformed ? "占位符格式不完整" : "",
+        ]
+          .filter(Boolean)
+          .join("；");
+        if (mode === "submit") {
+          Message.error(`正文模板变量校验失败；${detail}`);
+          return;
+        }
+        Message.warning(`草稿已保留变量问题；${detail}`);
       }
       setSubmitting(true);
       const payload = {
-        code: values.code,
         name: values.name,
         category: values.category,
-        nature: values.nature,
+        nature: resolvedNature,
         risk: values.risk,
-        channels: values.channels,
-        locales: [values.sourceLocale, ...targetLocales],
-        sourceLocale: values.sourceLocale,
+        channels,
+        locales: [sourceLocale, ...targetLocales],
+        sourceLocale,
         content: {
           ...content,
-          sourceLocale: values.sourceLocale,
-          locales: [values.sourceLocale, ...targetLocales],
+          sourceLocale,
+          locales: [sourceLocale, ...targetLocales],
         },
-        variables: values.variables
-          .split(",")
-          .map((item: string) => item.trim())
-          .filter(Boolean),
-        owner: values.owner,
+        variables: referencedVariableNames,
+        owner:
+          entryScope === "event"
+            ? values.owner
+            : template?.owner || "消息运营",
+        usageScope: values.usageScope,
       };
       const entity = template
         ? updateTemplate(template.id, payload)
         : saveTemplate(payload);
-      if (translate)
-        createTranslationBatch({
-          templateId: entity.id,
-          targetLocales,
-          createdBy: "Gary Ma",
-        });
-      Message.success(
-        translate ? "模板已保存，并已创建外部机翻任务" : "模板草稿已保存",
-      );
+      if (mode === "submit") {
+        if (targetLocales.length) {
+          createTranslationBatch({
+            templateId: entity.id,
+            targetLocales,
+            createdBy: "Gary Ma",
+          });
+          Message.success("模板已保存，并已创建外部机翻任务");
+        } else {
+          const sourceContent = {
+            title:
+              channels.length === 1 && channels.includes("Push")
+                ? content.push.title
+                : channels.length === 1
+                  ? content.web.title
+                  : `站内信：${content.web.title} / Push：${content.push.title}`,
+            summary: channels.includes("站内信")
+              ? content.web.summary
+              : undefined,
+            body:
+              channels.length === 1 && channels.includes("Push")
+                ? content.push.body
+                : channels.length === 1
+                  ? content.web.body
+                  : `【站内信】\n${content.web.body}\n\n【App Push】\n${content.push.body}`,
+          };
+          const result = prepareSingleLanguageContent({
+            subject: {
+              type: "template_version",
+              id: entity.id,
+              name: entity.name,
+              version: entity.version,
+              returnPath: "/templates",
+            },
+            sourceLocale,
+            sourceContent,
+            createdBy: "Gary Ma",
+          });
+          Message.success(
+            result.requiresReview
+              ? "模板已保存，并已提交语言审核"
+              : "单语言模板已保存，可进入业务审核",
+          );
+        }
+      } else {
+        Message.success("模板草稿已保存");
+      }
       onCreated?.(entity);
       onClose();
-    } catch {
-      /* Form displays validation */
+    } catch (error) {
+      if (error instanceof Error) Message.error(error.message);
     } finally {
       setSubmitting(false);
     }
   };
+
+  if (locked) {
+    return (
+      <Drawer
+        width={1180}
+        visible={visible}
+        title={`查看模板 · ${template?.name || ""}`}
+        onCancel={onClose}
+        footer={<Button onClick={onClose}>关闭</Button>}
+      >
+        {template && (
+          <TemplateReadOnlyDetails
+            template={template}
+            showOwnerTeam={entryScope === "event"}
+          />
+        )}
+      </Drawer>
+    );
+  }
+
+  const directReviewRequired = requiresSpecialLanguageReview(sourceLocale);
+  const submitLabel = targetLocales.length
+    ? "提交外部机翻"
+    : directReviewRequired
+      ? "提交语言审核"
+      : "保存并进入业务审核";
 
   return (
     <Drawer
@@ -185,13 +326,14 @@ export default function TemplateEditorDrawer({
       footer={
         <Space>
           <Button onClick={onClose}>取消</Button>
-          <Button onClick={() => save(false)}>保存草稿</Button>
+          <Button onClick={() => setTestSendVisible(true)}>测试发送</Button>
+          <Button onClick={() => save("draft")}>保存草稿</Button>
           <Button
             type="primary"
             loading={submitting}
-            onClick={() => save(true)}
+            onClick={() => save("submit")}
           >
-            提交外部机翻
+            {submitLabel}
           </Button>
         </Space>
       }
@@ -199,21 +341,17 @@ export default function TemplateEditorDrawer({
       <Alert
         type="info"
         showIcon
-        content="默认语言由操作者维护；目标语言提交平台后台的外部异步机翻任务，返回后必须逐语言人工审核。"
+        content={
+          targetLocales.length
+            ? "默认语言由操作者维护；目标语言提交平台后台的外部异步机翻任务，返回后必须逐语言人工审核。"
+            : directReviewRequired
+              ? "单语言模板，无需机器翻译；当前语言需要专项人工审核。"
+              : "单语言模板，无需机器翻译；保存后可进入业务审核。"
+        }
       />
       <Form form={form} layout="vertical" className="template-editor-form">
         <Grid.Row gutter={16}>
-          <Grid.Col span={8}>
-            <Form.Item
-              label="模板编码"
-              field="code"
-              required
-              rules={[{ required: true }]}
-            >
-              <Input placeholder="snake_case，例如 risk_alert" />
-            </Form.Item>
-          </Grid.Col>
-          <Grid.Col span={8}>
+          <Grid.Col span={entryScope === "event" ? 12 : 18}>
             <Form.Item
               label="模板名称"
               field="name"
@@ -223,12 +361,28 @@ export default function TemplateEditorDrawer({
               <Input placeholder="后台识别名称" />
             </Form.Item>
           </Grid.Col>
-          <Grid.Col span={8}>
-            <Form.Item label="所有者团队" field="owner" required>
+          {entryScope === "event" && (
+            <Grid.Col span={6}>
+              <Form.Item label="所有者团队" field="owner" required>
+                <Select
+                  options={["消息运营", "增长运营", "安全中心", "资金平台"].map(
+                    (value) => ({ label: value, value }),
+                  )}
+                />
+              </Form.Item>
+            </Grid.Col>
+          )}
+          <Grid.Col span={6}>
+            <Form.Item label="适用场景" field="usageScope" required>
               <Select
-                options={["消息运营", "增长运营", "安全中心", "资金平台"].map(
-                  (value) => ({ label: value, value }),
-                )}
+                options={
+                  entryScope === "event"
+                    ? [{ label: "事件通知", value: "event" }]
+                    : [
+                        { label: "人工消息", value: "manual" },
+                        { label: "通用", value: "shared" },
+                      ]
+                }
               />
             </Form.Item>
           </Grid.Col>
@@ -237,18 +391,26 @@ export default function TemplateEditorDrawer({
           <Grid.Col span={6}>
             <Form.Item label="消息分类" field="category" required>
               <Select
+                onChange={(category) =>
+                  form.setFieldsValue({
+                    nature:
+                      getMessageCategoryDefaultNature(
+                        store.categories,
+                        category,
+                      ) || "事务",
+                  })
+                }
                 options={categories.map((value) => ({ label: value, value }))}
               />
             </Form.Item>
           </Grid.Col>
           <Grid.Col span={6}>
-            <Form.Item label="消息性质" field="nature">
-              <Select
-                options={["事务", "服务", "营销"].map((value) => ({
-                  label: value,
-                  value,
-                }))}
-              />
+            <Form.Item
+              label="消息性质"
+              field="nature"
+              extra="由消息分类自动确定"
+            >
+              <Input disabled />
             </Form.Item>
           </Grid.Col>
           <Grid.Col span={6}>
@@ -262,9 +424,12 @@ export default function TemplateEditorDrawer({
             </Form.Item>
           </Grid.Col>
           <Grid.Col span={6}>
-            <Form.Item label="默认语言" field="sourceLocale">
+            <Form.Item label="默认语言" required>
               <Select
-                options={["zh-CN", "en-US"].map((value) => ({
+                aria-label="默认语言"
+                value={sourceLocale}
+                onChange={updateSourceLocale}
+                options={supportedLocales.map((value) => ({
                   label: value,
                   value,
                 }))}
@@ -274,33 +439,35 @@ export default function TemplateEditorDrawer({
         </Grid.Row>
         <Grid.Row gutter={16}>
           <Grid.Col span={10}>
-            <Form.Item label="正式渠道" field="channels">
-              <Checkbox.Group options={["站内信", "Push"]} />
+            <Form.Item label="正式渠道" required>
+              <Checkbox.Group
+                value={channels}
+                options={["站内信", "Push"]}
+                onChange={(values) => updateChannels(values as Channel[])}
+              />
             </Form.Item>
           </Grid.Col>
           <Grid.Col span={14}>
             <Form.Item label="目标语言">
               <Select
+                aria-label="目标语言"
                 mode="multiple"
+                placeholder="可留空，表示单语言模板"
                 value={targetLocales}
                 onChange={setTargetLocales}
-                options={locales.map((value) => ({ label: value, value }))}
+                options={supportedLocales
+                  .filter((value) => value !== sourceLocale)
+                  .map((value) => ({ label: value, value }))}
               />
             </Form.Item>
           </Grid.Col>
         </Grid.Row>
-        <Form.Item
-          label="模板变量"
-          field="variables"
-          extra="逗号分隔；提交机翻前后都会检查变量名称与数量"
-        >
-          <Input />
-        </Form.Item>
       </Form>
       <Tabs defaultActiveTab="content">
         <Tabs.TabPane key="content" title="内容编辑">
           <Grid.Row gutter={20}>
-            <Grid.Col span={12}>
+            {channels.includes("站内信") && (
+              <Grid.Col span={channels.length === 1 ? 24 : 12}>
               <h3>站内信（Web + App 共用）</h3>
               <Form layout="vertical">
                 <Form.Item label="站内信标题">
@@ -318,11 +485,10 @@ export default function TemplateEditorDrawer({
                   />
                 </Form.Item>
                 <Form.Item label="站内信正文">
-                  <Input.TextArea
-                    aria-label="站内信正文"
-                    rows={5}
+                  <MarkdownEditor
                     value={content.web.body}
                     onChange={(value) => patchWeb({ body: value })}
+                    variables={availableTemplateVariables}
                   />
                 </Form.Item>
                 <Form.Item label="风险提示">
@@ -350,8 +516,10 @@ export default function TemplateEditorDrawer({
                   </Grid.Col>
                 </Grid.Row>
               </Form>
-            </Grid.Col>
-            <Grid.Col span={12}>
+              </Grid.Col>
+            )}
+            {channels.includes("Push") && (
+              <Grid.Col span={channels.length === 1 ? 24 : 12}>
               <h3>App Push</h3>
               <Form layout="vertical">
                 <Form.Item label="Push 标题">
@@ -362,9 +530,11 @@ export default function TemplateEditorDrawer({
                   />
                 </Form.Item>
                 <Form.Item label="Push 正文">
-                  <Input.TextArea
+                  <VariableTextArea
+                    ariaLabel="Push 正文"
                     value={content.push.body}
                     onChange={(value) => patchPush({ body: value })}
+                    variables={availableTemplateVariables}
                   />
                 </Form.Item>
                 <Form.Item label="Push 图片">
@@ -382,7 +552,7 @@ export default function TemplateEditorDrawer({
                   />
                 </Form.Item>
                 <Grid.Row gutter={12}>
-                  <Grid.Col span={8}>
+                  <Grid.Col span={entryScope === "event" ? 8 : 24}>
                     <Form.Item label="设备平台">
                       <Select
                         value={content.push.platform}
@@ -393,35 +563,51 @@ export default function TemplateEditorDrawer({
                       />
                     </Form.Item>
                   </Grid.Col>
-                  <Grid.Col span={8}>
-                    <Form.Item label="优先级">
-                      <Select
-                        value={content.push.priority}
-                        onChange={(value) => patchPush({ priority: value })}
-                        options={["普通", "高", "紧急"].map((value) => ({
-                          label: value,
-                          value,
-                        }))}
-                      />
-                    </Form.Item>
-                  </Grid.Col>
-                  <Grid.Col span={8}>
-                    <Form.Item label="折叠键">
-                      <Input
-                        value={content.push.collapseKey}
-                        onChange={(value) => patchPush({ collapseKey: value })}
-                      />
-                    </Form.Item>
-                  </Grid.Col>
+                  {entryScope === "event" && (
+                    <>
+                      <Grid.Col span={8}>
+                        <Form.Item label="优先级">
+                          <Select
+                            value={content.push.priority}
+                            onChange={(value) => patchPush({ priority: value })}
+                            options={["普通", "高", "紧急"].map((value) => ({
+                              label: value,
+                              value,
+                            }))}
+                          />
+                        </Form.Item>
+                      </Grid.Col>
+                      <Grid.Col span={8}>
+                        <Form.Item label="折叠键">
+                          <Input
+                            value={content.push.collapseKey}
+                            onChange={(value) => patchPush({ collapseKey: value })}
+                          />
+                        </Form.Item>
+                      </Grid.Col>
+                    </>
+                  )}
                 </Grid.Row>
               </Form>
-            </Grid.Col>
+              </Grid.Col>
+            )}
           </Grid.Row>
         </Tabs.TabPane>
         <Tabs.TabPane key="preview" title="双端预览">
-          <MessagePreview content={content} />
+          <MessagePreview
+            content={content}
+            channels={channels}
+            showPushPriority={entryScope === "event"}
+          />
         </Tabs.TabPane>
       </Tabs>
+      <TemplateTestSendModal
+        visible={testSendVisible}
+        content={content}
+        channels={channels}
+        variables={referencedVariableNames}
+        onClose={() => setTestSendVisible(false)}
+      />
     </Drawer>
   );
 }

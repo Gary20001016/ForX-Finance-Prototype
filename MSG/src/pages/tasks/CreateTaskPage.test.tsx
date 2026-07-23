@@ -16,9 +16,10 @@ it('keeps the active progress step aligned with the displayed wizard section', a
   await user.type(screen.getByPlaceholderText('例如：夏季交易赛召回'), '进度条测试任务');
   await user.click(screen.getByRole('button', { name: '下一步' }));
   expect(await screen.findByRole('heading', { name: '目标用户' })).toBeVisible();
+  expect(screen.queryByText('受众样例')).not.toBeInTheDocument();
 
   await user.click(screen.getByRole('button', { name: '下一步' }));
-  expect(await screen.findByRole('heading', { name: '发送与 App Push 策略' })).toBeVisible();
+  expect(await screen.findByRole('heading', { name: '发送策略' })).toBeVisible();
 
   expect(document.querySelector('.task-steps .arco-steps-item-active')).toHaveTextContent('发送策略');
 });

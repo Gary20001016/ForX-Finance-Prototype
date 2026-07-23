@@ -21,19 +21,86 @@ import {
   IconSearch,
 } from '@arco-design/web-react/icon';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { labelForPath, navigationItems } from '../app/navigation';
+import {
+  audienceNavigationItem,
+  dashboardNavigationItem,
+  navigationContextForLocation,
+  navigationGroups,
+  settingsNavigationItem,
+} from '../app/navigation';
 import { openPrototypeDialog } from '../utils/prototypeActions';
+import { CURRENT_REVIEW_OPERATOR_ID } from '../domain/reviewOperators';
+import { usePrototypeStore } from '../store/prototypeStore';
+import {
+  canReadPage,
+  hasAnySettingsReadAccess,
+} from '../domain/pagePermissions';
+import { firstReadableSettingsPath } from '../app/routePermissions';
+import PagePermissionBoundary from '../components/PagePermissionBoundary';
 
 const { Sider, Header, Content } = Layout;
 
 export default function AdminLayout() {
+  const store = usePrototypeStore();
+  const currentOperator = store.operators.find(
+    (operator) => operator.id === CURRENT_REVIEW_OPERATOR_ID,
+  );
   const location = useLocation();
   const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
-  const activePath = useMemo(
-    () => navigationItems.find((item) => location.pathname.startsWith(item.key))?.key ?? '/dashboard',
-    [location.pathname],
+  const hasLanguageReviewAccess = Boolean(
+    currentOperator?.enabled &&
+      store.languageReviewPolicies.some(
+        (policy) =>
+          policy.enabled &&
+          policy.authorizedReviewerIds.includes(currentOperator.id),
+      ),
   );
+  const visibleGroups = useMemo(
+    () =>
+      navigationGroups
+        .map((group) => ({
+          ...group,
+          children: group.children.filter((item) =>
+            item.path === '/multilingual-review'
+              ? hasLanguageReviewAccess
+              : Boolean(
+                  item.permissionKey &&
+                    canReadPage(currentOperator, item.permissionKey),
+                ),
+          ),
+        }))
+        .filter((group) => group.children.length > 0),
+    [currentOperator, hasLanguageReviewAccess],
+  );
+  const showDashboard = Boolean(
+    dashboardNavigationItem.permissionKey &&
+      canReadPage(currentOperator, dashboardNavigationItem.permissionKey),
+  );
+  const showAudience = Boolean(
+    audienceNavigationItem.permissionKey &&
+      canReadPage(currentOperator, audienceNavigationItem.permissionKey),
+  );
+  const showSettings = Boolean(
+    currentOperator?.isSuperAdmin || hasAnySettingsReadAccess(currentOperator),
+  );
+  const activeNavigation = useMemo(
+    () => navigationContextForLocation(location.pathname, location.search),
+    [location.pathname, location.search],
+  );
+  const [openKeys, setOpenKeys] = useState<string[]>(() => (
+    activeNavigation?.groupKey ? [activeNavigation.groupKey] : []
+  ));
+
+  useEffect(() => {
+    setOpenKeys((currentKeys) => {
+      const nextKeys = activeNavigation?.groupKey ? [activeNavigation.groupKey] : [];
+      return currentKeys.length === nextKeys.length
+        && currentKeys.every((key, index) => key === nextKeys[index])
+        ? currentKeys
+        : nextKeys;
+    });
+  }, [activeNavigation?.groupKey]);
 
   useEffect(() => {
     const handleResize = () => setCollapsed(window.innerWidth < 1100);
@@ -51,15 +118,39 @@ export default function AdminLayout() {
         </div>
         <Menu
           theme="dark"
-          selectedKeys={[activePath]}
-          onClickMenuItem={(key) => navigate(key)}
+          selectedKeys={[activeNavigation?.key ?? '/dashboard']}
+          openKeys={openKeys}
+          onClickMenuItem={(key) =>
+            navigate(
+              key === settingsNavigationItem.key
+                ? firstReadableSettingsPath(currentOperator)
+                : key,
+            )
+          }
+          onClickSubMenu={(_, keys) => setOpenKeys(keys)}
           className="admin-menu"
         >
-          {navigationItems.map((item) => (
-            <Menu.Item key={item.key} data-testid={`nav-${item.key}`}>
-              {item.icon}{item.label}
-            </Menu.Item>
+          {showDashboard && <Menu.Item key={dashboardNavigationItem.key} data-testid={`nav-${dashboardNavigationItem.key}`}>
+            {dashboardNavigationItem.icon}{dashboardNavigationItem.label}
+          </Menu.Item>}
+          {showAudience && <Menu.Item key={audienceNavigationItem.key} data-testid={`nav-${audienceNavigationItem.key}`}>
+            {audienceNavigationItem.icon}{audienceNavigationItem.label}
+          </Menu.Item>}
+          {visibleGroups.map((group) => (
+            <Menu.SubMenu
+              key={group.key}
+              title={<>{group.icon}{group.label}</>}
+            >
+              {group.children.map((item) => (
+                <Menu.Item key={item.key} data-testid={`nav-${item.key}`}>
+                  {item.icon}{item.label}
+                </Menu.Item>
+              ))}
+            </Menu.SubMenu>
           ))}
+          {showSettings && <Menu.Item key={settingsNavigationItem.key} data-testid={`nav-${settingsNavigationItem.key}`}>
+            {settingsNavigationItem.icon}{settingsNavigationItem.label}
+          </Menu.Item>}
         </Menu>
         {!collapsed && (
           <div className="sider-health">
@@ -79,7 +170,10 @@ export default function AdminLayout() {
             />
             <Breadcrumb>
               <Breadcrumb.Item key="root">消息中心</Breadcrumb.Item>
-              <Breadcrumb.Item key={location.pathname}>{labelForPath(location.pathname)}</Breadcrumb.Item>
+              {activeNavigation?.groupLabel && (
+                <Breadcrumb.Item key={activeNavigation.groupKey}>{activeNavigation.groupLabel}</Breadcrumb.Item>
+              )}
+              <Breadcrumb.Item key={activeNavigation?.key ?? location.pathname}>{activeNavigation?.label ?? '工作台'}</Breadcrumb.Item>
             </Breadcrumb>
           </Space>
           <div className="header-actions">
@@ -96,13 +190,18 @@ export default function AdminLayout() {
             <Dropdown droplist={<Menu><Menu.Item key="profile">个人设置</Menu.Item><Menu.Item key="logout">退出</Menu.Item></Menu>}>
               <Space className="user-control">
                 <Avatar size={32}>GM</Avatar>
-                <span className="user-copy"><strong>Gary Ma</strong><small>超级管理员</small></span>
+                <span className="user-copy">
+                  <strong>{currentOperator?.name || "未知操作者"}</strong>
+                  <small>{currentOperator?.isSuperAdmin ? "超级管理员" : "普通操作者"}</small>
+                </span>
                 <IconDown />
               </Space>
             </Dropdown>
           </div>
         </Header>
-        <Content className="admin-content"><Outlet /></Content>
+        <Content className="admin-content">
+          <PagePermissionBoundary><Outlet /></PagePermissionBoundary>
+        </Content>
       </Layout>
     </Layout>
   );

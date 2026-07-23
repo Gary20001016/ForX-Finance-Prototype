@@ -14,29 +14,61 @@ import PageHeader from "../../components/PageHeader";
 import FilterBar from "../../components/FilterBar";
 import ResourceTable from "../../components/ResourceTable";
 import StatusTag from "../../components/StatusTag";
-import type { MessageTemplate } from "../../domain/types";
+import type { MessageTemplate, TranslationBatch } from "../../domain/types";
 import TranslationWorkflowPanel from "./TranslationWorkflowPanel";
 import TemplateEditorDrawer from "./TemplateEditorDrawer";
 import { usePrototypeStore } from "../../store/prototypeStore";
+import MultilingualProgressCell from "../multilingual/MultilingualProgressCell";
+import MultilingualProgressDrawer from "../multilingual/MultilingualProgressDrawer";
+import { useSearchParams } from "react-router-dom";
+import {
+  isReusableMessageTemplate,
+  templateSupportsScope,
+} from "./templateScope";
+import { isApprovedManualTemplateLocked } from "../../domain/templatePolicy";
+import { MANUAL_TEMPLATE_STATUSES } from "../../domain/manualTemplateStatus";
+import WritePermissionButton from "../../components/WritePermissionButton";
+import { useCurrentPagePermission } from "../../components/PagePermissionBoundary";
 
 export default function TemplateListPage() {
+  const { canWrite } = useCurrentPagePermission();
+  const [searchParams] = useSearchParams();
+  const entryScope = searchParams.get("scope") === "event" ? "event" : "manual";
+  const pageTitle = entryScope === "event" ? "事件消息模板" : "人工消息模板";
   const [preview, setPreview] = useState<MessageTemplate>();
   const [usageTemplate, setUsageTemplate] = useState<MessageTemplate>();
   const [editing, setEditing] = useState<MessageTemplate | "new">();
+  const [progressBatch, setProgressBatch] = useState<TranslationBatch>();
   const [keyword, setKeyword] = useState("");
   const [status, setStatus] = useState<string>();
   const [nature, setNature] = useState<string>();
   const [channel, setChannel] = useState<string>();
   const store = usePrototypeStore();
-  const usageFor = (template: MessageTemplate) =>
-    store.tasks.filter(
-      (task) =>
+  const taskUsageFor = (template: MessageTemplate) =>
+    store.tasks.filter((task) => {
+      const matchesTemplate =
         task.templateId === template.id ||
-        task.template === `${template.code} ${template.version}`,
+        task.template === `${template.code} ${template.version}`;
+      const matchesEntry =
+        entryScope === "event"
+          ? task.triggerType === "event"
+          : task.triggerType !== "event";
+      return matchesTemplate && matchesEntry;
+    });
+  const eventRuleUsageFor = (template: MessageTemplate) => {
+    const relatedRuleIds = new Set(
+      store.ruleVersions
+        .filter((version) => version.templateId === template.id)
+        .map((version) => version.ruleId),
     );
+    return store.rules.filter((rule) => relatedRuleIds.has(rule.id));
+  };
   const data = store.templates.filter(
     (item) =>
-      item.owner !== "临时任务" &&
+      isReusableMessageTemplate(item) &&
+      (entryScope === "event"
+        ? item.usageScope === "event"
+        : templateSupportsScope(item, entryScope)) &&
       `${item.id}${item.code}${item.name}`
         .toLowerCase()
         .includes(keyword.toLowerCase()) &&
@@ -52,7 +84,7 @@ export default function TemplateListPage() {
       render: (_, r) => (
         <div>
           <Typography.Text className="strong">{r.name}</Typography.Text>
-          <div className="mono muted">{r.code}</div>
+          <div className="mono muted">{r.id}</div>
         </div>
       ),
     },
@@ -90,66 +122,107 @@ export default function TemplateListPage() {
       ),
     },
     {
-      title: "翻译进度",
-      width: 150,
-      render: (_, r) => (
-        <div>
-          <StatusTag status={r.translationReadiness} />
-          <div className="mono muted">{r.translationBatchId}</div>
-        </div>
-      ),
-    },
-    { title: "版本", dataIndex: "version", width: 70 },
-    {
-      title: "使用任务",
-      width: 160,
-      render: (_, template) => {
-        const usage = usageFor(template);
-        const eventCount = usage.filter(
-          (task) => task.triggerType === "event",
-        ).length;
+      title: "多语言流程",
+      width: 250,
+      render: (_, r) => {
+        const batch = store.translationBatches.find(
+          (item) => item.id === r.translationBatchId,
+        );
         return (
-          <Button type="text" onClick={() => setUsageTemplate(template)}>
-            人工 {usage.length - eventCount} · 事件 {eventCount}
-          </Button>
+          <MultilingualProgressCell
+            batch={batch}
+            onOpen={() => setProgressBatch(batch)}
+          />
         );
       },
     },
+    ...(entryScope === "event"
+      ? [
+          {
+            title: "适用场景",
+            width: 100,
+            render: (_: unknown, template: MessageTemplate) => (
+              <Tag
+                color={
+                  template.usageScope === "shared" ? "green" : "arcoblue"
+                }
+              >
+                {template.usageScope === "event" ? "事件通知" : "通用"}
+              </Tag>
+            ),
+          },
+        ]
+      : []),
+    entryScope === "event"
+      ? {
+          title: "关联通知规则",
+          width: 160,
+          render: (_: unknown, template: MessageTemplate) => (
+            <Button type="text" onClick={() => setUsageTemplate(template)}>
+              {eventRuleUsageFor(template).length} 条规则
+            </Button>
+          ),
+        }
+      : {
+          title: "使用任务",
+          width: 160,
+          render: (_: unknown, template: MessageTemplate) => (
+            <Button type="text" onClick={() => setUsageTemplate(template)}>
+              {taskUsageFor(template).length} 个任务
+            </Button>
+          ),
+        },
     {
       title: "状态",
       width: 100,
       render: (_, r) => <StatusTag status={r.status} />,
     },
-    { title: "更新时间", dataIndex: "updatedAt", width: 120 },
+    entryScope === "manual"
+      ? {
+          title: "发布时间",
+          width: 120,
+          render: (_, template) =>
+            template.status === "已发布" ? template.updatedAt : "—",
+        }
+      : { title: "更新时间", dataIndex: "updatedAt", width: 120 },
     {
       title: "操作",
       fixed: "right",
-      width: 180,
-      render: (_, r) => (
-        <Space>
-          <Button type="text" onClick={() => setEditing(r)}>
-            编辑
-          </Button>
-          <Button type="text" onClick={() => setPreview(r)}>
-            多语言流程
-          </Button>
-        </Space>
-      ),
+      width: 220,
+      render: (_, r) => {
+        const locked = isApprovedManualTemplateLocked(r);
+        return (
+          <Space>
+            {locked || !canWrite ? (
+              <Button type="text" onClick={() => setEditing(r)}>查看详情</Button>
+            ) : (
+              <WritePermissionButton type="text" onClick={() => setEditing(r)}>编辑</WritePermissionButton>
+            )}
+            <Button type="text" onClick={() => setPreview(r)}>
+              多语言流程
+            </Button>
+          </Space>
+        );
+      },
     },
   ];
   return (
     <section className="page-stack">
       <PageHeader
-        title="消息模板"
-        description="维护多语言、多渠道内容、变量和不可变发布版本。"
+        title={pageTitle}
+        description={
+          entryScope === "event"
+            ? "仅维护事件目录相关的事件通知模板，共享多语言、预览和审核能力。"
+            : "维护人工消息专用与通用模板，共享多语言、预览和审核能力。"
+        }
         actions={
-          <Button
+          <WritePermissionButton
             type="primary"
             icon={<IconPlus />}
             onClick={() => setEditing("new")}
           >
-            新建模板
-          </Button>
+            新建{pageTitle}
+          </WritePermissionButton>
         }
       />
       <FilterBar
@@ -163,7 +236,7 @@ export default function TemplateListPage() {
         <Input.Search
           value={keyword}
           onChange={setKeyword}
-          placeholder="搜索模板 ID、编码或名称"
+          placeholder="搜索模板编号或名称"
           style={{ width: 280 }}
         />
         <Select
@@ -191,9 +264,10 @@ export default function TemplateListPage() {
           onChange={setStatus}
           style={{ width: 140 }}
           allowClear
-          options={["草稿", "审核中", "待业务审核", "已发布", "已停用"].map(
-            (value) => ({ label: value, value }),
-          )}
+          options={(entryScope === "manual"
+            ? MANUAL_TEMPLATE_STATUSES
+            : ["草稿", "审核中", "待业务审核", "已发布", "已停用"]
+          ).map((value) => ({ label: value, value }))}
         />
       </FilterBar>
       <ResourceTable data={data} columns={columns} rowKey="id" />
@@ -201,7 +275,7 @@ export default function TemplateListPage() {
         width={820}
         title={
           preview
-            ? `${preview.name} · ${preview.version} · 多语言生产`
+            ? `${preview.name} · 多语言生产`
             : "多语言生产"
         }
         visible={Boolean(preview)}
@@ -226,6 +300,7 @@ export default function TemplateListPage() {
                   preview,
               );
             }}
+            readOnly={!canWrite}
           />
         )}
       </Drawer>
@@ -233,8 +308,12 @@ export default function TemplateListPage() {
         width={720}
         title={
           usageTemplate
-            ? `${usageTemplate.name} · ${usageTemplate.version} · 使用任务`
-            : "使用任务"
+            ? entryScope === "event"
+              ? `${usageTemplate.name} · 关联通知规则`
+              : `${usageTemplate.name} · 使用任务`
+            : entryScope === "event"
+              ? "关联通知规则"
+              : "使用任务"
         }
         visible={Boolean(usageTemplate)}
         onCancel={() => setUsageTemplate(undefined)}
@@ -244,8 +323,34 @@ export default function TemplateListPage() {
       >
         {usageTemplate && (
           <Space direction="vertical" style={{ width: "100%" }}>
-            {usageFor(usageTemplate).length ? (
-              usageFor(usageTemplate).map((task) => (
+            {entryScope === "event" ? (
+              eventRuleUsageFor(usageTemplate).length ? (
+                eventRuleUsageFor(usageTemplate).map((rule) => {
+                  const event = store.events.find(
+                    (item) => item.id === rule.eventId,
+                  );
+                  return (
+                    <div className="template-usage-row" key={rule.id}>
+                      <div>
+                        <Typography.Text className="strong">
+                          {rule.name}
+                        </Typography.Text>
+                        <div className="mono muted">{rule.id}</div>
+                      </div>
+                      <Tag color="purple">事件通知规则</Tag>
+                      <span>
+                        {event?.name || rule.eventId}
+                        <div className="mono muted">{rule.eventId}</div>
+                      </span>
+                      <StatusTag status={rule.status} />
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="empty-state">当前模板尚未关联通知规则</div>
+              )
+            ) : taskUsageFor(usageTemplate).length ? (
+              taskUsageFor(usageTemplate).map((task) => (
                 <div className="template-usage-row" key={task.id}>
                   <div>
                     <Typography.Text className="strong">
@@ -265,7 +370,7 @@ export default function TemplateListPage() {
                 </div>
               ))
             ) : (
-              <div className="empty-state">当前模板版本尚未被任务使用</div>
+              <div className="empty-state">当前模板尚未被任务使用</div>
             )}
           </Space>
         )}
@@ -273,8 +378,16 @@ export default function TemplateListPage() {
       <TemplateEditorDrawer
         visible={Boolean(editing)}
         template={editing === "new" ? undefined : editing}
+        entryScope={entryScope}
+        readOnly={!canWrite}
         onClose={() => setEditing(undefined)}
         onCreated={(item) => setPreview(item)}
+      />
+      <MultilingualProgressDrawer
+        batch={progressBatch}
+        visible={Boolean(progressBatch)}
+        readOnly={!canWrite}
+        onClose={() => setProgressBatch(undefined)}
       />
     </section>
   );

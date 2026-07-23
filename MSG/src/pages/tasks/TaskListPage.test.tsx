@@ -52,9 +52,25 @@ it("separates task, approval and delivery-result columns", () => {
   expect(screen.getByRole("columnheader", { name: "任务状态" })).toBeVisible();
   expect(screen.getByRole("columnheader", { name: "审核状态" })).toBeVisible();
   expect(screen.getByRole("columnheader", { name: "发送结果" })).toBeVisible();
+  expect(screen.getByRole("columnheader", { name: "消息模板" })).toBeVisible();
+  expect(
+    screen.queryByRole("columnheader", { name: "模板版本" }),
+  ).not.toBeInTheDocument();
   expect(screen.getByText("短信供应商恢复补发")).toBeVisible();
   expect(screen.getAllByText("已完成").length).toBeGreaterThan(0);
   expect(screen.getByText("失败")).toBeVisible();
+});
+
+it("shows multilingual production separately from send progress", () => {
+  render(
+    <MemoryRouter>
+      <TaskListPage />
+    </MemoryRouter>,
+  );
+
+  expect(screen.getByRole("columnheader", { name: "多语言流程" })).toBeVisible();
+  expect(screen.getByRole("columnheader", { name: "发送进度" })).toBeVisible();
+  expect(screen.getAllByText(/已通过/).length).toBeGreaterThan(0);
 });
 
 it("uses the nine standardized artificial states in the status filter", async () => {

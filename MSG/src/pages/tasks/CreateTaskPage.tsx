@@ -16,9 +16,7 @@ import {
   Select,
   Space,
   Steps,
-  Switch,
   Tag,
-  TimePicker,
 } from "@arco-design/web-react";
 import {
   IconArrowLeft,
@@ -28,6 +26,14 @@ import {
 import { useLocation, useNavigate } from "react-router-dom";
 import PageHeader from "../../components/PageHeader";
 import MessagePreview from "../../components/MessagePreview";
+import MarkdownEditor from "../../components/MarkdownEditor";
+import VariableTextArea from "../../components/VariableTextArea";
+import { hasUnsafeMarkdownLinks } from "../../components/MarkdownContent";
+import {
+  extractVariableNames,
+  validateVariableTokens,
+} from "../../domain/manualMessageVariables";
+import TranslationWorkflowPanel from "../templates/TranslationWorkflowPanel";
 import type {
   Channel,
   EventTriggerConfig,
@@ -39,6 +45,8 @@ import type {
 import { canEditManualTask, isManualTaskStatus } from "./taskLifecycle";
 import {
   createTranslationBatch,
+  prepareSingleLanguageContent,
+  requiresSpecialLanguageReview,
   saveTemplate,
   saveTaskDraft,
   submitTask,
@@ -59,18 +67,20 @@ import {
   mergeUidAudience,
   parseManualUids,
 } from "./uidAudience";
+import {
+  isReusableMessageTemplate,
+  templateSupportsScope,
+} from "../templates/templateScope";
+import { getMessageCategoryDefaultNature } from "../../domain/messageCategoryPolicy";
+import { segments } from "../../mocks/data";
+import {
+  sameChannels,
+  templateCoversChannels,
+} from "./taskChannelPolicy";
 
 const FormItem = Form.Item;
-const categoryOptions = [
-  "系统公告",
-  "交易通知",
-  "资产通知",
-  "安全通知",
-  "奖励通知",
-  "活动通知",
-  "风控通知",
-];
-const localeOptions = [
+const supportedLocales = [
+  "zh-CN",
   "en-US",
   "zh-TW",
   "ja-JP",
@@ -79,7 +89,10 @@ const localeOptions = [
   "tr-TR",
   "ru-RU",
   "fr-FR",
+  "de-DE",
 ];
+const sameLocales = (left: string[], right: string[]) =>
+  left.length === right.length && left.every((locale) => right.includes(locale));
 const emptyContent: LocalizedMessageContent = {
   sourceLocale: "zh-CN",
   locales: ["zh-CN"],
@@ -95,7 +108,7 @@ const emptyContent: LocalizedMessageContent = {
     body: "",
     deepLink: "forxfinance://security/devices",
     platform: "全部设备",
-    priority: "高",
+    priority: "普通",
   },
 };
 const audienceMap: Record<
@@ -147,6 +160,11 @@ const audienceMap: Record<
       "UID 33***29 · 已报名 · Web",
     ],
   },
+  segment: {
+    label: "用户分群",
+    count: 0,
+    samples: [],
+  },
 };
 
 export default function CreateTaskPage() {
@@ -166,11 +184,17 @@ export default function CreateTaskPage() {
         (isManualTaskStatus(copiedTask.status) &&
           canEditManualTask(copiedTask.status))),
   );
-  const approvedTemplates = store.templates.filter(
-    (template) => template.translationReadiness === "全部审核通过",
+  const manualTemplates = store.templates.filter(
+    (template) =>
+      isReusableMessageTemplate(template) &&
+      template.translationReadiness === "已通过" &&
+      templateSupportsScope(template, "manual"),
   );
-  const eventTemplates = approvedTemplates.filter(
-    (template) => template.status === "已发布",
+  const eventTemplates = store.templates.filter(
+    (template) =>
+      template.translationReadiness === "已通过" &&
+      template.status === "已发布" &&
+      templateSupportsScope(template, "event"),
   );
   const initialEvent = store.events.find(
     (event) =>
@@ -187,10 +211,22 @@ export default function CreateTaskPage() {
       ? "template"
       : copiedTask?.contentMode || "template",
   );
-  const [templateId, setTemplateId] = useState(
+  const [selectedChannels, setSelectedChannels] = useState<Channel[]>(() => {
+    const supportedChannels = copiedTask?.channels.filter(
+      (channel) => channel === "站内信" || channel === "Push",
+    );
+    return supportedChannels?.length
+      ? supportedChannels
+      : ["站内信", "Push"];
+  });
+  const approvedTemplates = manualTemplates.filter((template) =>
+    templateCoversChannels(template.channels, selectedChannels),
+  );
+  const [templateId, setTemplateId] = useState<string | undefined>(
     copiedTask?.templateId ||
       store.templates.find(
         (template) =>
+          template.name === copiedTask?.template ||
           `${template.code} ${template.version}` === copiedTask?.template,
       )?.id ||
       (initialTriggerType === "event"
@@ -218,15 +254,27 @@ export default function CreateTaskPage() {
   const [temporary, setTemporary] = useState<LocalizedMessageContent>(
     copiedTask?.content || emptyContent,
   );
+  const [temporarySourceLocale, setTemporarySourceLocale] = useState(
+    copiedTask?.content?.sourceLocale || "zh-CN",
+  );
   const [targetLocales, setTargetLocales] = useState<string[]>(
-    copiedTask?.content?.locales.filter((locale) => locale !== "zh-CN") || [],
+    copiedTask?.content?.locales.filter(
+      (locale) => locale !== (copiedTask.content?.sourceLocale || "zh-CN"),
+    ) || [],
   );
   const [temporaryBatchId, setTemporaryBatchId] = useState<string | undefined>(
     copiedTask?.translationBatchId,
   );
+  const [temporaryBatchChannels, setTemporaryBatchChannels] = useState<
+    Channel[]
+  >(copiedTask?.translationBatchId ? [...selectedChannels] : []);
   const [audienceType, setAudienceType] = useState(
     copiedTask?.audienceType || "all",
   );
+  const [selectedAudienceSegmentId, setSelectedAudienceSegmentId] = useState<
+    string | undefined
+  >();
+  const [excludedSegmentIds, setExcludedSegmentIds] = useState<string[]>([]);
   const [uidAudienceValue, setUidAudienceValue] = useState<UidAudienceValue>(
     () => {
       const saved = copiedTask?.uidAudience;
@@ -244,16 +292,28 @@ export default function CreateTaskPage() {
     },
   );
   const [snapshot, setSnapshot] = useState<Record<string, unknown>>({});
+  const [categoryChanged, setCategoryChanged] = useState(false);
   const selectedTemplate =
-    store.templates.find((template) => template.id === templateId) ||
+    (triggerType === "event"
+      ? eventTemplates.find((template) => template.id === templateId)
+      : approvedTemplates.find((template) => template.id === templateId)) ||
     (triggerType === "event" ? eventTemplates[0] : approvedTemplates[0]);
   const currentBatch = temporaryBatchId
     ? store.translationBatches.find((batch) => batch.id === temporaryBatchId)
     : undefined;
+  const temporaryTranslationTemplate = currentBatch
+    ? store.templates.find(
+        (template) => template.id === currentBatch.templateId,
+      )
+    : undefined;
   const content =
     contentMode === "template"
       ? selectedTemplate?.content || emptyContent
-      : { ...temporary, locales: ["zh-CN", ...targetLocales] };
+      : {
+          ...temporary,
+          sourceLocale: temporarySourceLocale,
+          locales: [temporarySourceLocale, ...targetLocales],
+        };
   const manualUids = useMemo(
     () => parseManualUids(uidAudienceValue.manualText),
     [uidAudienceValue.manualText],
@@ -281,6 +341,9 @@ export default function CreateTaskPage() {
     }),
     [mergedUidAudience.finalUids],
   );
+  const selectedAudienceSegment = segments.find(
+    (segment) => segment.id === selectedAudienceSegmentId,
+  );
   const audience =
     triggerType === "event"
       ? {
@@ -290,36 +353,114 @@ export default function CreateTaskPage() {
         }
       : audienceType === "uid"
         ? specifiedUidAudience
-        : audienceMap[audienceType];
+        : audienceType === "segment"
+          ? selectedAudienceSegment
+            ? {
+                label: selectedAudienceSegment.name,
+                count: selectedAudienceSegment.count,
+                samples: [],
+              }
+            : audienceMap.segment
+          : audienceMap[audienceType];
+  const translationScopeCurrent =
+    !temporaryBatchId ||
+    (sameChannels(temporaryBatchChannels, selectedChannels) &&
+      currentBatch?.sourceLocale === temporarySourceLocale &&
+      sameLocales(currentBatch.targetLocales, targetLocales));
+  const directReviewRequired =
+    targetLocales.length === 0 &&
+    requiresSpecialLanguageReview(temporarySourceLocale);
   const translationReady =
     contentMode === "template"
-      ? selectedTemplate?.translationReadiness === "全部审核通过"
-      : targetLocales.length === 0 || currentBatch?.status === "全部审核通过";
+      ? selectedTemplate?.translationReadiness === "已通过"
+      : directReviewRequired
+        ? currentBatch?.productionMode === "direct_source_review" &&
+          currentBatch.status === "已通过" &&
+          translationScopeCurrent
+        : targetLocales.length === 0 ||
+          (currentBatch?.status === "已通过" && translationScopeCurrent);
+  const temporaryLanguageAction = targetLocales.length
+    ? temporaryBatchId && !translationScopeCurrent
+      ? "按当前配置重新创建机翻任务"
+      : "创建外部机翻任务"
+    : directReviewRequired
+      ? "提交语言审核"
+      : "完成语言准备";
   const values = { ...snapshot, ...form.getFieldsValue() };
-  const channels = (values.channels as Channel[] | undefined) || [
-    "站内信",
-    "Push",
-  ];
+  const selectedCategory = String(
+    values.category || copiedTask?.category || "系统公告",
+  );
+  const resolvedNature =
+    editingTask &&
+    copiedTask &&
+    !categoryChanged &&
+    selectedCategory === copiedTask.category
+      ? copiedTask.nature
+      : getMessageCategoryDefaultNature(store.categories, selectedCategory) ||
+        "事务";
+  const channels = selectedChannels;
+  const temporaryWebComplete = Boolean(
+    temporary.web.title && temporary.web.summary && temporary.web.body,
+  );
+  const temporaryPushComplete = Boolean(
+    temporary.push.title && temporary.push.body,
+  );
+  const temporaryContentComplete =
+    (!channels.includes("站内信") || temporaryWebComplete) &&
+    (!channels.includes("Push") || temporaryPushComplete);
   const schedule =
     triggerType === "event"
       ? "事件到达时"
-      : values.scheduleMode === "original" && copiedTask
-        ? copiedTask.schedule
-        : values.scheduleMode === "now"
-          ? "立即发送"
-          : values.scheduleMode === "local"
-            ? "用户本地时间发送"
-            : values.scheduledAt
-              ? String(values.scheduledAt)
-              : "指定时间待填写";
+      : values.scheduleMode === "now"
+        ? "立即"
+        : values.scheduledAt
+          ? `${String(values.scheduledAt)} ${values.timezone || ""}`.trim()
+          : "指定时间待填写";
   const expiresAt = values.expireAt
     ? String(values.expireAt)
     : editingTask && copiedTask?.expiresAt
       ? copiedTask.expiresAt
       : "发送后 24 小时";
-
-  const updateSnapshot = () =>
-    setSnapshot({ ...snapshot, ...form.getFieldsValue() });
+  const updateSnapshot = (changedValues?: Record<string, unknown>) => {
+    if (
+      changedValues &&
+      Object.prototype.hasOwnProperty.call(changedValues, "category")
+    ) {
+      setCategoryChanged(true);
+    }
+    if (changedValues?.scheduleMode === "now") {
+      form.setFieldsValue({ scheduledAt: undefined, timezone: undefined });
+    }
+    if (
+      changedValues?.scheduleMode === "scheduled" &&
+      !form.getFieldValue("timezone")
+    ) {
+      form.setFieldsValue({ timezone: "Asia/Shanghai" });
+    }
+    setSnapshot({
+      ...snapshot,
+      ...form.getFieldsValue(),
+      ...(changedValues?.scheduleMode === "now"
+        ? { scheduledAt: undefined, timezone: undefined }
+        : {}),
+    });
+  };
+  const updateChannels = (nextChannels: Channel[]) => {
+    setSelectedChannels(nextChannels);
+    const currentTemplate = manualTemplates.find(
+      (template) => template.id === templateId,
+    );
+    if (
+      !currentTemplate ||
+      !templateCoversChannels(currentTemplate.channels, nextChannels)
+    ) {
+      setTemplateId(
+        manualTemplates.find((template) =>
+          templateCoversChannels(template.channels, nextChannels),
+        )?.id,
+      );
+    }
+  };
   const patchWeb = (changes: Partial<LocalizedMessageContent["web"]>) =>
     setTemporary((value) => ({ ...value, web: { ...value.web, ...changes } }));
   const patchPush = (changes: Partial<LocalizedMessageContent["push"]>) =>
@@ -327,11 +468,48 @@ export default function CreateTaskPage() {
       ...value,
       push: { ...value.push, ...changes },
     }));
+  const updateTemporarySourceLocale = (sourceLocale: string) => {
+    setTemporarySourceLocale(sourceLocale);
+    setTargetLocales((locales) => locales.filter((locale) => locale !== sourceLocale));
+    setTemporary((value) => ({
+      ...value,
+      sourceLocale,
+      locales: [sourceLocale],
+    }));
+  };
   const eventValidation = validateEventTaskConfig(
     eventConfig,
     store.events.find((item) => item.id === eventId),
     selectedTemplate,
   );
+  const temporaryVariableText = [
+    channels.includes("站内信") ? temporary.web.body : "",
+    channels.includes("Push") ? temporary.push.body : "",
+  ].join("\n");
+  const temporaryVariableNames = Array.from(
+    new Set(extractVariableNames(temporaryVariableText)),
+  );
+  const temporaryVariableValidation = validateVariableTokens(
+    temporaryVariableText,
+    store.templateVariables,
+  );
+  const validateTemporaryVariables = () => {
+    if (contentMode !== "temporary" || temporaryVariableValidation.valid)
+      return true;
+    const detail = [
+      temporaryVariableValidation.invalid.length
+        ? `不存在：${temporaryVariableValidation.invalid.join("、")}`
+        : "",
+      temporaryVariableValidation.inactive.length
+        ? `已停用：${temporaryVariableValidation.inactive.join("、")}`
+        : "",
+      temporaryVariableValidation.malformed ? "占位符格式不完整" : "",
+    ]
+      .filter(Boolean)
+      .join("；");
+    Message.error(`正文模板变量校验失败；${detail}`);
+    return false;
+  };
   const next = async () => {
     if (current === 0) {
       try {
@@ -339,21 +517,23 @@ export default function CreateTaskPage() {
       } catch {
         return;
       }
+      if (!channels.length) {
+        Message.warning("请至少选择站内信或 App Push");
+        return;
+      }
       if (triggerType === "event" && !eventValidation.valid) {
         Message.warning(eventValidation.reason || "请完整配置系统事件触发策略");
         return;
       }
-      if (
-        contentMode === "temporary" &&
-        (!temporary.web.title ||
-          !temporary.web.summary ||
-          !temporary.web.body ||
-          !temporary.push.title ||
-          !temporary.push.body)
-      ) {
-        Message.warning("请完整填写站内信与 App Push 内容");
+      if (contentMode === "template" && !selectedTemplate) {
+        Message.warning("当前渠道没有可用的审核通过模板，请调整渠道或改用临时消息");
         return;
       }
+      if (contentMode === "temporary" && !temporaryContentComplete) {
+        Message.warning("请完整填写所选发送渠道的消息内容");
+        return;
+      }
+      if (!validateTemporaryVariables()) return;
     }
     if (current === 1 && triggerType === "manual" && audienceType === "uid") {
       if (uidAudienceValue.csvFileName && !uidAudienceValue.csvConfirmed) {
@@ -365,20 +545,38 @@ export default function CreateTaskPage() {
         return;
       }
     }
+    if (
+      current === 1 &&
+      triggerType === "manual" &&
+      audienceType === "segment" &&
+      !selectedAudienceSegment
+    ) {
+      Message.warning("请选择用户分群");
+      return;
+    }
+    if (
+      current === 2 &&
+      triggerType === "manual" &&
+      form.getFieldValue("scheduleMode") === "scheduled" &&
+      (!form.getFieldValue("scheduledAt") || !form.getFieldValue("timezone"))
+    ) {
+      Message.warning("请选择计划发送时间和任务时区");
+      return;
+    }
     updateSnapshot();
     setCurrent((value) => Math.min(value + 1, 3));
   };
   const submission = () => ({
     name: (form.getFieldValue("name") || "未命名任务") as string,
     category: (form.getFieldValue("category") || "系统公告") as string,
-    nature: (form.getFieldValue("nature") || "事务") as string,
-    risk: (form.getFieldValue("risk") || "中") as RiskLevel,
+    nature: resolvedNature,
+    risk: (form.getFieldValue("risk") || "低") as RiskLevel,
     triggerType,
     contentMode,
     template:
       contentMode === "template"
-        ? `${selectedTemplate?.code} ${selectedTemplate?.version}`
-        : "临时消息 v1",
+        ? selectedTemplate?.name || "未选择模板"
+        : "临时消息",
     templateId: contentMode === "template" ? selectedTemplate?.id : undefined,
     templateVersion:
       contentMode === "template" ? selectedTemplate?.version : undefined,
@@ -395,7 +593,13 @@ export default function CreateTaskPage() {
     audienceType:
       triggerType === "event"
         ? undefined
-        : (audienceType as "all" | "uid" | "vip" | "agent" | "campaign"),
+        : (audienceType as
+            | "all"
+            | "uid"
+            | "vip"
+            | "agent"
+            | "campaign"
+            | "segment"),
     sampleUsers: audience.samples,
     uidAudience:
       triggerType === "manual" && audienceType === "uid"
@@ -417,6 +621,12 @@ export default function CreateTaskPage() {
   });
   const saveDraft = () => {
     try {
+      if (
+        contentMode === "temporary" &&
+        !temporaryVariableValidation.valid
+      ) {
+        Message.warning("草稿已保留正文中的变量问题，提交审核前必须修复");
+      }
       saveTaskDraft(submission(), editingTask ? copiedTask?.id : undefined);
       Message.success(
         editingTask
@@ -432,6 +642,15 @@ export default function CreateTaskPage() {
       Message.warning("请至少选择站内信或 App Push");
       return;
     }
+    if (contentMode === "template" && !selectedTemplate) {
+      Message.warning("当前渠道没有可用的审核通过模板，请调整渠道或改用临时消息");
+      return;
+    }
+    if (contentMode === "temporary" && !temporaryContentComplete) {
+      Message.warning("请完整填写所选发送渠道的消息内容");
+      return;
+    }
+    if (!validateTemporaryVariables()) return;
     if (triggerType === "manual" && audienceType === "uid") {
       if (uidAudienceValue.csvFileName && !uidAudienceValue.csvConfirmed) {
         Message.warning("请先确认 UID CSV 导入结果");
@@ -446,15 +665,40 @@ export default function CreateTaskPage() {
       Message.warning(eventValidation.reason || "系统事件配置不完整");
       return;
     }
+    if (
+      triggerType === "manual" &&
+      form.getFieldValue("scheduleMode") === "scheduled" &&
+      (!form.getFieldValue("scheduledAt") || !form.getFieldValue("timezone"))
+    ) {
+      Message.warning("请选择计划发送时间和任务时区");
+      return;
+    }
     if (!translationReady) {
       Message.warning("仍有目标语言未完成人工审核，不能提交业务审核");
       return;
     }
-    if (content.web.targetUrl && !validateActionUrl(content.web.targetUrl)) {
+    if (
+      channels.includes("站内信") &&
+      hasUnsafeMarkdownLinks(content.web.body)
+    ) {
+      Message.error(
+        "站内信 Markdown 包含不允许的链接，仅支持 http、https 和 forxfinance 协议",
+      );
+      return;
+    }
+    if (
+      channels.includes("站内信") &&
+      content.web.targetUrl &&
+      !validateActionUrl(content.web.targetUrl)
+    ) {
       Message.error("站内信跳转链接未通过白名单校验");
       return;
     }
-    if (content.push.deepLink && !validateActionUrl(content.push.deepLink)) {
+    if (
+      channels.includes("Push") &&
+      content.push.deepLink &&
+      !validateActionUrl(content.push.deepLink)
+    ) {
       Message.error("Push Deep Link 未通过白名单校验");
       return;
     }
@@ -472,61 +716,112 @@ export default function CreateTaskPage() {
       Message.error(error instanceof Error ? error.message : "任务提交失败");
     }
   };
-  const createTemporaryTranslation = () => {
-    if (!temporary.web.title || !temporary.web.body) {
-      Message.warning("请先填写默认语言文案");
+  const prepareTemporaryLanguageContent = () => {
+    if (!channels.length) {
+      Message.warning("请至少选择站内信或 App Push");
       return;
     }
-    if (!targetLocales.length) {
-      Message.warning("请至少选择一个目标语言");
+    if (!temporaryContentComplete) {
+      Message.warning("请先完整填写所选发送渠道的默认语言文案");
       return;
     }
-    const draft = saveTemplate({
-      code: `temporary_${Date.now().toString().slice(-6)}`,
-      name: `临时消息 · ${form.getFieldValue("name") || "未命名"}`,
-      category: form.getFieldValue("category") || "系统公告",
-      nature: form.getFieldValue("nature") || "事务",
-      risk: form.getFieldValue("risk") || "中",
-      channels: ["站内信", "Push"],
-      locales: ["zh-CN", ...targetLocales],
-      sourceLocale: "zh-CN",
-      content: { ...temporary, locales: ["zh-CN", ...targetLocales] },
-      variables: [
-        "user_nickname",
-        "amount",
-        "currency",
-        "symbol",
-        "occurred_at",
-      ],
-      owner: "临时任务",
-    });
-    const batch = createTranslationBatch({
-      templateId: draft.id,
-      targetLocales,
-      createdBy: "Gary Ma",
-    });
-    setTemporaryBatchId(batch.id);
+    if (!validateTemporaryVariables()) return;
+    const currentContent = {
+      ...temporary,
+      sourceLocale: temporarySourceLocale,
+      locales: [temporarySourceLocale, ...targetLocales],
+    };
+    const sourceContent = {
+      title:
+        channels.length === 1 && channels.includes("Push")
+          ? temporary.push.title
+          : channels.length === 1
+            ? temporary.web.title
+            : `站内信：${temporary.web.title} / Push：${temporary.push.title}`,
+      summary: channels.includes("站内信")
+        ? temporary.web.summary
+        : undefined,
+      body:
+        channels.length === 1 && channels.includes("Push")
+          ? temporary.push.body
+          : channels.length === 1
+            ? temporary.web.body
+            : `【站内信】\n${temporary.web.body}\n\n【App Push】\n${temporary.push.body}`,
+    };
+    const requiresBatch =
+      targetLocales.length > 0 ||
+      requiresSpecialLanguageReview(temporarySourceLocale);
+    const draft = requiresBatch
+      ? saveTemplate({
+          name: `临时消息 · ${form.getFieldValue("name") || "未命名"}`,
+          category: form.getFieldValue("category") || "系统公告",
+          nature: resolvedNature,
+          risk: form.getFieldValue("risk") || "低",
+          channels,
+          locales: currentContent.locales,
+          sourceLocale: temporarySourceLocale,
+          content: currentContent,
+          variables: temporaryVariableNames,
+          owner: "临时任务",
+          usageScope: "manual",
+        })
+      : undefined;
+    const subject = draft
+      ? {
+          type: "manual_task_content" as const,
+          id: draft.id,
+          name: draft.name,
+          version: draft.version,
+          returnPath: "/tasks/create",
+        }
+      : undefined;
+    const batch =
+      targetLocales.length > 0 && subject
+        ? createTranslationBatch({
+            subject,
+            sourceLocale: temporarySourceLocale,
+            sourceContent,
+            sourceChannelContent: currentContent,
+            channels,
+            targetLocales,
+            createdBy: "Gary Ma",
+          })
+        : subject
+          ? prepareSingleLanguageContent({
+              subject,
+              sourceLocale: temporarySourceLocale,
+              sourceContent,
+              createdBy: "Gary Ma",
+            }).batch
+          : undefined;
+    setTemporaryBatchId(batch?.id);
+    setTemporaryBatchChannels([...channels]);
     saveTaskDraft(
       {
         ...submission(),
-        translationBatchId: batch.id,
-        content: { ...temporary, locales: ["zh-CN", ...targetLocales] },
+        translationBatchId: batch?.id,
+        content: currentContent,
       },
       editingTask ? copiedTask?.id : undefined,
     );
-    Message.success(`已创建机翻批次 ${batch.id}，并保存可继续编辑的任务草稿`);
+    Message.success(
+      targetLocales.length
+        ? `已创建机翻批次 ${batch?.id}，并保存可继续编辑的任务草稿`
+        : batch
+          ? `已提交语言审核 ${batch.id}，并保存可继续编辑的任务草稿`
+          : "单语言内容准备完成，并已保存可继续编辑的任务草稿",
+    );
   };
 
   const summary = useMemo(
     () => ({
       name: String(values.name || "未命名任务"),
-      nature: String(values.nature || "事务"),
-      risk: (values.risk || "中") as RiskLevel,
+      nature: resolvedNature,
+      risk: (values.risk || "低") as RiskLevel,
       channels,
       content,
       audienceCount: audience.count,
       audienceLabel: audience.label,
-      sampleUsers: audience.samples,
       schedule,
       expiresAt,
       translationReady: Boolean(translationReady),
@@ -536,7 +831,7 @@ export default function CreateTaskPage() {
     }),
     [
       values.name,
-      values.nature,
+      resolvedNature,
       values.risk,
       channels,
       content,
@@ -567,7 +862,7 @@ export default function CreateTaskPage() {
         }
       />
       <div className="task-capability-strip">
-        <span>仅显示全部目标语言人工审核通过的模板版本</span>
+        <span>仅显示全部目标语言人工审核通过的模板</span>
         <Tag color="green">翻译审核通过</Tag>
         <Tag color="arcoblue">站内信（Web + App）</Tag>
         <Tag color="purple">App Push</Tag>
@@ -579,9 +874,9 @@ export default function CreateTaskPage() {
           labelPlacement="vertical"
           className="task-steps"
         >
-          <Steps.Step title="内容与多语言" description="模板或临时消息" />
-          <Steps.Step title="目标用户" description="受众、排除与样例" />
-          <Steps.Step title="发送策略" description="站内信与 App Push" />
+          <Steps.Step title="内容与多语言" description="渠道、模板与临时消息" />
+          <Steps.Step title="目标用户" description="受众与排除规则" />
+          <Steps.Step title="发送策略" description="排期、有效期与渠道检查" />
           <Steps.Step title="预览并提交" description="冻结与审批" />
         </Steps>
         <Form
@@ -595,17 +890,15 @@ export default function CreateTaskPage() {
               : undefined,
             business: copiedTask?.team || "消息运营",
             category: copiedTask?.category || "系统公告",
-            nature: copiedTask?.nature || "事务",
-            risk: copiedTask?.risk || "中",
+            risk: copiedTask?.risk || "低",
             template: approvedTemplates[0]?.id,
-            channels: copiedTask?.channels || ["站内信", "Push"],
             audienceType: copiedTask?.audienceType || "all",
-            timezone: "Asia/Shanghai",
             priority: "普通",
-            scheduleMode: editingTask ? "original" : "now",
+            scheduleMode:
+              editingTask && copiedTask && !["立即", "立即发送"].includes(copiedTask.schedule)
+                ? "scheduled"
+                : "now",
             quiet: "遵守并延迟",
-            dedupe: true,
-            rate: 1200,
           }}
           onValuesChange={updateSnapshot}
         >
@@ -638,22 +931,24 @@ export default function CreateTaskPage() {
                 <Grid.Col span={8}>
                   <FormItem label="消息分类" field="category" required>
                     <Select
-                      options={categoryOptions.map((value) => ({
-                        label: value,
-                        value,
-                      }))}
+                      options={store.categories
+                        .filter((category) => category.enabled)
+                        .map((category) => ({
+                          label: category.name,
+                          value: category.name,
+                        }))}
                     />
                   </FormItem>
                 </Grid.Col>
               </Grid.Row>
               <Grid.Row gutter={20}>
                 <Grid.Col span={8}>
-                  <FormItem label="消息性质" field="nature">
-                    <Radio.Group type="button">
-                      <Radio value="事务">事务</Radio>
-                      <Radio value="服务">服务</Radio>
-                      <Radio value="营销">营销</Radio>
-                    </Radio.Group>
+                  <FormItem label="消息性质">
+                    <Input
+                      value={resolvedNature}
+                      readOnly
+                      suffix={<span>由消息分类自动确定</span>}
+                    />
                   </FormItem>
                 </Grid.Col>
                 <Grid.Col span={8}>
@@ -668,11 +963,20 @@ export default function CreateTaskPage() {
                 </Grid.Col>
               </Grid.Row>
               <div className="section-divider" />
-              <h3>发送方式</h3>
+              <h3>发送渠道</h3>
               <Alert
                 type="info"
-                content="当前创建人工发送任务。系统事件自动通知请前往“事件通知规则”配置。"
+                content="先确定发送渠道，模板、临时内容、多语言和预览将按渠道筛选。站内信内容由 Web 与 App 共用。"
               />
+              <FormItem label="正式发送渠道" required>
+                <Checkbox.Group
+                  value={channels}
+                  onChange={(value) => updateChannels(value as Channel[])}
+                >
+                  <Checkbox value="站内信">站内信（Web + App）</Checkbox>
+                  <Checkbox value="Push">App Push</Checkbox>
+                </Checkbox.Group>
+              </FormItem>
               {triggerType === "event" ? (
                 <EventTriggerFields
                   events={store.events}
@@ -704,174 +1008,201 @@ export default function CreateTaskPage() {
                   </Radio.Group>
                   {contentMode === "template" ? (
                     <div className="template-source-panel">
+                      {!approvedTemplates.length && (
+                        <Alert
+                          type="warning"
+                          title="当前渠道暂无可用模板"
+                          content="请调整发送渠道，或切换为临时消息继续创建。"
+                        />
+                      )}
                       <FormItem
                         label="消息模板"
                         field="template"
                         required
-                        extra="仅显示全部目标语言人工审核通过的不可变模板版本"
+                        extra="仅显示全部目标语言人工审核通过的模板"
                       >
                         <Select
-                          value={templateId}
+                          value={selectedTemplate?.id}
                           onChange={setTemplateId}
+                          disabled={!approvedTemplates.length}
                           options={approvedTemplates.map((item) => ({
-                            label: `${item.name} · ${item.version}`,
+                            label: `${item.name} · ${item.channels.join(" + ")}`,
                             value: item.id,
                           }))}
                         />
                       </FormItem>
-                      <Alert
-                        type="success"
-                        content={`翻译审核通过 · ${selectedTemplate?.translationBatchId} · ${selectedTemplate?.locales.join("、")}`}
-                      />
-                      <MessagePreview content={content} compact />
+                      {selectedTemplate && (
+                        <>
+                          <Alert
+                            type="success"
+                            content={`翻译审核通过 · ${selectedTemplate.translationBatchId} · ${selectedTemplate.locales.join("、")}`}
+                          />
+                          <MessagePreview
+                            content={content}
+                            channels={channels}
+                            compact
+                            showPushPriority={false}
+                          />
+                        </>
+                      )}
                     </div>
                   ) : (
                     <div className="temporary-content-editor">
                       <Alert
-                        type="warning"
-                        content="临时消息同样必须完成外部机翻和逐语言人工审核；内容仅冻结在当前任务版本中。"
+                        type={targetLocales.length ? "warning" : "info"}
+                        content={
+                          targetLocales.length
+                            ? "多语言临时消息将提交外部机器翻译，返回后逐语言人工审核；内容仅冻结在当前任务版本中。"
+                            : directReviewRequired
+                              ? "单语言临时消息，无需机器翻译；当前语言需要专项人工审核，内容仅冻结在当前任务版本中。"
+                              : "单语言临时消息，无需机器翻译；语言准备可直接完成，内容仅冻结在当前任务版本中。"
+                        }
                       />
                       <Grid.Row gutter={20}>
-                        <Grid.Col span={12}>
-                          <h3>站内信内容（Web + App 共用）</h3>
-                          <FormItem label="站内信标题">
-                            <Input
-                              aria-label="站内信标题"
-                              value={temporary.web.title}
-                              onChange={(value) => patchWeb({ title: value })}
-                            />
-                          </FormItem>
-                          <FormItem label="站内信摘要">
-                            <Input.TextArea
-                              value={temporary.web.summary}
-                              onChange={(value) => patchWeb({ summary: value })}
-                            />
-                          </FormItem>
-                          <FormItem label="站内信正文">
-                            <Input.TextArea
-                              rows={5}
-                              value={temporary.web.body}
-                              onChange={(value) => patchWeb({ body: value })}
-                            />
-                          </FormItem>
-                          <FormItem label="风险提示">
-                            <Input
-                              value={temporary.web.riskCopy}
-                              onChange={(value) =>
-                                patchWeb({ riskCopy: value })
-                              }
-                            />
-                          </FormItem>
-                          <Grid.Row gutter={12}>
-                            <Grid.Col span={8}>
-                              <FormItem label="按钮文案">
-                                <Input
-                                  value={temporary.web.actionText}
-                                  onChange={(value) =>
-                                    patchWeb({ actionText: value })
-                                  }
-                                />
-                              </FormItem>
-                            </Grid.Col>
-                            <Grid.Col span={16}>
-                              <FormItem label="跳转链接">
-                                <Input
-                                  value={temporary.web.targetUrl}
-                                  onChange={(value) =>
-                                    patchWeb({ targetUrl: value })
-                                  }
-                                />
-                              </FormItem>
-                            </Grid.Col>
-                          </Grid.Row>
-                        </Grid.Col>
-                        <Grid.Col span={12}>
-                          <h3>App Push 内容</h3>
-                          <FormItem label="Push 标题">
-                            <Input
-                              aria-label="Push 标题"
-                              value={temporary.push.title}
-                              onChange={(value) => patchPush({ title: value })}
-                            />
-                          </FormItem>
-                          <FormItem label="Push 正文">
-                            <Input.TextArea
-                              value={temporary.push.body}
-                              onChange={(value) => patchPush({ body: value })}
-                            />
-                          </FormItem>
-                          <FormItem label="Push 图片">
-                            <Input
-                              value={temporary.push.imageUrl}
-                              onChange={(value) =>
-                                patchPush({ imageUrl: value })
-                              }
-                            />
-                          </FormItem>
-                          <FormItem label="Push Deep Link">
-                            <Input
-                              value={temporary.push.deepLink}
-                              onChange={(value) =>
-                                patchPush({ deepLink: value })
-                              }
-                            />
-                          </FormItem>
-                          <Grid.Row gutter={12}>
-                            <Grid.Col span={8}>
-                              <FormItem label="设备平台">
-                                <Select
-                                  value={temporary.push.platform}
-                                  onChange={(value) =>
-                                    patchPush({ platform: value })
-                                  }
-                                  options={["全部设备", "iOS", "Android"].map(
-                                    (value) => ({ label: value, value }),
-                                  )}
-                                />
-                              </FormItem>
-                            </Grid.Col>
-                            <Grid.Col span={8}>
-                              <FormItem label="优先级">
-                                <Select
-                                  value={temporary.push.priority}
-                                  onChange={(value) =>
-                                    patchPush({ priority: value })
-                                  }
-                                  options={["普通", "高", "紧急"].map(
-                                    (value) => ({ label: value, value }),
-                                  )}
-                                />
-                              </FormItem>
-                            </Grid.Col>
-                            <Grid.Col span={8}>
-                              <FormItem label="折叠键">
-                                <Input
-                                  value={temporary.push.collapseKey}
-                                  onChange={(value) =>
-                                    patchPush({ collapseKey: value })
-                                  }
-                                />
-                              </FormItem>
-                            </Grid.Col>
-                          </Grid.Row>
-                        </Grid.Col>
+                        {channels.includes("站内信") && (
+                          <Grid.Col span={channels.length === 1 ? 24 : 12}>
+                            <h3>站内信内容（Web + App 共用）</h3>
+                            <FormItem label="站内信标题">
+                              <Input
+                                aria-label="站内信标题"
+                                value={temporary.web.title}
+                                onChange={(value) => patchWeb({ title: value })}
+                              />
+                            </FormItem>
+                            <FormItem label="站内信摘要">
+                              <Input.TextArea
+                                aria-label="站内信摘要"
+                                value={temporary.web.summary}
+                                onChange={(value) =>
+                                  patchWeb({ summary: value })
+                                }
+                              />
+                            </FormItem>
+                            <FormItem label="站内信正文">
+                              <MarkdownEditor
+                                value={temporary.web.body}
+                                onChange={(value) => patchWeb({ body: value })}
+                                variables={store.templateVariables}
+                              />
+                            </FormItem>
+                            <FormItem label="风险提示">
+                              <Input
+                                value={temporary.web.riskCopy}
+                                onChange={(value) =>
+                                  patchWeb({ riskCopy: value })
+                                }
+                              />
+                            </FormItem>
+                            <Grid.Row gutter={12}>
+                              <Grid.Col span={8}>
+                                <FormItem label="按钮文案">
+                                  <Input
+                                    value={temporary.web.actionText}
+                                    onChange={(value) =>
+                                      patchWeb({ actionText: value })
+                                    }
+                                  />
+                                </FormItem>
+                              </Grid.Col>
+                              <Grid.Col span={16}>
+                                <FormItem label="跳转链接">
+                                  <Input
+                                    value={temporary.web.targetUrl}
+                                    onChange={(value) =>
+                                      patchWeb({ targetUrl: value })
+                                    }
+                                  />
+                                </FormItem>
+                              </Grid.Col>
+                            </Grid.Row>
+                          </Grid.Col>
+                        )}
+                        {channels.includes("Push") && (
+                          <Grid.Col span={channels.length === 1 ? 24 : 12}>
+                            <h3>App Push 内容</h3>
+                            <FormItem label="Push 标题">
+                              <Input
+                                aria-label="Push 标题"
+                                value={temporary.push.title}
+                                onChange={(value) =>
+                                  patchPush({ title: value })
+                                }
+                              />
+                            </FormItem>
+                            <FormItem label="Push 正文">
+                              <VariableTextArea
+                                ariaLabel="Push 正文"
+                                value={temporary.push.body}
+                                onChange={(value) =>
+                                  patchPush({ body: value })
+                                }
+                                variables={store.templateVariables}
+                              />
+                            </FormItem>
+                            <FormItem label="Push 图片">
+                              <Input
+                                value={temporary.push.imageUrl}
+                                onChange={(value) =>
+                                  patchPush({ imageUrl: value })
+                                }
+                              />
+                            </FormItem>
+                            <FormItem label="Push Deep Link">
+                              <Input
+                                value={temporary.push.deepLink}
+                                onChange={(value) =>
+                                  patchPush({ deepLink: value })
+                                }
+                              />
+                            </FormItem>
+                            <Grid.Row gutter={12}>
+                              <Grid.Col span={24}>
+                                <FormItem label="设备平台">
+                                  <Select
+                                    value={temporary.push.platform}
+                                    onChange={(value) =>
+                                      patchPush({ platform: value })
+                                    }
+                                    options={[
+                                      "全部设备",
+                                      "iOS",
+                                      "Android",
+                                    ].map((value) => ({ label: value, value }))}
+                                  />
+                                </FormItem>
+                              </Grid.Col>
+                            </Grid.Row>
+                          </Grid.Col>
+                        )}
                       </Grid.Row>
                       <div className="translation-submit-strip">
                         <Select
-                          mode="multiple"
-                          placeholder="选择目标语言"
-                          value={targetLocales}
-                          onChange={setTargetLocales}
-                          options={localeOptions.map((value) => ({
+                          aria-label="临时消息默认语言"
+                          value={temporarySourceLocale}
+                          onChange={updateTemporarySourceLocale}
+                          options={supportedLocales.map((value) => ({
                             label: value,
                             value,
                           }))}
                         />
+                        <Select
+                          aria-label="临时消息目标语言"
+                          mode="multiple"
+                          placeholder="可留空，表示单语言临时消息"
+                          value={targetLocales}
+                          onChange={setTargetLocales}
+                          options={supportedLocales
+                            .filter((value) => value !== temporarySourceLocale)
+                            .map((value) => ({
+                              label: value,
+                              value,
+                            }))}
+                        />
                         <Button
                           type="primary"
-                          onClick={createTemporaryTranslation}
+                          onClick={prepareTemporaryLanguageContent}
                         >
-                          创建外部机翻任务
+                          {temporaryLanguageAction}
                         </Button>
                         {temporaryBatchId && (
                           <Tag color={translationReady ? "green" : "orange"}>
@@ -879,7 +1210,25 @@ export default function CreateTaskPage() {
                           </Tag>
                         )}
                       </div>
-                      <MessagePreview content={content} />
+                      {temporaryBatchId && !translationScopeCurrent && (
+                        <Alert
+                          type="warning"
+                          title="语言配置或发送渠道已变更"
+                          content="现有语言批次的内容范围与当前配置不一致，请按当前配置重新创建语言任务后再提交审核。"
+                        />
+                      )}
+                      {currentBatch && temporaryTranslationTemplate && (
+                        <TranslationWorkflowPanel
+                          template={temporaryTranslationTemplate}
+                          batch={currentBatch}
+                          context="temporary-task"
+                        />
+                      )}
+                      <MessagePreview
+                        content={content}
+                        channels={channels}
+                        showPushPriority={false}
+                      />
                     </div>
                   )}
                 </>
@@ -903,7 +1252,6 @@ export default function CreateTaskPage() {
                       { label: "受众方式", value: "事件主体用户" },
                       { label: "预计单次受众", value: "1 人" },
                       { label: "用户字段", value: "user_id" },
-                      { label: "测试样例", value: "UID TEST-001" },
                     ]}
                   />
                 </>
@@ -919,6 +1267,7 @@ export default function CreateTaskPage() {
                       <Radio value="vip">指定 VIP</Radio>
                       <Radio value="agent">指定代理</Radio>
                       <Radio value="campaign">活动参与用户</Radio>
+                      <Radio value="segment">用户分群</Radio>
                     </Radio.Group>
                   </FormItem>
                   <Grid.Row gutter={20}>
@@ -955,6 +1304,24 @@ export default function CreateTaskPage() {
                             ]}
                           />
                         </FormItem>
+                      ) : audienceType === "segment" ? (
+                        <FormItem label="选择用户分群" required>
+                          <Select
+                            value={selectedAudienceSegmentId}
+                            placeholder="从用户与受众模块选择分群"
+                            showSearch
+                            onChange={(segmentId) => {
+                              setSelectedAudienceSegmentId(segmentId);
+                              setExcludedSegmentIds((currentIds) =>
+                                currentIds.filter((id) => id !== segmentId),
+                              );
+                            }}
+                            options={segments.map((segment) => ({
+                              label: `${segment.name} · ${segment.count.toLocaleString()} 人`,
+                              value: segment.id,
+                            }))}
+                          />
+                        </FormItem>
                       ) : (
                         <FormItem label="全站范围">
                           <Select
@@ -971,17 +1338,18 @@ export default function CreateTaskPage() {
                       <FormItem label="排除分群">
                         <Select
                           mode="multiple"
+                          value={excludedSegmentIds}
+                          onChange={setExcludedSegmentIds}
                           placeholder="选择排除分群"
-                          options={[
-                            {
-                              label: "高风险提现保护名单 · 120,480",
-                              value: "withdrawal-risk",
-                            },
-                            {
-                              label: "账户异常抑制名单 · 8,241",
-                              value: "account-risk",
-                            },
-                          ]}
+                          options={segments
+                            .filter(
+                              (segment) =>
+                                segment.id !== selectedAudienceSegmentId,
+                            )
+                            .map((segment) => ({
+                              label: `${segment.name} · ${segment.count.toLocaleString()} 人`,
+                              value: segment.id,
+                            }))}
                         />
                       </FormItem>
                     </Grid.Col>
@@ -1007,24 +1375,19 @@ export default function CreateTaskPage() {
                     </div>
                     <Button
                       onClick={() =>
-                        Message.success("已生成新的受众快照和抽样用户")
+                        Message.success("已刷新预计受众人数")
                       }
                     >
                       刷新人数
                     </Button>
                   </div>
-                  <Card title="受众样例" size="small">
-                    {audience.samples.map((item) => (
-                      <Tag key={item}>{item}</Tag>
-                    ))}
-                  </Card>
                 </>
               )}
             </div>
           )}
           {current === 2 && (
             <div className="form-section">
-              <h3>发送与 App Push 策略</h3>
+              <h3>发送策略</h3>
               {triggerType === "event" && (
                 <Alert
                   type="info"
@@ -1034,44 +1397,61 @@ export default function CreateTaskPage() {
               )}
               <Grid.Row gutter={20}>
                 <Grid.Col span={8}>
-                  <FormItem label="正式渠道" field="channels">
-                    <Checkbox.Group options={["站内信", "Push"]} />
+                  <FormItem label="正式发送渠道">
+                    <Space>
+                      {channels.map((channel) => (
+                        <Tag
+                          key={channel}
+                          color={channel === "Push" ? "purple" : "arcoblue"}
+                        >
+                          {channel === "Push" ? "App Push" : "站内信（Web + App）"}
+                        </Tag>
+                      ))}
+                    </Space>
                   </FormItem>
                 </Grid.Col>
-                <Grid.Col span={8}>
-                  <FormItem label="发送模式" field="scheduleMode">
-                    <Select
-                      options={[
-                        ...(editingTask && copiedTask
-                          ? [
-                              {
-                                label: `保留原计划 · ${copiedTask.schedule}`,
-                                value: "original",
-                              },
-                            ]
-                          : []),
-                        { label: "立即发送", value: "now" },
-                        { label: "指定时间", value: "scheduled" },
-                        { label: "用户本地时间", value: "local" },
-                      ]}
-                    />
-                  </FormItem>
-                </Grid.Col>
-                <Grid.Col span={8}>
-                  <FormItem label="计划发送时间" field="scheduledAt">
-                    <DatePicker showTime style={{ width: "100%" }} />
-                  </FormItem>
-                </Grid.Col>
-                <Grid.Col span={8}>
-                  <FormItem label="任务时区" field="timezone">
-                    <Select
-                      options={["Asia/Shanghai", "UTC"].map((value) => ({
-                        label: value,
-                        value,
-                      }))}
-                    />
-                  </FormItem>
-                </Grid.Col>
+                {triggerType === "manual" && (
+                  <Grid.Col span={8}>
+                    <FormItem label="发送模式" field="scheduleMode">
+                      <Select
+                        options={[
+                          { label: "立即发送", value: "now" },
+                          { label: "指定时间发送", value: "scheduled" },
+                        ]}
+                      />
+                    </FormItem>
+                  </Grid.Col>
+                )}
+                {triggerType === "manual" && values.scheduleMode === "scheduled" && (
+                  <>
+                    <Grid.Col span={8}>
+                      <FormItem
+                        label="计划发送时间"
+                        field="scheduledAt"
+                        required
+                        rules={[{ required: true, message: "请选择计划发送时间" }]}
+                        extra={editingTask && copiedTask ? `原计划：${copiedTask.schedule}，请重新确认` : undefined}
+                      >
+                        <DatePicker showTime style={{ width: "100%" }} />
+                      </FormItem>
+                    </Grid.Col>
+                    <Grid.Col span={8}>
+                      <FormItem
+                        label="任务时区"
+                        field="timezone"
+                        required
+                        rules={[{ required: true, message: "请选择任务时区" }]}
+                      >
+                        <Select
+                          options={["Asia/Shanghai", "UTC"].map((value) => ({
+                            label: value,
+                            value,
+                          }))}
+                        />
+                      </FormItem>
+                    </Grid.Col>
+                  </>
+                )}
                 <Grid.Col span={8}>
                   <FormItem
                     label="消息有效期"
@@ -1086,22 +1466,6 @@ export default function CreateTaskPage() {
                   </FormItem>
                 </Grid.Col>
                 <Grid.Col span={8}>
-                  <FormItem label="本地发送时间" field="localTime">
-                    <TimePicker style={{ width: "100%" }} />
-                  </FormItem>
-                </Grid.Col>
-                <Grid.Col span={8}>
-                  <FormItem label="频控策略" field="frequency">
-                    <Select
-                      defaultValue="global"
-                      options={[
-                        { label: "全球营销 · 3次/24h", value: "global" },
-                        { label: "活动级 · 1次/7d", value: "campaign" },
-                      ]}
-                    />
-                  </FormItem>
-                </Grid.Col>
-                <Grid.Col span={8}>
                   <FormItem label="安静时段策略" field="quiet">
                     <Select
                       options={[
@@ -1111,27 +1475,24 @@ export default function CreateTaskPage() {
                     />
                   </FormItem>
                 </Grid.Col>
-                <Grid.Col span={8}>
-                  <FormItem label="发送速率（每秒）" field="rate">
-                    <InputNumber min={1} max={5000} style={{ width: "100%" }} />
-                  </FormItem>
-                </Grid.Col>
-                <Grid.Col span={8}>
-                  <FormItem
-                    label="用户去重"
-                    field="dedupe"
-                    triggerPropName="checked"
-                  >
-                    <Switch checkedText="按 UID 去重" />
-                  </FormItem>
-                </Grid.Col>
               </Grid.Row>
-              <Alert
-                type="info"
-                title="App Push 正式发送检查"
-                content="提交前校验 APNs/FCM 状态、通知权限、有效设备 Token、Deep Link 白名单、折叠键和优先级；临时失败退避重试，永久失败使 Token 失效。"
+              {channels.includes("Push") && (
+                <Alert
+                  type="info"
+                  title="App Push 正式发送检查"
+                  content={
+                    triggerType === "event"
+                      ? "提交前校验 APNs/FCM 状态、通知权限、有效设备 Token、Deep Link 白名单、折叠键和优先级；临时失败退避重试，永久失败使 Token 失效。"
+                      : "提交前校验 APNs/FCM 状态、通知权限、有效设备 Token 和 Deep Link 白名单；临时失败退避重试，永久失败使 Token 失效。"
+                  }
+                />
+              )}
+              <MessagePreview
+                content={content}
+                channels={channels}
+                compact
+                showPushPriority={triggerType === "event"}
               />
-              <MessagePreview content={content} compact />
             </div>
           )}
           {current === 3 && <TaskSummary data={summary} />}

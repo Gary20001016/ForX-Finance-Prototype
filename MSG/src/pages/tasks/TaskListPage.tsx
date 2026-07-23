@@ -21,7 +21,7 @@ import PageHeader from "../../components/PageHeader";
 import FilterBar from "../../components/FilterBar";
 import ResourceTable from "../../components/ResourceTable";
 import StatusTag from "../../components/StatusTag";
-import type { ManualTaskOperation, MessageTask } from "../../domain/types";
+import type { ManualTaskOperation, MessageTask, TranslationBatch } from "../../domain/types";
 import MessagePreview from "../../components/MessagePreview";
 import {
   performManualTaskOperation,
@@ -33,6 +33,10 @@ import {
   getManualTaskOperations,
   isManualTaskStatus,
 } from "./taskLifecycle";
+import MultilingualProgressCell from "../multilingual/MultilingualProgressCell";
+import MultilingualProgressDrawer from "../multilingual/MultilingualProgressDrawer";
+import WritePermissionButton from "../../components/WritePermissionButton";
+import { useCurrentPagePermission } from "../../components/PagePermissionBoundary";
 
 const channelColors: Record<string, string> = {
   站内信: "arcoblue",
@@ -42,6 +46,7 @@ export const canEditTask = (status: string) =>
   isManualTaskStatus(status) && canEditManualTask(status);
 
 export default function TaskListPage() {
+  const { canWrite } = useCurrentPagePermission();
   const navigate = useNavigate();
   const store = usePrototypeStore();
   const tasks = store.tasks.filter((task) => task.triggerType !== "event");
@@ -50,6 +55,12 @@ export default function TaskListPage() {
   const [nature, setNature] = useState<string>();
   const [channel, setChannel] = useState<string>();
   const [selected, setSelected] = useState<MessageTask>();
+  const [progressBatch, setProgressBatch] = useState<TranslationBatch>();
+  const templateDisplayName = (task: MessageTask) => {
+    if (task.contentMode === "temporary") return "临时消息";
+    const template = store.templates.find((item) => item.id === task.templateId);
+    return template?.name || task.template.replace(/\s+v\d+$/i, "");
+  };
   const filtered = useMemo(
     () =>
       tasks.filter((task) => {
@@ -78,6 +89,10 @@ export default function TaskListPage() {
 
   const handleTaskAction = (operation: string, row: MessageTask) => {
     if (operation === "查看详情") setSelected(row);
+    if (operation !== "查看详情" && !canWrite) {
+      Message.warning("当前账号无写权限");
+      return;
+    }
     if (operation === "复制任务") {
       Message.info(`正在复制「${row.name}」的内容、受众与发送配置`);
       navigate("/tasks/create", { state: { copyTask: row } });
@@ -174,10 +189,9 @@ export default function TaskListPage() {
       ),
     },
     {
-      title: "模板版本",
-      dataIndex: "template",
+      title: "消息模板",
       width: 170,
-      render: (value) => <span className="mono">{value}</span>,
+      render: (_, row) => <span>{templateDisplayName(row)}</span>,
     },
     {
       title: "渠道",
@@ -227,7 +241,22 @@ export default function TaskListPage() {
         <StatusTag status={row.deliveryResult || "未开始"} />,
     },
     {
-      title: "进度",
+      title: "多语言流程",
+      width: 250,
+      render: (_, row) => {
+        const batch = store.translationBatches.find(
+          (item) => item.id === row.translationBatchId,
+        );
+        return (
+          <MultilingualProgressCell
+            batch={batch}
+            onOpen={() => setProgressBatch(batch)}
+          />
+        );
+      },
+    },
+    {
+      title: "发送进度",
       width: 120,
       render: (_, row) =>
         row.progress ? (
@@ -256,7 +285,7 @@ export default function TaskListPage() {
           droplist={
             <Menu onClickMenuItem={(key) => handleTaskAction(key, row)}>
               {operationsFor(row).map((operation) => (
-                <Menu.Item key={operation}>{operation}</Menu.Item>
+                <Menu.Item key={operation} disabled={!canWrite && operation !== "查看详情"}>{operation}</Menu.Item>
               ))}
             </Menu>
           }
@@ -277,13 +306,13 @@ export default function TaskListPage() {
         title="人工消息任务"
         description="创建、审核和追踪一次性人工发送任务；事件自动通知在事件通知规则中管理。"
         actions={
-          <Button
+          <WritePermissionButton
             type="primary"
             icon={<IconPlus />}
             onClick={() => navigate("/tasks/create")}
           >
             新建人工消息任务
-          </Button>
+          </WritePermissionButton>
         }
       />
       <FilterBar
@@ -396,11 +425,7 @@ export default function TaskListPage() {
                   value:
                     selected.contentMode === "temporary"
                       ? "临时消息"
-                      : selected.template,
-                },
-                {
-                  label: "模板版本",
-                  value: selected.templateVersion || selected.template,
+                      : templateDisplayName(selected),
                 },
                 { label: "渠道", value: selected.channels.join(" + ") },
                 {
@@ -454,16 +479,21 @@ export default function TaskListPage() {
                   : []),
               ]}
             />
-            {selected.content && <MessagePreview content={selected.content} />}
-            <div className="approval-samples">
-              <strong>受众样例</strong>
-              {selected.sampleUsers?.map((user) => (
-                <Tag key={user}>{user}</Tag>
-              ))}
-            </div>
+            {selected.content && (
+              <MessagePreview
+                content={selected.content}
+                showPushPriority={false}
+              />
+            )}
           </Space>
         )}
       </Drawer>
+      <MultilingualProgressDrawer
+        batch={progressBatch}
+        visible={Boolean(progressBatch)}
+        readOnly={!canWrite}
+        onClose={() => setProgressBatch(undefined)}
+      />
     </section>
   );
 }

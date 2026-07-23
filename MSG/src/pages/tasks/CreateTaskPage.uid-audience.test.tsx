@@ -33,9 +33,7 @@ it("uses confirmed manual and CSV UIDs as the specified audience", async () => {
   );
 
   expect(screen.getByLabelText("最终目标用户")).toHaveTextContent("3");
-  expect(screen.getByText("UID 10***01")).toBeVisible();
-  expect(screen.getByText("UID 10***02")).toBeVisible();
-  expect(screen.getByText("UID 10***03")).toBeVisible();
+  expect(screen.queryByText(/UID 10\*\*\*/)).not.toBeInTheDocument();
 });
 
 it("blocks the next step while a parsed CSV is not confirmed", async () => {
@@ -63,6 +61,6 @@ it("keeps system event automation out of the artificial task creator", () => {
     screen.queryByRole("radio", { name: "系统事件触发" }),
   ).not.toBeInTheDocument();
   expect(
-    screen.getByText(/系统事件自动通知请前往“事件通知规则”配置/),
+    screen.getByRole("heading", { name: "新建人工消息任务" }),
   ).toBeVisible();
 });

@@ -27,6 +27,11 @@ export interface LocalizedMessageContent {
   push: PushMessageContent;
 }
 
+export interface TranslationChannelContent {
+  web?: Partial<WebMessageContent>;
+  push?: Partial<PushMessageContent>;
+}
+
 export type TaskTriggerType = "manual" | "event";
 
 export interface EventVariableMapping {
@@ -60,15 +65,11 @@ export type EventRuleOperation =
   | "编辑规则"
   | "提交审核"
   | "撤回审核"
-  | "启用规则"
   | "停用规则"
-  | "取消规则"
-  | "创建内容版本";
+  | "取消规则";
 
 export type RuleContentVersionStatus =
   | "草稿"
-  | "机翻处理中"
-  | "待人工审核"
   | "待审核"
   | "待生效"
   | "当前生效"
@@ -78,8 +79,6 @@ export type RuleContentVersionStatus =
 
 export type RuleContentVersionOperation =
   | "提交机翻"
-  | "机翻完成"
-  | "人工审核通过"
   | "通过审核"
   | "取消版本";
 
@@ -92,6 +91,8 @@ export interface EventNotificationRule {
   subjectMapping: string;
   status: EventRuleStatus;
   currentVersionId?: string;
+  replacementRuleIds?: string[];
+  replacedByRuleId?: string;
   channels: Channel[];
   dedupeKey: string;
   frequencyCap: string;
@@ -114,6 +115,7 @@ export interface RuleContentVersion {
   status: RuleContentVersionStatus;
   sourceLocale: string;
   targetLocales: string[];
+  translationBatchId?: string;
   title: string;
   body: string;
   createdBy: string;
@@ -230,7 +232,13 @@ export interface MessageTask {
   content?: LocalizedMessageContent;
   expiresAt?: string;
   retentionDays?: number;
-  audienceType?: "all" | "uid" | "vip" | "agent" | "campaign";
+  audienceType?:
+    | "all"
+    | "uid"
+    | "vip"
+    | "agent"
+    | "campaign"
+    | "segment";
   sampleUsers?: string[];
   translationBatchId?: string;
   createdAt?: string;
@@ -240,6 +248,9 @@ export interface MessageTask {
   eventConfig?: EventTriggerConfig;
   uidAudience?: UidAudienceSnapshot;
 }
+
+export type TemplateUsageScope = "manual" | "event" | "shared";
+export type ManualTemplateStatus = "草稿" | "审核中" | "驳回" | "已发布";
 
 export interface MessageTemplate {
   id: string;
@@ -259,40 +270,61 @@ export interface MessageTemplate {
   content?: LocalizedMessageContent;
   variables?: string[];
   owner?: string;
+  usageScope: TemplateUsageScope;
 }
 
-export type TranslationItemStatus =
-  | "未提交"
-  | "排队中"
-  | "翻译中"
-  | "待人工审核"
-  | "审核通过"
-  | "翻译失败"
-  | "审核驳回"
-  | "已取消";
-export type TranslationBatchStatus =
-  | "未提交"
-  | "机翻处理中"
-  | "待人工审核"
-  | "全部审核通过"
-  | "部分失败"
-  | "审核被驳回"
-  | "已取消";
+export type TranslationStatus = "无结果" | "翻译返回待审核" | "已通过";
+export type TranslationItemStatus = TranslationStatus;
+export type TranslationBatchStatus = TranslationStatus;
+export type LanguageProductionMode =
+  | "machine_translation"
+  | "direct_source_review";
+
+export type TranslationSubjectType =
+  | "template_version"
+  | "manual_task_content"
+  | "rule_content_version";
+
+export interface LanguageReviewPolicy {
+  localeCode: string;
+  localeName: string;
+  specialReviewRequired: boolean;
+  authorizedReviewerIds: string[];
+  reviewSlaHours?: number;
+  timeoutAction: "提醒" | "升级" | "阻断发布";
+  enabled: boolean;
+}
+
+export interface TranslationContentLayer {
+  title?: string;
+  summary?: string;
+  body?: string;
+}
 
 export interface TranslationItem {
   id: string;
   batchId: string;
   templateId: string;
   templateName: string;
+  subjectType?: TranslationSubjectType;
+  subjectId?: string;
+  subjectName?: string;
   sourceLocale: string;
   targetLocale: string;
-  externalTaskId: string;
+  productionMode?: LanguageProductionMode;
+  externalTaskId?: string;
   attemptNo: number;
   status: TranslationItemStatus;
   sourceContentHash: string;
   machineTitle?: string;
   machineSummary?: string;
   machineBody?: string;
+  machineOutput?: TranslationContentLayer;
+  humanDraft?: TranslationContentLayer;
+  approvedOutput?: TranslationContentLayer;
+  machineChannelOutput?: TranslationChannelContent;
+  humanChannelDraft?: TranslationChannelContent;
+  approvedChannelOutput?: TranslationChannelContent;
   reviewedTitle?: string;
   reviewedSummary?: string;
   reviewedBody?: string;
@@ -304,20 +336,51 @@ export interface TranslationItem {
   reviewer?: string;
   submitter: string;
   variablesValid: boolean;
+  specialReviewRequired?: boolean;
+  authorizedReviewerIds?: string[];
+  assigneeId?: string;
+  assignee?: string;
+  reviewSlaHours?: number;
+  changedFields?: Array<"title" | "summary" | "body">;
 }
 
 export interface TranslationBatch {
   id: string;
+  subjectType?: TranslationSubjectType;
+  subjectId?: string;
+  subjectName?: string;
+  contentVersion?: string;
+  returnPath?: string;
   templateId: string;
   templateVersion: string;
+  productionMode?: LanguageProductionMode;
   sourceLocale: string;
   targetLocales: string[];
   status: TranslationBatchStatus;
   createdBy: string;
   createdAt: string;
   updatedAt: string;
+  sourceContent?: TranslationContentLayer;
+  channels?: Channel[];
+  sourceChannelContent?: LocalizedMessageContent;
   items: TranslationItem[];
 }
+
+export interface SegmentEditChange {
+  field: string;
+  before: string;
+  after: string;
+}
+
+export interface SegmentEditLog {
+  id: string;
+  action: "创建分群" | "编辑规则";
+  operator: string;
+  operatedAt: string;
+  changes: SegmentEditChange[];
+}
+
+export type AudienceSegmentStatus = "计算中" | "可用";
 
 export interface AudienceSegment {
   id: string;
@@ -329,8 +392,11 @@ export interface AudienceSegment {
   refresh: string;
   updatedAt: string;
   owner: string;
-  status: string;
+  status: AudienceSegmentStatus;
   rule: string;
+  setOperation?: "union" | "intersection";
+  sourceSegmentIds?: string[];
+  editLogs?: SegmentEditLog[];
 }
 
 export interface ApprovalItem {
@@ -346,6 +412,8 @@ export interface ApprovalItem {
   step: string;
   submitter: string;
   submitterId: string;
+  assignee?: string;
+  assigneeId?: string;
   submittedAt: string;
   status: string;
   emergency?: boolean;
@@ -363,6 +431,9 @@ export interface ApprovalItem {
   triggerType?: TaskTriggerType;
   templateVersion?: string;
   eventConfig?: EventTriggerConfig;
+  ruleId?: string;
+  subjectMapping?: string;
+  replacementRuleIds?: string[];
 }
 
 export interface DeliveryRecord {
@@ -401,6 +472,33 @@ export interface LinkAllowlistEntry {
   expiresAt: string;
   status: "启用" | "停用" | "已过期";
   owner: string;
+}
+
+export interface OperatorTestAccount {
+  id: string;
+  operatorId: string;
+  uid: string;
+  remark: string;
+  verified: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TemplateTestSendResult {
+  operatorId: string;
+  recipientUids: string[];
+  accountCount: number;
+  channelCount: number;
+  totalDeliveries: number;
+}
+
+export interface ControlledTemplateVariable {
+  id: string;
+  name: string;
+  description: string;
+  status: "启用" | "停用";
+  updatedAt: string;
+  updatedBy: string;
 }
 
 export interface SystemEventDefinition {
@@ -469,12 +567,16 @@ export type MessageCategoryCode =
   | "campaign_notice"
   | "risk_notice";
 export type MessageRisk = "普通" | "重要" | "紧急";
+export type MessageNature = "事务" | "服务" | "营销";
 
 export interface MessageCategory {
   code: MessageCategoryCode;
   name: string;
   color: string;
   defaultRisk: MessageRisk;
+  defaultNature: MessageNature;
+  defaultRetentionDays: number;
+  enabled: boolean;
 }
 
 export interface UserMessage {
