@@ -58,7 +58,7 @@ export const pagePermissionGroups: PagePermissionGroup[] = [
     key: "settings",
     label: "系统配置",
     resources: [
-      { key: "settings.categories", label: "消息分类" },
+      { key: "settings.categories", label: "前台展示分类" },
       { key: "settings.links", label: "跳转白名单" },
       { key: "settings.languageReview", label: "语言审核策略" },
       { key: "settings.testAccounts", label: "测试账号" },

@@ -38,6 +38,7 @@ import {
 import { getEventRuleOperations } from "./automationLifecycle";
 import WritePermissionButton from "../../components/WritePermissionButton";
 import { useCurrentPagePermission } from "../../components/PagePermissionBoundary";
+import { formatDisplayLocation } from "../../domain/messageDisplayTaxonomy";
 
 type TriggerMode = "event" | "condition";
 
@@ -115,6 +116,7 @@ export default function AutomationRuleListPage() {
     routeEventId,
   );
   const [conditionVariable, setConditionVariable] = useState<string>();
+  const [formTemplateId, setFormTemplateId] = useState<string>();
   const [reviewSubmitRuleId, setReviewSubmitRuleId] = useState<string>();
   const [replacementRuleIds, setReplacementRuleIds] = useState<string[]>([]);
   const [form] = Form.useForm();
@@ -157,12 +159,16 @@ export default function AutomationRuleListPage() {
   const selectedConditionEvent = store.events.find(
     (item) => item.id === conditionEventId,
   );
+  const formTemplate = store.templates.find(
+    (item) => item.id === formTemplateId,
+  );
 
   const resetCreateForm = () => {
     form.resetFields();
     setTriggerMode("event");
     setConditionEventId(routeEventId);
     setConditionVariable(undefined);
+    setFormTemplateId(undefined);
   };
 
   const openCreateForm = () => {
@@ -196,6 +202,7 @@ export default function AutomationRuleListPage() {
     setTriggerMode(condition.triggerMode);
     setConditionEventId(rule.eventId);
     setConditionVariable(condition.conditionVariable);
+    setFormTemplateId(snapshot.templateId);
     setSelectedId(undefined);
     setCreating(false);
     setEditingRuleId(rule.id);
@@ -350,6 +357,12 @@ export default function AutomationRuleListPage() {
         );
       },
     },
+    {
+      title: "前台展示位置",
+      width: 180,
+      render: (_, rule) =>
+        formatDisplayLocation(rule.category, rule.topic),
+    },
     { title: "触发条件", dataIndex: "conditionExpression", width: 210 },
     {
       title: "渠道",
@@ -486,6 +499,14 @@ export default function AutomationRuleListPage() {
                     ? `${selectedTemplate.name} · ${selectedTemplate.id}`
                     : "未找到绑定模板",
                 },
+                {
+                  label: "前台展示位置",
+                  value: formatDisplayLocation(
+                    selected.category,
+                    selected.topic,
+                  ),
+                },
+                { label: "风险等级", value: selected.risk },
                 { label: "触发条件", value: selected.conditionExpression },
                 { label: "主体映射", value: selected.subjectMapping },
                 { label: "幂等键", value: <span className="mono">ruleId:eventInstanceId</span> },
@@ -785,6 +806,7 @@ export default function AutomationRuleListPage() {
             <Grid.Col span={12}>
               <Form.Item label="消息模板" field="templateId" required rules={[{ required: true }]}>
                 <Select
+                  onChange={setFormTemplateId}
                   options={eventTemplates.map((template) => ({
                     label: template.name,
                     value: template.id,
@@ -801,6 +823,28 @@ export default function AutomationRuleListPage() {
               </Form.Item>
             </Grid.Col>
           </Grid.Row>
+          {formTemplate && (
+            <Descriptions
+              title="继承的前台展示位置"
+              column={3}
+              border
+              style={{ marginBottom: 16 }}
+              data={[
+                {
+                  label: "前台展示位置",
+                  value: formatDisplayLocation(
+                    formTemplate.category,
+                    formTemplate.topic,
+                  ),
+                },
+                { label: "风险等级", value: formTemplate.risk },
+                {
+                  label: "来源",
+                  value: `继承自“${formTemplate.name}”`,
+                },
+              ]}
+            />
+          )}
           <Alert
             type="info"
             style={{ marginBottom: 16 }}

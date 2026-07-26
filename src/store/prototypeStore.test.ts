@@ -14,6 +14,7 @@ import {
   canReviewTranslation,
   getPrototypeState,
   markMessageRead,
+  migrateSavedState,
   getOperatorTestAccounts,
   normalizeTranslationBatches,
   normalizeTemplateTranslationReadiness,
@@ -44,6 +45,47 @@ import { createPagePermissions } from "../domain/pagePermissions";
 
 describe("prototype store workflow transitions", () => {
   beforeEach(() => resetPrototypeStore());
+
+  it("migrates persisted legacy categories and risks to the unified display model", () => {
+    const legacy = JSON.parse(
+      JSON.stringify(getPrototypeState()),
+    ) as ReturnType<typeof getPrototypeState>;
+    legacy.categories = [
+      {
+        code: "asset_notice",
+        name: "资产通知",
+        color: "green",
+        defaultRisk: "普通",
+        defaultRetentionDays: 365,
+        enabled: true,
+      },
+    ] as unknown as typeof legacy.categories;
+    const template = legacy.templates.find((item) =>
+      item.name.includes("提现"),
+    )!;
+    Object.assign(template, {
+      category: "asset_notice",
+      topic: undefined,
+      risk: "重要",
+    });
+
+    const migrated = migrateSavedState(legacy);
+
+    expect(migrated.categories.map((item) => item.code)).toEqual([
+      "announcement",
+      "trade",
+      "asset",
+      "security_risk",
+      "campaign_reward",
+    ]);
+    expect(
+      migrated.templates.find((item) => item.id === template.id),
+    ).toMatchObject({
+      category: "asset",
+      topic: "withdrawal",
+      risk: "高",
+    });
+  });
 
   it("persists a single message read transition", () => {
     markMessageRead("UM-1001");
@@ -632,7 +674,8 @@ describe("prototype store workflow transitions", () => {
   it("submits a task and creates a linked approval object", () => {
     const task = submitTask({
       name: "临时风险消息",
-      category: "风控通知",
+      category: "security_risk",
+      topic: "liquidation_warning",
       nature: "事务",
       risk: "关键",
       contentMode: "temporary",
@@ -714,7 +757,8 @@ describe("prototype store workflow transitions", () => {
     );
     const task = submitTask({
       name: "权限失效改派测试",
-      category: "系统公告",
+      category: "announcement",
+      topic: "maintenance",
       nature: "事务",
       risk: "低",
       template: "notice",
@@ -756,7 +800,8 @@ describe("prototype store workflow transitions", () => {
   it("blocks a permission change when no replacement reviewer exists", () => {
     const task = submitTask({
       name: "无替代审核人测试",
-      category: "系统公告",
+      category: "announcement",
+      topic: "maintenance",
       nature: "事务",
       risk: "低",
       template: "notice",
@@ -814,7 +859,8 @@ describe("prototype store workflow transitions", () => {
   it("starts an immediate artificial task when its approval passes", () => {
     const task = submitTask({
       name: "立即安全通知",
-      category: "安全通知",
+      category: "security_risk",
+      topic: "account_security",
       nature: "事务",
       risk: "中",
       template: "security_notice v1",
@@ -868,7 +914,8 @@ describe("prototype store workflow transitions", () => {
 
     const task = submitTask({
       name: "发送控制测试",
-      category: "系统公告",
+      category: "announcement",
+      topic: "maintenance",
       nature: "事务",
       risk: "中",
       template: "notice v1",
@@ -942,6 +989,7 @@ describe("prototype store workflow transitions", () => {
       {
         name: current.name,
         category: current.category,
+        topic: current.topic,
         nature: current.nature,
         risk: current.risk,
         template: current.template,
@@ -980,7 +1028,8 @@ describe("prototype store workflow transitions", () => {
     const task = submitTask({
       name: "提现成功通知规则",
       triggerType: "event",
-      category: "资产通知",
+      category: "asset",
+      topic: "withdrawal",
       nature: "强事务",
       risk: "关键",
       template: "withdraw_success v12",

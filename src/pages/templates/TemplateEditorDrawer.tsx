@@ -23,7 +23,9 @@ import {
 import type {
   Channel,
   LocalizedMessageContent,
+  MessageCategoryCode,
   MessageTemplate,
+  MessageTopicCode,
   TemplateUsageScope,
 } from "../../domain/types";
 import {
@@ -34,21 +36,18 @@ import {
   updateTemplate,
   usePrototypeStore,
 } from "../../store/prototypeStore";
-import { getMessageCategoryDefaultNature } from "../../domain/messageCategoryPolicy";
+import {
+  getDefaultTopicCode,
+  getTopicDefaults,
+  inferDisplayLocation,
+  MESSAGE_DISPLAY_CATEGORIES,
+  MESSAGE_RISK_LEVELS,
+} from "../../domain/messageDisplayTaxonomy";
 import { isApprovedManualTemplateLocked } from "../../domain/templatePolicy";
 import { getEventTemplateVariables } from "../../domain/eventVariables";
 import TemplateReadOnlyDetails from "./TemplateReadOnlyDetails";
 import TemplateTestSendModal from "./TemplateTestSendModal";
 
-const categories = [
-  "系统公告",
-  "交易通知",
-  "资产通知",
-  "安全通知",
-  "奖励通知",
-  "活动通知",
-  "风控通知",
-];
 const supportedLocales = [
   "zh-CN",
   "en-US",
@@ -103,6 +102,8 @@ export default function TemplateEditorDrawer({
   const [channels, setChannels] = useState<Channel[]>(defaultChannels);
   const [sourceLocale, setSourceLocale] = useState("zh-CN");
   const [targetLocales, setTargetLocales] = useState<string[]>([]);
+  const [selectedCategory, setSelectedCategory] =
+    useState<MessageCategoryCode>("announcement");
   const [submitting, setSubmitting] = useState(false);
   const [testSendVisible, setTestSendVisible] = useState(false);
   const locked = Boolean(
@@ -111,9 +112,9 @@ export default function TemplateEditorDrawer({
   useEffect(() => {
     const next = template?.content || emptyContent;
     const nextSourceLocale = template?.sourceLocale || "zh-CN";
-    const nextCategory = template?.category || "系统公告";
-    const nextNature =
-      getMessageCategoryDefaultNature(store.categories, nextCategory) || "事务";
+    const nextCategory = template?.category || "announcement";
+    const nextTopic =
+      template?.topic || getDefaultTopicCode(nextCategory) || "maintenance";
     setContent(JSON.parse(JSON.stringify(next)));
     setSourceLocale(nextSourceLocale);
     setTargetLocales(
@@ -124,11 +125,12 @@ export default function TemplateEditorDrawer({
         ? [...template.channels]
         : [...defaultChannels],
     );
+    setSelectedCategory(nextCategory);
     form.setFieldsValue({
       name: template?.name,
       description: "",
       category: nextCategory,
-      nature: nextNature,
+      topic: nextTopic,
       risk: template?.risk || "低",
       owner: template?.owner || "消息运营",
       usageScope: template?.usageScope || entryScope,
@@ -172,8 +174,7 @@ export default function TemplateEditorDrawer({
     try {
       const values = await form.validate();
       const resolvedNature =
-        getMessageCategoryDefaultNature(store.categories, values.category) ||
-        "事务";
+        getTopicDefaults(values.category, values.topic)?.nature || "事务";
       const stationIncomplete =
         channels.includes("站内信") &&
         (!content.web.title || !content.web.summary || !content.web.body);
@@ -215,6 +216,7 @@ export default function TemplateEditorDrawer({
       const payload = {
         name: values.name,
         category: values.category,
+        topic: values.topic,
         nature: resolvedNature,
         risk: values.risk,
         channels,
@@ -358,7 +360,19 @@ export default function TemplateEditorDrawer({
               required
               rules={[{ required: true }]}
             >
-              <Input placeholder="后台识别名称" />
+              <Input
+                placeholder="后台识别名称"
+                onChange={(name) => {
+                  if (entryScope !== "event" || template) return;
+                  const inferred = inferDisplayLocation(name);
+                  setSelectedCategory(inferred.category);
+                  form.setFieldsValue({
+                    category: inferred.category,
+                    topic: inferred.topic,
+                    risk: inferred.risk,
+                  });
+                }}
+              />
             </Form.Item>
           </Grid.Col>
           {entryScope === "event" && (
@@ -389,34 +403,65 @@ export default function TemplateEditorDrawer({
         </Grid.Row>
         <Grid.Row gutter={16}>
           <Grid.Col span={6}>
-            <Form.Item label="消息分类" field="category" required>
+            <Form.Item
+              label="前台一级分类"
+              field="category"
+              required
+              rules={[{ required: true }]}
+            >
               <Select
-                onChange={(category) =>
+                onChange={(category: MessageCategoryCode) => {
+                  const firstTopic =
+                    store.categories
+                      .find((item) => item.code === category)
+                      ?.topics.find((item) => item.enabled)?.code ||
+                    getDefaultTopicCode(category);
+                  setSelectedCategory(category);
                   form.setFieldsValue({
-                    nature:
-                      getMessageCategoryDefaultNature(
-                        store.categories,
-                        category,
-                      ) || "事务",
-                  })
-                }
-                options={categories.map((value) => ({ label: value, value }))}
+                    topic: firstTopic,
+                  });
+                }}
+                options={(store.categories.length
+                  ? store.categories
+                  : MESSAGE_DISPLAY_CATEGORIES
+                )
+                  .filter((item) => item.enabled)
+                  .sort((a, b) => a.order - b.order)
+                  .map((item) => ({ label: item.name, value: item.code }))}
               />
             </Form.Item>
           </Grid.Col>
           <Grid.Col span={6}>
             <Form.Item
-              label="消息性质"
-              field="nature"
-              extra="由消息分类自动确定"
+              label="前台二级主题"
+              field="topic"
+              required
+              rules={[{ required: true }]}
             >
-              <Input disabled />
+              <Select
+                options={(
+                  store.categories.find(
+                    (item) => item.code === selectedCategory,
+                  )?.topics || []
+                )
+                  .filter((item) => item.enabled)
+                  .sort((a, b) => a.order - b.order)
+                  .map((item) => ({
+                    label: item.name,
+                    value: item.code as MessageTopicCode,
+                  }))}
+              />
             </Form.Item>
           </Grid.Col>
           <Grid.Col span={6}>
-            <Form.Item label="风险等级" field="risk">
+            <Form.Item
+              label="风险等级"
+              field="risk"
+              required
+              rules={[{ required: true }]}
+            >
               <Select
-                options={["低", "中", "高", "关键"].map((value) => ({
+                options={MESSAGE_RISK_LEVELS.map((value) => ({
                   label: value,
                   value,
                 }))}

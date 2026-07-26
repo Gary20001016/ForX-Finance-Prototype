@@ -70,7 +70,7 @@ it("excludes the source locale from target-language options", async () => {
   expect(within(targetPopup).getByText("en-US")).toBeVisible();
 });
 
-it("derives a read-only message nature from the selected category", async () => {
+it("links the controlled topic options to the front-display category", async () => {
   const user = userEvent.setup();
   render(
     <TemplateEditorDrawer
@@ -80,18 +80,19 @@ it("derives a read-only message nature from the selected category", async () => 
     />,
   );
 
-  const natureField = screen.getByText("消息性质").closest(".arco-form-item");
-  expect(natureField?.querySelector(".arco-select")).not.toBeInTheDocument();
-  expect(natureField?.querySelector("input")).toBeDisabled();
-  expect(natureField?.querySelector("input")).toHaveValue("服务");
-
-  const categoryField = screen.getByText("消息分类").closest(".arco-form-item");
+  expect(screen.queryByText("消息性质")).not.toBeInTheDocument();
+  const categoryField = screen
+    .getByText("前台一级分类")
+    .closest(".arco-form-item");
   const categorySelect = categoryField?.querySelector(".arco-select");
   expect(categorySelect).toBeTruthy();
   await user.click(categorySelect as HTMLElement);
-  fireEvent.click(await screen.findByText("活动通知"));
+  fireEvent.click(await screen.findByText("资产"));
 
-  expect(natureField?.querySelector("input")).toHaveValue("营销");
+  const topicField = screen
+    .getByText("前台二级主题")
+    .closest(".arco-form-item");
+  expect(topicField).toHaveTextContent("充值");
 });
 
 it("defaults a new template risk level to low", () => {

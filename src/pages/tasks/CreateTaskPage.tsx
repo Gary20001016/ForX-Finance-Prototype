@@ -38,7 +38,9 @@ import type {
   Channel,
   EventTriggerConfig,
   LocalizedMessageContent,
+  MessageCategoryCode,
   MessageTask,
+  MessageTopicCode,
   RiskLevel,
   TaskTriggerType,
 } from "../../domain/types";
@@ -71,7 +73,12 @@ import {
   isReusableMessageTemplate,
   templateSupportsScope,
 } from "../templates/templateScope";
-import { getMessageCategoryDefaultNature } from "../../domain/messageCategoryPolicy";
+import {
+  formatDisplayLocation,
+  getDefaultTopicCode,
+  getTopicDefaults,
+  MESSAGE_RISK_LEVELS,
+} from "../../domain/messageDisplayTaxonomy";
 import { segments } from "../../mocks/data";
 import {
   sameChannels,
@@ -292,7 +299,6 @@ export default function CreateTaskPage() {
     },
   );
   const [snapshot, setSnapshot] = useState<Record<string, unknown>>({});
-  const [categoryChanged, setCategoryChanged] = useState(false);
   const selectedTemplate =
     (triggerType === "event"
       ? eventTemplates.find((template) => template.id === templateId)
@@ -387,17 +393,29 @@ export default function CreateTaskPage() {
       ? "提交语言审核"
       : "完成语言准备";
   const values = { ...snapshot, ...form.getFieldsValue() };
-  const selectedCategory = String(
-    values.category || copiedTask?.category || "系统公告",
-  );
+  const formCategory = (values.category ||
+    copiedTask?.category ||
+    "announcement") as MessageCategoryCode;
+  const formTopic = (values.topic ||
+    copiedTask?.topic ||
+    getDefaultTopicCode(formCategory) ||
+    "maintenance") as MessageTopicCode;
+  const effectiveCategory =
+    contentMode === "template" && selectedTemplate
+      ? selectedTemplate.category
+      : formCategory;
+  const effectiveTopic =
+    contentMode === "template" && selectedTemplate
+      ? selectedTemplate.topic
+      : formTopic;
+  const effectiveRisk =
+    contentMode === "template" && selectedTemplate
+      ? selectedTemplate.risk
+      : ((values.risk || copiedTask?.risk || "低") as RiskLevel);
   const resolvedNature =
-    editingTask &&
-    copiedTask &&
-    !categoryChanged &&
-    selectedCategory === copiedTask.category
-      ? copiedTask.nature
-      : getMessageCategoryDefaultNature(store.categories, selectedCategory) ||
-        "事务";
+    contentMode === "template" && selectedTemplate
+      ? selectedTemplate.nature
+      : getTopicDefaults(effectiveCategory, effectiveTopic)?.nature || "事务";
   const channels = selectedChannels;
   const temporaryWebComplete = Boolean(
     temporary.web.title && temporary.web.summary && temporary.web.body,
@@ -422,12 +440,6 @@ export default function CreateTaskPage() {
       ? copiedTask.expiresAt
       : "发送后 24 小时";
   const updateSnapshot = (changedValues?: Record<string, unknown>) => {
-    if (
-      changedValues &&
-      Object.prototype.hasOwnProperty.call(changedValues, "category")
-    ) {
-      setCategoryChanged(true);
-    }
     if (changedValues?.scheduleMode === "now") {
       form.setFieldsValue({ scheduledAt: undefined, timezone: undefined });
     }
@@ -513,7 +525,11 @@ export default function CreateTaskPage() {
   const next = async () => {
     if (current === 0) {
       try {
-        await form.validate(["name", "business", "category"]);
+        await form.validate(
+          contentMode === "temporary"
+            ? ["name", "business", "category", "topic", "risk"]
+            : ["name", "business"],
+        );
       } catch {
         return;
       }
@@ -568,9 +584,10 @@ export default function CreateTaskPage() {
   };
   const submission = () => ({
     name: (form.getFieldValue("name") || "未命名任务") as string,
-    category: (form.getFieldValue("category") || "系统公告") as string,
+    category: effectiveCategory,
+    topic: effectiveTopic,
     nature: resolvedNature,
-    risk: (form.getFieldValue("risk") || "低") as RiskLevel,
+    risk: effectiveRisk,
     triggerType,
     contentMode,
     template:
@@ -754,9 +771,10 @@ export default function CreateTaskPage() {
     const draft = requiresBatch
       ? saveTemplate({
           name: `临时消息 · ${form.getFieldValue("name") || "未命名"}`,
-          category: form.getFieldValue("category") || "系统公告",
+          category: effectiveCategory,
+          topic: effectiveTopic,
           nature: resolvedNature,
-          risk: form.getFieldValue("risk") || "低",
+          risk: effectiveRisk,
           channels,
           locales: currentContent.locales,
           sourceLocale: temporarySourceLocale,
@@ -816,8 +834,13 @@ export default function CreateTaskPage() {
   const summary = useMemo(
     () => ({
       name: String(values.name || "未命名任务"),
-      nature: resolvedNature,
-      risk: (values.risk || "低") as RiskLevel,
+      category: effectiveCategory,
+      topic: effectiveTopic,
+      risk: effectiveRisk,
+      source:
+        contentMode === "template"
+          ? `继承自“${selectedTemplate?.name || "未选择模板"}”`
+          : "临时消息",
       channels,
       content,
       audienceCount: audience.count,
@@ -831,8 +854,10 @@ export default function CreateTaskPage() {
     }),
     [
       values.name,
-      resolvedNature,
-      values.risk,
+      effectiveCategory,
+      effectiveTopic,
+      effectiveRisk,
+      contentMode,
       channels,
       content,
       audience,
@@ -889,7 +914,10 @@ export default function CreateTaskPage() {
                 : `${copiedTask.name}（复制）`
               : undefined,
             business: copiedTask?.team || "消息运营",
-            category: copiedTask?.category || "系统公告",
+            category: copiedTask?.category || "announcement",
+            topic:
+              copiedTask?.topic ||
+              getDefaultTopicCode(copiedTask?.category || "announcement"),
             risk: copiedTask?.risk || "低",
             template: approvedTemplates[0]?.id,
             audienceType: copiedTask?.audienceType || "all",
@@ -925,39 +953,6 @@ export default function CreateTaskPage() {
                         "资金平台",
                         "风险控制",
                       ].map((value) => ({ label: value, value }))}
-                    />
-                  </FormItem>
-                </Grid.Col>
-                <Grid.Col span={8}>
-                  <FormItem label="消息分类" field="category" required>
-                    <Select
-                      options={store.categories
-                        .filter((category) => category.enabled)
-                        .map((category) => ({
-                          label: category.name,
-                          value: category.name,
-                        }))}
-                    />
-                  </FormItem>
-                </Grid.Col>
-              </Grid.Row>
-              <Grid.Row gutter={20}>
-                <Grid.Col span={8}>
-                  <FormItem label="消息性质">
-                    <Input
-                      value={resolvedNature}
-                      readOnly
-                      suffix={<span>由消息分类自动确定</span>}
-                    />
-                  </FormItem>
-                </Grid.Col>
-                <Grid.Col span={8}>
-                  <FormItem label="风险等级" field="risk">
-                    <Select
-                      options={["低", "中", "高", "关键"].map((value) => ({
-                        label: value,
-                        value,
-                      }))}
                     />
                   </FormItem>
                 </Grid.Col>
@@ -1033,6 +1028,28 @@ export default function CreateTaskPage() {
                       </FormItem>
                       {selectedTemplate && (
                         <>
+                          <Descriptions
+                            title="前台展示位置"
+                            column={3}
+                            border
+                            data={[
+                              {
+                                label: "展示位置",
+                                value: formatDisplayLocation(
+                                  selectedTemplate.category,
+                                  selectedTemplate.topic,
+                                ),
+                              },
+                              {
+                                label: "风险等级",
+                                value: selectedTemplate.risk,
+                              },
+                              {
+                                label: "来源",
+                                value: `继承自“${selectedTemplate.name}”`,
+                              },
+                            ]}
+                          />
                           <Alert
                             type="success"
                             content={`翻译审核通过 · ${selectedTemplate.translationBatchId} · ${selectedTemplate.locales.join("、")}`}
@@ -1048,6 +1065,73 @@ export default function CreateTaskPage() {
                     </div>
                   ) : (
                     <div className="temporary-content-editor">
+                      <h3>前台展示位置</h3>
+                      <Grid.Row gutter={20}>
+                        <Grid.Col span={8}>
+                          <FormItem
+                            label="前台一级分类"
+                            field="category"
+                            required
+                            rules={[{ required: true }]}
+                          >
+                            <Select
+                              onChange={(category: MessageCategoryCode) => {
+                                const firstTopic =
+                                  store.categories
+                                    .find((item) => item.code === category)
+                                    ?.topics.find((item) => item.enabled)?.code ||
+                                  getDefaultTopicCode(category);
+                                form.setFieldsValue({ topic: firstTopic });
+                                updateSnapshot({ category, topic: firstTopic });
+                              }}
+                              options={store.categories
+                                .filter((item) => item.enabled)
+                                .sort((a, b) => a.order - b.order)
+                                .map((item) => ({
+                                  label: item.name,
+                                  value: item.code,
+                                }))}
+                            />
+                          </FormItem>
+                        </Grid.Col>
+                        <Grid.Col span={8}>
+                          <FormItem
+                            label="前台二级主题"
+                            field="topic"
+                            required
+                            rules={[{ required: true }]}
+                          >
+                            <Select
+                              options={(
+                                store.categories.find(
+                                  (item) => item.code === formCategory,
+                                )?.topics || []
+                              )
+                                .filter((item) => item.enabled)
+                                .sort((a, b) => a.order - b.order)
+                                .map((item) => ({
+                                  label: item.name,
+                                  value: item.code,
+                                }))}
+                            />
+                          </FormItem>
+                        </Grid.Col>
+                        <Grid.Col span={8}>
+                          <FormItem
+                            label="风险等级"
+                            field="risk"
+                            required
+                            rules={[{ required: true }]}
+                          >
+                            <Select
+                              options={MESSAGE_RISK_LEVELS.map((value) => ({
+                                label: value,
+                                value,
+                              }))}
+                            />
+                          </FormItem>
+                        </Grid.Col>
+                      </Grid.Row>
                       <Alert
                         type={targetLocales.length ? "warning" : "info"}
                         content={

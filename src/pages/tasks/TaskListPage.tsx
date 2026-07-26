@@ -21,7 +21,18 @@ import PageHeader from "../../components/PageHeader";
 import FilterBar from "../../components/FilterBar";
 import ResourceTable from "../../components/ResourceTable";
 import StatusTag from "../../components/StatusTag";
-import type { ManualTaskOperation, MessageTask, TranslationBatch } from "../../domain/types";
+import type {
+  ManualTaskOperation,
+  MessageCategoryCode,
+  MessageTask,
+  MessageTopicCode,
+  TranslationBatch,
+} from "../../domain/types";
+import {
+  formatDisplayLocation,
+  getTopicsForCategory,
+  MESSAGE_DISPLAY_CATEGORIES,
+} from "../../domain/messageDisplayTaxonomy";
 import MessagePreview from "../../components/MessagePreview";
 import {
   performManualTaskOperation,
@@ -52,7 +63,8 @@ export default function TaskListPage() {
   const tasks = store.tasks.filter((task) => task.triggerType !== "event");
   const [keyword, setKeyword] = useState("");
   const [status, setStatus] = useState<string>();
-  const [nature, setNature] = useState<string>();
+  const [category, setCategory] = useState<MessageCategoryCode>();
+  const [topic, setTopic] = useState<MessageTopicCode>();
   const [channel, setChannel] = useState<string>();
   const [selected, setSelected] = useState<MessageTask>();
   const [progressBatch, setProgressBatch] = useState<TranslationBatch>();
@@ -71,12 +83,13 @@ export default function TaskListPage() {
         return (
           hit &&
           (!status || task.status === status) &&
-          (!nature || task.nature === nature) &&
+          (!category || task.category === category) &&
+          (!topic || task.topic === topic) &&
           (!channel ||
             task.channels.includes(channel as MessageTask["channels"][number]))
         );
       }),
-    [tasks, keyword, status, nature, channel],
+    [tasks, keyword, status, category, topic, channel],
   );
 
   const operationsFor = (row: MessageTask): ManualTaskOperation[] =>
@@ -166,16 +179,9 @@ export default function TaskListPage() {
       ),
     },
     {
-      title: "触发方式 / 分类",
+      title: "展示位置",
       width: 190,
-      render: (_, row) => (
-        <div>
-          人工发送
-          <div className="muted">
-            {row.category} · {row.nature}
-          </div>
-        </div>
-      ),
+      render: (_, row) => formatDisplayLocation(row.category, row.topic),
     },
     {
       title: "风险",
@@ -319,7 +325,8 @@ export default function TaskListPage() {
         onReset={() => {
           setKeyword("");
           setStatus(undefined);
-          setNature(undefined);
+          setCategory(undefined);
+          setTopic(undefined);
           setChannel(undefined);
         }}
       >
@@ -344,15 +351,32 @@ export default function TaskListPage() {
           ))}
         </Select>
         <Select
-          placeholder="消息性质"
-          value={nature}
-          onChange={setNature}
+          placeholder="一级分类"
+          value={category}
+          onChange={(value) => {
+            setCategory(value);
+            setTopic(undefined);
+          }}
           allowClear
           style={{ width: 140 }}
         >
-          {["事务", "服务", "营销"].map((item) => (
-            <Select.Option key={item} value={item}>
-              {item}
+          {MESSAGE_DISPLAY_CATEGORIES.map((item) => (
+            <Select.Option key={item.code} value={item.code}>
+              {item.name}
+            </Select.Option>
+          ))}
+        </Select>
+        <Select
+          placeholder="二级主题"
+          value={topic}
+          onChange={setTopic}
+          allowClear
+          disabled={!category}
+          style={{ width: 140 }}
+        >
+          {(category ? getTopicsForCategory(category) : []).map((item) => (
+            <Select.Option key={item.code} value={item.code}>
+              {item.name}
             </Select.Option>
           ))}
         </Select>
@@ -427,6 +451,14 @@ export default function TaskListPage() {
                       ? "临时消息"
                       : templateDisplayName(selected),
                 },
+                {
+                  label: "前台展示位置",
+                  value: formatDisplayLocation(
+                    selected.category,
+                    selected.topic,
+                  ),
+                },
+                { label: "风险等级", value: selected.risk },
                 { label: "渠道", value: selected.channels.join(" + ") },
                 {
                   label: "受众",

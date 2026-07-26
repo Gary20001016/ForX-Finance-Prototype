@@ -221,21 +221,21 @@ function TemplateForm() {
           </Item>
         </Col>
         <Col span={8}>
-          <Item label="消息分类" field="category" required>
+          <Item label="前台一级分类" field="category" required>
             <Select>
               {select([
-                "账户安全",
-                "资金通知",
-                "交易通知",
-                "系统公告",
-                "产品运营",
+                "公告",
+                "交易",
+                "资产",
+                "安全与风控",
+                "活动与奖励",
               ])}
             </Select>
           </Item>
         </Col>
         <Col span={8}>
-          <Item label="消息性质" field="nature" required>
-            <Select>{select(["强事务", "事务", "服务", "营销"])}</Select>
+          <Item label="前台二级主题" field="topic" required>
+            <Select>{select(["维护升级", "订单更新", "充值", "异常登录", "营销活动"])}</Select>
           </Item>
         </Col>
       </Grid.Row>

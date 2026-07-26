@@ -41,7 +41,8 @@ it("shows the frozen event policy in approval details", async () => {
   const task = submitTask({
     name: "提现事件审批测试",
     triggerType: "event",
-    category: "资产通知",
+    category: "asset",
+    topic: "withdrawal",
     nature: "强事务",
     risk: "关键",
     contentMode: "template",
@@ -122,7 +123,7 @@ it("highlights rule replacement approvals and their before-after impact", async 
   expect(screen.getByText("规则交替审核")).toBeVisible();
   expect(screen.getByText("当前生效规则")).toBeVisible();
   expect(screen.getByText("审核通过后启用")).toBeVisible();
-  expect(screen.getByText("系统事件")).toBeVisible();
+  expect(screen.getAllByText("系统事件").length).toBeGreaterThan(0);
   expect(screen.getByText("主体映射")).toBeVisible();
   expect(screen.getByText("关联模板")).toBeVisible();
   expect(screen.getByText("发送渠道")).toBeVisible();

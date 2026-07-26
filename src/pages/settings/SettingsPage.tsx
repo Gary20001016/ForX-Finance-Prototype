@@ -1,5 +1,6 @@
 import { useState } from "react";
 import {
+  Alert,
   Button,
   Card,
   DatePicker,
@@ -12,6 +13,7 @@ import {
   Select,
   Space,
   Switch,
+  Table,
   Tabs,
   Tag,
   Timeline,
@@ -30,9 +32,10 @@ import { CURRENT_REVIEW_OPERATOR_ID } from "../../domain/reviewOperators";
 import type {
   LinkAllowlistEntry,
   MessageCategory,
-  MessageNature,
-  MessageRisk,
+  MessageTopic,
+  RiskLevel,
 } from "../../domain/types";
+import { MESSAGE_RISK_LEVELS } from "../../domain/messageDisplayTaxonomy";
 import {
   addAllowlistEntry,
   updateAllowlistEntry,
@@ -46,9 +49,10 @@ import TestAccountPanel from "./TestAccountPanel";
 type CategoryConfig = {
   code: MessageCategory["code"];
   name: string;
-  nature: MessageNature;
-  risk: MessageRisk;
+  risk: RiskLevel;
   retention: number;
+  order: number;
+  topics: MessageTopic[];
   status: boolean;
 };
 
@@ -57,7 +61,7 @@ const settingsTabs: Array<{
   label: string;
   permissionKey: PagePermissionKey;
 }> = [
-  { key: "categories", label: "消息分类", permissionKey: "settings.categories" },
+  { key: "categories", label: "前台展示分类", permissionKey: "settings.categories" },
   { key: "links", label: "跳转白名单", permissionKey: "settings.links" },
   {
     key: "language-review",
@@ -206,12 +210,14 @@ export default function SettingsPage() {
   const categories: CategoryConfig[] = store.categories.map((category) => ({
     code: category.code,
     name: category.name,
-    nature: category.defaultNature,
     risk: category.defaultRisk,
     retention: category.defaultRetentionDays,
+    order: category.order,
+    topics: category.topics,
     status: category.enabled,
   }));
   const [editingCategory, setEditingCategory] = useState<CategoryConfig>();
+  const [managingTopics, setManagingTopics] = useState<CategoryConfig>();
   const [editingLink, setEditingLink] = useState<LinkAllowlistEntry | "new">();
   const [keyword, setKeyword] = useState("");
   const links = store.allowlist.filter((entry) =>
@@ -223,20 +229,29 @@ export default function SettingsPage() {
   const saveCategory = (values: CategoryConfig) => {
     if (!editingCategory || !canWrite("settings.categories")) return;
     updateMessageCategory(editingCategory.code, {
-      defaultNature: values.nature,
       defaultRisk: values.risk,
       defaultRetentionDays: values.retention,
+      order: values.order,
       enabled: values.status,
     });
     setEditingCategory(undefined);
-    Message.success("分类默认性质、风险、保留期与状态已更新");
+    Message.success("前台展示分类配置已更新");
+  };
+
+  const saveTopics = () => {
+    if (!managingTopics || !canWrite("settings.categories")) return;
+    updateMessageCategory(managingTopics.code, {
+      topics: managingTopics.topics,
+    });
+    setManagingTopics(undefined);
+    Message.success("二级主题配置已更新");
   };
 
   return (
     <section className="page-stack">
       <PageHeader
         title="系统配置"
-        description="维护消息分类、个人测试账号、跳转白名单、语言审核策略、人员权限和审计日志。"
+        description="维护前台展示分类、个人测试账号、跳转白名单、语言审核策略、人员权限和审计日志。"
       />
       <Tabs
         type="card"
@@ -244,26 +259,57 @@ export default function SettingsPage() {
         onChange={(key) => navigate(`/settings?tab=${key}`)}
       >
         {readableTabs.some((tab) => tab.key === "categories") && (
-          <Tabs.TabPane key="categories" title="消息分类">
-            <Card bordered={false} className="surface" title="分类字典">
-              <div className="settings-list">
-                {categories.map((item) => (
-                  <div key={item.name}>
-                    <strong>{item.name}</strong>
-                    <Tag>{item.nature}</Tag>
-                    <span>默认风险：{item.risk}</span>
-                    <span>保留 {item.retention} 天</span>
-                    <StatusTag status={item.status ? "可用" : "停用"} />
-                    <WritePermissionButton
-                      type="text"
-                      allowed={canWrite("settings.categories")}
-                      onClick={() => setEditingCategory(item)}
-                    >
-                      编辑
-                    </WritePermissionButton>
-                  </div>
-                ))}
-              </div>
+          <Tabs.TabPane key="categories" title="前台展示分类">
+            <Card bordered={false} className="surface" title="前台展示分类">
+              <Table
+                rowKey="code"
+                pagination={false}
+                data={categories.sort((a, b) => a.order - b.order)}
+                columns={[
+                  {
+                    title: "一级分类",
+                    dataIndex: "name",
+                    render: (_, item) => <strong>{item.name}</strong>,
+                  },
+                  {
+                    title: "二级主题数量",
+                    render: (_, item) => `${item.topics.length} 个主题`,
+                  },
+                  {
+                    title: "默认风险",
+                    dataIndex: "risk",
+                    render: (_, item) => <Tag>{item.risk}</Tag>,
+                  },
+                  { title: "排序", dataIndex: "order" },
+                  {
+                    title: "状态",
+                    render: (_, item) => (
+                      <StatusTag status={item.status ? "启用" : "停用"} />
+                    ),
+                  },
+                  {
+                    title: "操作",
+                    render: (_, item) => (
+                      <Space>
+                        <WritePermissionButton
+                          type="text"
+                          allowed={canWrite("settings.categories")}
+                          onClick={() => setManagingTopics(item)}
+                        >
+                          管理主题
+                        </WritePermissionButton>
+                        <WritePermissionButton
+                          type="text"
+                          allowed={canWrite("settings.categories")}
+                          onClick={() => setEditingCategory(item)}
+                        >
+                          编辑分类
+                        </WritePermissionButton>
+                      </Space>
+                    ),
+                  },
+                ]}
+              />
             </Card>
           </Tabs.TabPane>
         )}
@@ -367,9 +413,9 @@ export default function SettingsPage() {
         <Form layout="vertical" initialValues={editingCategory} onSubmit={saveCategory}>
           <Form.Item label="分类名称" field="name"><Input disabled /></Form.Item>
           <Grid.Row gutter={12}>
-            <Grid.Col span={8}><Form.Item label="消息性质" field="nature"><Select options={["事务", "服务", "营销"].map((value) => ({ label: value, value }))} /></Form.Item></Grid.Col>
-            <Grid.Col span={8}><Form.Item label="默认风险" field="risk"><Select options={["普通", "重要", "紧急"].map((value) => ({ label: value, value }))} /></Form.Item></Grid.Col>
+            <Grid.Col span={8}><Form.Item label="默认风险" field="risk"><Select options={MESSAGE_RISK_LEVELS.map((value) => ({ label: value, value }))} /></Form.Item></Grid.Col>
             <Grid.Col span={8}><Form.Item label="默认保留期" field="retention"><InputNumber suffix="天" /></Form.Item></Grid.Col>
+            <Grid.Col span={8}><Form.Item label="排序" field="order"><InputNumber min={1} max={5} /></Form.Item></Grid.Col>
           </Grid.Row>
           <Form.Item label="启用状态" field="status" triggerPropName="checked"><Switch /></Form.Item>
           <WritePermissionButton
@@ -378,6 +424,82 @@ export default function SettingsPage() {
             allowed={canWrite("settings.categories")}
           >保存分类配置</WritePermissionButton>
         </Form>
+      </Modal>
+      <Modal
+        title={`管理二级主题 · ${managingTopics?.name || ""}`}
+        visible={Boolean(managingTopics)}
+        onCancel={() => setManagingTopics(undefined)}
+        onOk={saveTopics}
+        okText="保存主题配置"
+        okButtonProps={{ disabled: !canWrite("settings.categories") }}
+        style={{ width: 760 }}
+        unmountOnExit
+      >
+        <Alert
+          type="info"
+          content="二级主题为受控字典，模板和临时消息只能从这里启用的主题中选择。"
+          style={{ marginBottom: 16 }}
+        />
+        <Table
+          rowKey="code"
+          pagination={false}
+          data={managingTopics?.topics || []}
+          columns={[
+            { title: "二级主题", dataIndex: "name" },
+            {
+              title: "默认风险",
+              render: (_, topic: MessageTopic) => (
+                <Select
+                  value={topic.defaultRisk}
+                  disabled={!canWrite("settings.categories")}
+                  style={{ width: 120 }}
+                  options={MESSAGE_RISK_LEVELS.map((value) => ({
+                    label: value,
+                    value,
+                  }))}
+                  onChange={(value) =>
+                    setManagingTopics((current) =>
+                      current
+                        ? {
+                            ...current,
+                            topics: current.topics.map((item) =>
+                              item.code === topic.code
+                                ? { ...item, defaultRisk: value }
+                                : item,
+                            ),
+                          }
+                        : current,
+                    )
+                  }
+                />
+              ),
+            },
+            { title: "排序", dataIndex: "order" },
+            {
+              title: "状态",
+              render: (_, topic: MessageTopic) => (
+                <Switch
+                  checked={topic.enabled}
+                  disabled={!canWrite("settings.categories")}
+                  onChange={(enabled) =>
+                    setManagingTopics((current) =>
+                      current
+                        ? {
+                            ...current,
+                            topics: current.topics.map((item) =>
+                              item.code === topic.code
+                                ? { ...item, enabled }
+                                : item,
+                            ),
+                          }
+                        : current,
+                    )
+                  }
+                />
+              ),
+            },
+          ]}
+        />
       </Modal>
     </section>
   );

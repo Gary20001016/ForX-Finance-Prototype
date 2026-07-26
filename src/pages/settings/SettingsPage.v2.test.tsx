@@ -2,14 +2,18 @@ import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import SettingsPage from './SettingsPage';
 
-it('分类字典使用七个 V2 标准分类', () => {
+it('前台展示分类使用五个一级分类和受控二级主题', () => {
   render(
     <MemoryRouter>
       <SettingsPage />
     </MemoryRouter>,
   );
-  for (const category of ['系统公告','交易通知','资产通知','安全通知','奖励通知','活动通知','风控通知']) {
+  for (const category of ['公告','交易','资产','安全与风控','活动与奖励']) {
     expect(screen.getByText(category)).toBeVisible();
   }
-  expect(screen.queryByText('市场营销')).not.toBeInTheDocument();
+  expect(screen.getAllByText('4 个主题')).toHaveLength(3);
+  expect(screen.getAllByText('3 个主题')).toHaveLength(2);
+  expect(screen.getAllByText('前台展示分类').length).toBeGreaterThan(0);
+  expect(screen.queryByText('消息性质')).not.toBeInTheDocument();
+  expect(screen.queryByText('系统公告')).not.toBeInTheDocument();
 });

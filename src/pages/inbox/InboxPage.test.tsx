@@ -10,14 +10,14 @@ const renderInbox = () => render(<MemoryRouter initialEntries={['/inbox']}><Rout
 describe('Web/App 用户消息中心', () => {
   afterEach(() => vi.useRealTimers());
 
-  it('展示七个分类并在 Web/App 共享全部已读状态', async () => {
+  it('展示五个一级分类并在 Web/App 共享全部已读状态', async () => {
     renderInbox();
 
     expect(await screen.findByRole('heading', { name: '消息中心' })).toBeVisible();
     expect(screen.getByText('Web / App 共享已读状态')).toBeVisible();
     expect(screen.getByRole('button', { name: 'Web 端' })).toBeVisible();
     expect(screen.getByRole('button', { name: 'App 端' })).toBeVisible();
-    for (const category of ['系统公告','交易通知','资产通知','安全通知','奖励通知','活动通知','风控通知']) {
+    for (const category of ['公告','交易','资产','安全与风控','活动与奖励']) {
       expect(screen.getByRole('button', { name: category })).toBeVisible();
     }
     expect(screen.getByText(/条未读/)).toBeVisible();
@@ -33,14 +33,14 @@ describe('Web/App 用户消息中心', () => {
     expect(screen.getByText('App 消息中心视图')).toBeVisible();
   });
 
-  it('打开紧急消息详情并保留风险提示', async () => {
+  it('打开关键消息详情并保留风险提示', async () => {
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(new Date('2026-07-14T19:00:00+08:00'));
     renderInbox();
 
     await userEvent.click(await screen.findByText('BTC/USDT 强平风险预警'));
     expect(await screen.findByRole('heading', { name: 'BTC/USDT 强平风险预警' })).toBeVisible();
-    expect(screen.getByText('紧急风险提示')).toBeVisible();
+    expect(screen.getByText('关键风险提示')).toBeVisible();
     expect(screen.getByRole('button', { name: '查看仓位' })).toBeVisible();
   });
 });

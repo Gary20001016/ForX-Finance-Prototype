@@ -8,6 +8,7 @@ import {
 import MessagePreview from "../../components/MessagePreview";
 import StatusTag from "../../components/StatusTag";
 import type { MessageTemplate } from "../../domain/types";
+import { formatDisplayLocation } from "../../domain/messageDisplayTaxonomy";
 import { APPROVED_MANUAL_TEMPLATE_LOCK_MESSAGE } from "../../domain/templatePolicy";
 
 const usageScopeLabel: Record<MessageTemplate["usageScope"], string> = {
@@ -44,8 +45,10 @@ export default function TemplateReadOnlyDetails({
           { label: "模板名称", value: template.name },
           { label: "状态", value: <StatusTag status={template.status} /> },
           { label: "更新时间", value: template.updatedAt },
-          { label: "消息分类", value: template.category },
-          { label: "消息性质", value: template.nature },
+          {
+            label: "前台展示位置",
+            value: formatDisplayLocation(template.category, template.topic),
+          },
           { label: "风险等级", value: template.risk },
           { label: "适用场景", value: usageScopeLabel[template.usageScope] },
           ...(showOwnerTeam

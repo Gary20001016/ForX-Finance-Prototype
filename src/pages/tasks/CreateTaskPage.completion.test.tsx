@@ -25,7 +25,8 @@ it('restores the full translation progress for a temporary multilingual message'
   const sourceTemplate = getPrototypeState().templates[0];
   const temporaryTemplate = saveTemplate({
     name: '临时消息 · 翻译进度测试',
-    category: '系统公告',
+    category: 'announcement',
+    topic: 'maintenance',
     nature: '事务',
     risk: '中',
     channels: ['站内信', 'Push'],

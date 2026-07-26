@@ -1426,7 +1426,7 @@ select {
 .inbox-message.is-unread {
   background: #fbfdff;
 }
-.inbox-message.risk-紧急 {
+.inbox-message.risk-关键 {
   border-left: 4px solid #d92d20;
   background: #fffafa;
 }
@@ -1440,25 +1440,25 @@ select {
   color: #175cd3;
   font-weight: 700;
 }
-.category-risk_notice {
+.category-security_risk {
   background: #fef3f2;
   color: #b42318;
 }
-.category-security_notice {
-  background: #fff6ed;
-  color: #c4320a;
-}
-.category-asset_notice {
+.category-asset {
   background: #ecfdf3;
   color: #027a48;
 }
-.category-reward_notice {
+.category-announcement {
+  background: #f2f4f7;
+  color: #344054;
+}
+.category-trade {
+  background: #eff8ff;
+  color: #175cd3;
+}
+.category-campaign_reward {
   background: #fffaeb;
   color: #b54708;
-}
-.category-campaign_notice {
-  background: #f4f3ff;
-  color: #5925dc;
 }
 .message-main {
   min-width: 0;
@@ -1542,7 +1542,7 @@ select {
   color: #475467;
   font-size: 13px;
 }
-.detail-risk-紧急 {
+.detail-risk-关键 {
   border-top: 4px solid #d92d20;
 }
 
