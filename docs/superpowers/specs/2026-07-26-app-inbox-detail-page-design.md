@@ -9,6 +9,7 @@ Make the App prototype behave like a native in-app inbox: a text-first message l
 - Do not show a logo, category icon, avatar, or placeholder mark.
 - Show category/topic metadata, risk label when applicable, title, summary, time, and unread dot.
 - Use a two-column row: message content and trailing time/unread state.
+- Do not show a redundant `最新消息` or selected-category heading above the list. Primary and topic tabs already communicate the current scope.
 
 ## Detail navigation
 
