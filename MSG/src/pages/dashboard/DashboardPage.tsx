@@ -66,7 +66,7 @@ const actionItems = [
     task: "提现安全通知",
     impact: "286 个设备",
     status: "需处理",
-    action: "查看发送记录",
+    action: "查看异常概览",
   },
   {
     id: "ACTION-02",

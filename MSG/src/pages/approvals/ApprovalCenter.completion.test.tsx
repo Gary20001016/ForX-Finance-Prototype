@@ -30,18 +30,15 @@ it("shows object-bound Web/App inbox and Push previews in approval", async () =>
 
 it("shows the frozen event policy in approval details", async () => {
   const user = userEvent.setup();
-  const variables = [
-    "user_nickname",
-    "amount",
-    "currency",
-    "symbol",
-    "occurred_at",
-  ];
   resetPrototypeStore();
+  const variables = getPrototypeState().events.find(
+    (item) => item.id === "withdrawal.succeeded",
+  )!.variables;
   const task = submitTask({
     name: "提现事件审批测试",
     triggerType: "event",
-    category: "资产通知",
+    category: "asset",
+    topic: "withdrawal",
     nature: "强事务",
     risk: "关键",
     contentMode: "template",
@@ -122,7 +119,7 @@ it("highlights rule replacement approvals and their before-after impact", async 
   expect(screen.getByText("规则交替审核")).toBeVisible();
   expect(screen.getByText("当前生效规则")).toBeVisible();
   expect(screen.getByText("审核通过后启用")).toBeVisible();
-  expect(screen.getByText("系统事件")).toBeVisible();
+  expect(screen.getAllByText("系统事件").length).toBeGreaterThan(0);
   expect(screen.getByText("主体映射")).toBeVisible();
   expect(screen.getByText("关联模板")).toBeVisible();
   expect(screen.getByText("发送渠道")).toBeVisible();
@@ -134,4 +131,34 @@ it("highlights rule replacement approvals and their before-after impact", async 
   expect(
     screen.getByRole("button", { name: "确认交替并通过" }),
   ).toBeVisible();
+});
+
+it("uses the condition override as the event rule approval risk", () => {
+  resetPrototypeStore();
+  const template = getPrototypeState().templates.find(
+    (item) => item.id === "TPL-1008",
+  )!;
+  const rule = createEventRule({
+    name: "大额充值高风险通知",
+    eventId: "deposit.credited",
+    conditionExpression: "amount >= 100000",
+    subjectMapping: "payload.user_id → UID",
+    channels: ["站内信", "Push"],
+    templateId: template.id,
+    templateVersion: template.version,
+    title: template.content!.web.title,
+    body: template.content!.web.body,
+    targetLocales: ["en-US"],
+    owner: "资产运营",
+    riskOverride: "高",
+  });
+
+  submitEventRuleForReview(rule.id, []);
+
+  expect(
+    getPrototypeState().approvals.find((item) => item.ruleId === rule.id),
+  ).toMatchObject({
+    risk: "高",
+    step: "业务 + 风控双审",
+  });
 });

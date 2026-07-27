@@ -9,6 +9,7 @@ import ApprovalDrawer from './ApprovalDrawer';
 import type { ApprovalItem } from '../../domain/types';
 import { usePrototypeStore } from '../../store/prototypeStore';
 import { useCurrentPagePermission } from '../../components/PagePermissionBoundary';
+import { formatDisplayLocation } from '../../domain/messageDisplayTaxonomy';
 
 export default function ApprovalCenterPage({ currentAdminId='admin-01' }: { currentAdminId?:string }) {
   const { canWrite } = useCurrentPagePermission();
@@ -24,6 +25,7 @@ export default function ApprovalCenterPage({ currentAdminId='admin-01' }: { curr
   const data=useMemo(()=>approvals.filter((item)=>(tab==='all'||tab==='mine'&&item.assigneeId===currentAdminId&&['待我审核','待审核','紧急'].includes(item.status)||tab==='emergency'&&item.assigneeId===currentAdminId&&item.emergency)&&`${item.id}${item.name}${item.submitter}${item.assignee||''}`.toLowerCase().includes(keyword.toLowerCase())&&(!filterOne||item.risk===filterOne)&&(!filterTwo||item.objectType===filterTwo)),[approvals,currentAdminId,tab,keyword,filterOne,filterTwo]);
   const approvalColumns:TableColumnProps<ApprovalItem>[]=[
     {title:'审批对象',width:260,render:(_,item)=><div><Typography.Text className="strong">{item.name}</Typography.Text>{isRuleReplacement(item)&&<div><Tag color="orange">规则交替</Tag></div>}<div className="mono muted">{item.id} · {item.objectType}</div></div>},
+    {title:'前台展示位置',width:180,render:(_,item)=>item.category&&item.topic?formatDisplayLocation(item.category,item.topic):'—'},
     {title:'风险',width:90,render:(_,item)=><Tag color={item.risk==='关键'?'red':item.risk==='高'?'orangered':'orange'}>{item.risk}</Tag>},
     {title:'影响范围',width:160,render:(_,item)=>isRuleReplacement(item)?<div><div>启用 1 条新规则</div><div className="muted">停用 {item.replacementRuleIds!.length} 条旧规则</div></div>:<div>{item.audience?item.audience.toLocaleString()+' 人':'模板发布'}<div className="muted">{item.cost}</div></div>},
     {title:'计划时间',dataIndex:'schedule',width:180},

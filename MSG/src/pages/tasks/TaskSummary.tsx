@@ -13,14 +13,19 @@ import type {
   Channel,
   EventTriggerConfig,
   LocalizedMessageContent,
+  MessageCategoryCode,
+  MessageTopicCode,
   RiskLevel,
   TaskTriggerType,
 } from "../../domain/types";
+import { formatDisplayLocation } from "../../domain/messageDisplayTaxonomy";
 
 export interface TaskSummaryData {
   name: string;
-  nature: string;
+  category: MessageCategoryCode;
+  topic: MessageTopicCode;
   risk: RiskLevel;
+  source: string;
   channels: Channel[];
   content: LocalizedMessageContent;
   audienceCount: number;
@@ -118,7 +123,12 @@ export default function TaskSummary({ data }: { data: TaskSummaryData }) {
                     },
                   ]
                 : []),
-              { label: "消息性质", value: `${data.nature} · ${data.risk}风险` },
+              {
+                label: "前台展示位置",
+                value: formatDisplayLocation(data.category, data.topic),
+              },
+              { label: "风险等级", value: data.risk },
+              { label: "消息来源", value: data.source },
               { label: "受众", value: data.audienceLabel },
               { label: "发送时间", value: data.schedule },
               { label: "正式渠道", value: data.channels.join(" + ") },

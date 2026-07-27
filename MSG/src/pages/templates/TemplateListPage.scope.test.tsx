@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import TemplateListPage from './TemplateListPage';
@@ -15,7 +15,11 @@ it('shows only event templates from the event entry', () => {
     screen.queryByRole('columnheader', { name: '版本' }),
   ).not.toBeInTheDocument();
   expect(screen.getByRole('columnheader', { name: '适用场景' })).toBeVisible();
+  expect(screen.getByRole('columnheader', { name: '系统事件' })).toBeVisible();
+  expect(screen.getByRole('columnheader', { name: '所有者团队' })).toBeVisible();
   expect(screen.getByText('提现成功通知')).toBeVisible();
+  expect(screen.getByText('withdrawal.succeeded')).toBeVisible();
+  expect(screen.getAllByText('资产运营').length).toBeGreaterThan(0);
   expect(screen.queryByText('夏季交易赛')).not.toBeInTheDocument();
   expect(screen.queryByText('网络维护公告')).not.toBeInTheDocument();
   expect(
@@ -23,6 +27,38 @@ it('shows only event templates from the event entry', () => {
   ).toBeVisible();
   expect(
     screen.queryByRole('columnheader', { name: '使用任务' }),
+  ).not.toBeInTheDocument();
+});
+
+it('keeps published event templates read-only while drafts remain editable', async () => {
+  const user = userEvent.setup();
+  render(
+    <MemoryRouter initialEntries={['/templates?scope=event']}>
+      <TemplateListPage />
+    </MemoryRouter>,
+  );
+
+  const publishedRow = screen.getByText('提现成功通知').closest('tr')!;
+  expect(
+    within(publishedRow).getByRole('button', { name: '查看详情' }),
+  ).toBeVisible();
+  expect(
+    within(publishedRow).queryByRole('button', { name: '编辑' }),
+  ).not.toBeInTheDocument();
+
+  const draftRow = screen.getByText('强平风险预警').closest('tr')!;
+  expect(
+    within(draftRow).getByRole('button', { name: '编辑' }),
+  ).toBeVisible();
+
+  await user.click(
+    within(publishedRow).getByRole('button', { name: '查看详情' }),
+  );
+  expect(
+    screen.getByText('查看模板 · 提现成功通知'),
+  ).toBeVisible();
+  expect(
+    screen.queryByRole('button', { name: '保存草稿' }),
   ).not.toBeInTheDocument();
 });
 

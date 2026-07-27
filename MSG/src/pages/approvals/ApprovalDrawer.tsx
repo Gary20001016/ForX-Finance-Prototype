@@ -19,6 +19,11 @@ import StatusTag from "../../components/StatusTag";
 import MessagePreview from "../../components/MessagePreview";
 import { reviewApproval, usePrototypeStore } from "../../store/prototypeStore";
 import WritePermissionButton from "../../components/WritePermissionButton";
+import {
+  formatDisplayLocation,
+  getDisplayCategory,
+  getDisplayTopic,
+} from "../../domain/messageDisplayTaxonomy";
 
 export default function ApprovalDrawer({
   item,
@@ -63,6 +68,17 @@ export default function ApprovalDrawer({
   const approvalEvent = item?.eventConfig
     ? store.events.find((event) => event.id === item.eventConfig?.eventId)
     : undefined;
+  const approvalCategory =
+    item?.category || approvalTemplate?.category || targetRule?.category;
+  const approvalTopic =
+    item?.topic || approvalTemplate?.topic || targetRule?.topic;
+  const approvalSource =
+    item?.sourceType === "系统事件" ||
+    item?.objectType === "事件通知规则" ||
+    item?.objectType === "事件消息模板" ||
+    item?.triggerType === "event"
+      ? "系统事件"
+      : "人工消息";
   useEffect(() => {
     setDecision("approve");
     setOpinion("");
@@ -212,6 +228,28 @@ export default function ApprovalDrawer({
                 ),
               },
               { label: "对象类型", value: item.objectType },
+              {
+                label: "前台一级分类",
+                value: approvalCategory
+                  ? getDisplayCategory(approvalCategory)?.name || approvalCategory
+                  : "未配置",
+              },
+              {
+                label: "前台二级主题",
+                value:
+                  approvalCategory && approvalTopic
+                    ? getDisplayTopic(approvalCategory, approvalTopic)?.name ||
+                      approvalTopic
+                    : "未配置",
+              },
+              { label: "消息来源", value: approvalSource },
+              {
+                label: "前台展示位置",
+                value:
+                  approvalCategory && approvalTopic
+                    ? formatDisplayLocation(approvalCategory, approvalTopic)
+                    : "未配置",
+              },
               { label: "指派审核人", value: item.assignee || item.assigneeId || "未指派" },
               {
                 label: "触发方式",

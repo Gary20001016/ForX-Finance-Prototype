@@ -14,6 +14,7 @@ import {
   canReviewTranslation,
   getPrototypeState,
   markMessageRead,
+  migrateSavedState,
   getOperatorTestAccounts,
   normalizeTranslationBatches,
   normalizeTemplateTranslationReadiness,
@@ -26,6 +27,7 @@ import {
   removeOperatorTestAccount,
   retryTranslation,
   requiresSpecialLanguageReview,
+  saveTemplate,
   sendTemplateTest,
   submitTask,
   reviewApproval,
@@ -38,12 +40,185 @@ import {
   updateOperatorPermissions,
   updateControlledVariable,
   updateOperatorTestAccount,
+  updateTemplate,
 } from "./prototypeStore";
 import { translationBatches as legacyTranslationBatches } from "../mocks/data";
 import { createPagePermissions } from "../domain/pagePermissions";
 
 describe("prototype store workflow transitions", () => {
   beforeEach(() => resetPrototypeStore());
+
+  it("binds seeded event templates to the event directory", () => {
+    const state = getPrototypeState();
+
+    expect(
+      state.templates.find((item) => item.code === "deposit_credited"),
+    ).toMatchObject({
+      eventId: "deposit.credited",
+      owner: "资产运营",
+      category: "asset",
+      topic: "deposit",
+      risk: "中",
+      variables: [
+        "user_nickname",
+        "amount",
+        "currency",
+        "network",
+        "occurred_at",
+      ],
+    });
+    expect(
+      state.events.find((item) => item.id === "order.filled")?.variables,
+    ).toContain("filled_price");
+  });
+
+  it("migrates legacy event templates onto their immutable event binding", () => {
+    const legacy = JSON.parse(
+      JSON.stringify(getPrototypeState()),
+    ) as ReturnType<typeof getPrototypeState>;
+    const template = legacy.templates.find(
+      (item) => item.code === "withdraw_success",
+    )!;
+    delete template.eventId;
+    template.owner = undefined;
+    template.category = "announcement";
+    template.topic = "maintenance";
+    template.risk = "低";
+
+    const migrated = migrateSavedState(legacy);
+
+    expect(
+      migrated.templates.find((item) => item.id === template.id),
+    ).toMatchObject({
+      eventId: "withdrawal.succeeded",
+      owner: "资产运营",
+      category: "asset",
+      topic: "withdrawal",
+      risk: "中",
+    });
+  });
+
+  it("requires a valid event and owner team when creating an event template", () => {
+    expect(() =>
+      saveTemplate({
+        name: "无事件模板",
+        category: "announcement",
+        topic: "maintenance",
+        nature: "服务",
+        risk: "低",
+        channels: ["站内信"],
+        locales: ["zh-CN"],
+        sourceLocale: "zh-CN",
+        content: {
+          sourceLocale: "zh-CN",
+          locales: ["zh-CN"],
+          web: { title: "测试", summary: "测试", body: "测试" },
+          push: {
+            title: "",
+            body: "",
+            platform: "全部设备",
+            priority: "高",
+          },
+        },
+        variables: [],
+        owner: "资产运营",
+        usageScope: "event",
+      }),
+    ).toThrow("请选择有效的系统事件");
+  });
+
+  it("keeps an event template binding immutable when updating", () => {
+    const template = getPrototypeState().templates.find(
+      (item) => item.code === "liquidation_warning",
+    )!;
+
+    updateTemplate(template.id, {
+      eventId: "order.filled",
+      owner: "交易运营",
+      category: "trade",
+      topic: "order_filled",
+      risk: "低",
+      variables: ["symbol"],
+    });
+
+    expect(
+      getPrototypeState().templates.find((item) => item.id === template.id),
+    ).toMatchObject({
+      eventId: "liquidation.warning",
+      owner: "交易运营",
+      category: "security_risk",
+      topic: "liquidation_warning",
+      risk: "关键",
+      variables: [
+        "user_nickname",
+        "symbol",
+        "position_side",
+        "position_quantity",
+        "leverage",
+        "mark_price",
+        "liquidation_price",
+        "liquidation_distance",
+        "margin_ratio",
+        "warning_level",
+        "occurred_at",
+      ],
+    });
+  });
+
+  it("rejects edits to a published event template", () => {
+    const template = getPrototypeState().templates.find(
+      (item) => item.code === "deposit_credited",
+    )!;
+
+    expect(() =>
+      updateTemplate(template.id, { name: "不应被保存的新名称" }),
+    ).toThrow("已发布模板不可修改");
+    expect(
+      getPrototypeState().templates.find((item) => item.id === template.id)
+        ?.name,
+    ).toBe("充值到账通知");
+  });
+
+  it("migrates persisted legacy categories and risks to the unified display model", () => {
+    const legacy = JSON.parse(
+      JSON.stringify(getPrototypeState()),
+    ) as ReturnType<typeof getPrototypeState>;
+    legacy.categories = [
+      {
+        code: "asset_notice",
+        name: "资产通知",
+        color: "green",
+        defaultRisk: "普通",
+        defaultRetentionDays: 365,
+        enabled: true,
+      },
+    ] as unknown as typeof legacy.categories;
+    const template = legacy.templates.find((item) =>
+      item.name.includes("提现"),
+    )!;
+    Object.assign(template, {
+      category: "asset_notice",
+      topic: undefined,
+      risk: "重要",
+    });
+
+    const migrated = migrateSavedState(legacy);
+
+    expect(migrated.categories.map((item) => item.code)).toEqual([
+      "announcement",
+      "trade",
+      "asset",
+      "security_risk",
+      "campaign_reward",
+    ]);
+    expect(
+      migrated.templates.find((item) => item.id === template.id),
+    ).toMatchObject({
+      category: "asset",
+      topic: "withdrawal",
+      risk: "中",
+    });
+  });
 
   it("persists a single message read transition", () => {
     markMessageRead("UM-1001");
@@ -178,7 +353,7 @@ describe("prototype store workflow transitions", () => {
 
   it("creates an external translation batch and opens human review", () => {
     const batch = createTranslationBatch({
-      templateId: "TPL-1001",
+      templateId: "TPL-1004",
       targetLocales: ["fr-FR"],
       createdBy: "Gary Ma",
     });
@@ -313,9 +488,9 @@ describe("prototype store workflow transitions", () => {
     const result = prepareSingleLanguageContent({
       subject: {
         type: "template_version",
-        id: "TPL-1001",
+        id: "TPL-1004",
         name: "单语言中文模板",
-        version: "v12",
+        version: "v8",
         returnPath: "/templates",
       },
       sourceLocale: "zh-CN",
@@ -325,7 +500,7 @@ describe("prototype store workflow transitions", () => {
 
     expect(result).toEqual({ requiresReview: false, batch: undefined });
     expect(
-      getPrototypeState().templates.find((item) => item.id === "TPL-1001"),
+      getPrototypeState().templates.find((item) => item.id === "TPL-1004"),
     ).toMatchObject({
       translationReadiness: "已通过",
       locales: ["zh-CN"],
@@ -396,7 +571,7 @@ describe("prototype store workflow transitions", () => {
 
   it("opens the publishing gate after every locale is approved", () => {
     const batch = createTranslationBatch({
-      templateId: "TPL-1001",
+      templateId: "TPL-1004",
       targetLocales: ["fr-FR"],
       createdBy: "Gary Ma",
     });
@@ -489,7 +664,7 @@ describe("prototype store workflow transitions", () => {
 
   it("keeps rejected results reviewable and retries missing results without transition states", () => {
     const batch = createTranslationBatch({
-      templateId: "TPL-1001",
+      templateId: "TPL-1004",
       targetLocales: ["fr-FR"],
       createdBy: "Gary Ma",
     });
@@ -632,7 +807,8 @@ describe("prototype store workflow transitions", () => {
   it("submits a task and creates a linked approval object", () => {
     const task = submitTask({
       name: "临时风险消息",
-      category: "风控通知",
+      category: "security_risk",
+      topic: "liquidation_warning",
       nature: "事务",
       risk: "关键",
       contentMode: "temporary",
@@ -714,7 +890,8 @@ describe("prototype store workflow transitions", () => {
     );
     const task = submitTask({
       name: "权限失效改派测试",
-      category: "系统公告",
+      category: "announcement",
+      topic: "maintenance",
       nature: "事务",
       risk: "低",
       template: "notice",
@@ -756,7 +933,8 @@ describe("prototype store workflow transitions", () => {
   it("blocks a permission change when no replacement reviewer exists", () => {
     const task = submitTask({
       name: "无替代审核人测试",
-      category: "系统公告",
+      category: "announcement",
+      topic: "maintenance",
       nature: "事务",
       risk: "低",
       template: "notice",
@@ -814,7 +992,8 @@ describe("prototype store workflow transitions", () => {
   it("starts an immediate artificial task when its approval passes", () => {
     const task = submitTask({
       name: "立即安全通知",
-      category: "安全通知",
+      category: "security_risk",
+      topic: "account_security",
       nature: "事务",
       risk: "中",
       template: "security_notice v1",
@@ -868,7 +1047,8 @@ describe("prototype store workflow transitions", () => {
 
     const task = submitTask({
       name: "发送控制测试",
-      category: "系统公告",
+      category: "announcement",
+      topic: "maintenance",
       nature: "事务",
       risk: "中",
       template: "notice v1",
@@ -916,10 +1096,26 @@ describe("prototype store workflow transitions", () => {
   });
 
   it("publishes a template only after business approval", () => {
-    const approval = submitTemplateForApproval("TPL-1001");
+    prepareSingleLanguageContent({
+      subject: {
+        type: "template_version",
+        id: "TPL-1005",
+        name: "强平风险预警",
+        version: "v21",
+        returnPath: "/templates?scope=event",
+      },
+      sourceLocale: "zh-CN",
+      sourceContent: {
+        title: "强平风险预警",
+        summary: "请及时调整仓位",
+        body: "您的合约持仓存在强平风险。",
+      },
+      createdBy: "Gary Ma",
+    });
+    const approval = submitTemplateForApproval("TPL-1005");
     expect(approval.objectType).toBe("事件消息模板");
     expect(
-      getPrototypeState().templates.find((item) => item.id === "TPL-1001")
+      getPrototypeState().templates.find((item) => item.id === "TPL-1005")
         ?.status,
     ).toBe("待业务审核");
     reviewApproval(approval.id, {
@@ -929,7 +1125,7 @@ describe("prototype store workflow transitions", () => {
       opinion: "内容与变量已核对",
     });
     expect(
-      getPrototypeState().templates.find((item) => item.id === "TPL-1001")
+      getPrototypeState().templates.find((item) => item.id === "TPL-1005")
         ?.status,
     ).toBe("已发布");
   });
@@ -942,6 +1138,7 @@ describe("prototype store workflow transitions", () => {
       {
         name: current.name,
         category: current.category,
+        topic: current.topic,
         nature: current.nature,
         risk: current.risk,
         template: current.template,
@@ -966,13 +1163,9 @@ describe("prototype store workflow transitions", () => {
   });
 
   it("stores event trigger configuration and enables the task after approval", () => {
-    const variableMappings = [
-      "user_nickname",
-      "amount",
-      "currency",
-      "symbol",
-      "occurred_at",
-    ].map((variable) => ({
+    const variableMappings = getPrototypeState()
+      .events.find((item) => item.id === "withdrawal.succeeded")!
+      .variables.map((variable) => ({
       eventField: variable,
       templateVariable: variable,
       required: true,
@@ -980,7 +1173,8 @@ describe("prototype store workflow transitions", () => {
     const task = submitTask({
       name: "提现成功通知规则",
       triggerType: "event",
-      category: "资产通知",
+      category: "asset",
+      topic: "withdrawal",
       nature: "强事务",
       risk: "关键",
       template: "withdraw_success v12",
@@ -1023,7 +1217,7 @@ describe("prototype store workflow transitions", () => {
 
   it("atomically replaces selected event rules after approval", () => {
     const template = getPrototypeState().templates.find(
-      (item) => item.id === "TPL-1001",
+      (item) => item.id === "TPL-1009",
     )!;
     const rule = createEventRule({
       name: "订单成交通知新版",
@@ -1076,7 +1270,7 @@ describe("prototype store workflow transitions", () => {
 
   it("approves a new event rule without pausing another rule", () => {
     const template = getPrototypeState().templates.find(
-      (item) => item.id === "TPL-1001",
+      (item) => item.id === "TPL-1008",
     )!;
     const rule = createEventRule({
       name: "充值到账通知 V2",
@@ -1147,9 +1341,80 @@ describe("prototype store workflow transitions", () => {
     ).toThrow("只能选择已发布的事件消息模板");
   });
 
+  it("rejects an event template bound to a different event", () => {
+    const template = getPrototypeState().templates.find(
+      (item) => item.id === "TPL-1008",
+    )!;
+
+    expect(() =>
+      createEventRule({
+        name: "订单成交通知错误绑定",
+        eventId: "order.filled",
+        conditionExpression: "事件到达即触发",
+        subjectMapping: "payload.user_id → UID",
+        channels: ["站内信"],
+        templateId: template.id,
+        templateVersion: template.version,
+        title: template.content!.web.title,
+        body: template.content!.web.body,
+        targetLocales: ["en-US"],
+        owner: "交易运营",
+      }),
+    ).toThrow("所选消息模板未绑定当前系统事件");
+  });
+
+  it("uses a condition risk override as the rule's effective risk", () => {
+    const template = getPrototypeState().templates.find(
+      (item) => item.id === "TPL-1008",
+    )!;
+
+    const rule = createEventRule({
+      name: "大额充值高风险通知",
+      eventId: "deposit.credited",
+      conditionExpression: "amount >= 100000",
+      subjectMapping: "payload.user_id → UID",
+      channels: ["站内信", "Push"],
+      templateId: template.id,
+      templateVersion: template.version,
+      title: template.content!.web.title,
+      body: template.content!.web.body,
+      targetLocales: ["en-US"],
+      owner: "资产运营",
+      riskOverride: "高",
+    });
+
+    expect(rule).toMatchObject({
+      riskOverride: "高",
+      risk: "高",
+    });
+  });
+
+  it("rejects a condition risk override below the template risk", () => {
+    const template = getPrototypeState().templates.find(
+      (item) => item.id === "TPL-1008",
+    )!;
+
+    expect(() =>
+      createEventRule({
+        name: "错误降级的充值通知",
+        eventId: "deposit.credited",
+        conditionExpression: "amount >= 100000",
+        subjectMapping: "payload.user_id → UID",
+        channels: ["站内信"],
+        templateId: template.id,
+        templateVersion: template.version,
+        title: template.content!.web.title,
+        body: template.content!.web.body,
+        targetLocales: ["en-US"],
+        owner: "资产运营",
+        riskOverride: "低",
+      }),
+    ).toThrow("条件风险不能低于模板风险");
+  });
+
   it("does not partially approve when a replacement rule is no longer enabled", () => {
     const template = getPrototypeState().templates.find(
-      (item) => item.id === "TPL-1001",
+      (item) => item.id === "TPL-1009",
     )!;
     const rule = createEventRule({
       name: "订单成交通知新版",

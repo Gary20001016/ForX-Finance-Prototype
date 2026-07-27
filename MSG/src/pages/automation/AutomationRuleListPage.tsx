@@ -23,7 +23,7 @@ import PageHeader from "../../components/PageHeader";
 import FilterBar from "../../components/FilterBar";
 import ResourceTable from "../../components/ResourceTable";
 import StatusTag from "../../components/StatusTag";
-import type { EventNotificationRule } from "../../domain/types";
+import type { EventNotificationRule, RiskLevel } from "../../domain/types";
 import {
   CURRENT_REVIEW_OPERATOR_ID,
   reviewOperatorName,
@@ -38,6 +38,11 @@ import {
 import { getEventRuleOperations } from "./automationLifecycle";
 import WritePermissionButton from "../../components/WritePermissionButton";
 import { useCurrentPagePermission } from "../../components/PagePermissionBoundary";
+import {
+  formatDisplayLocation,
+  getEffectiveRiskLevel,
+  getRiskLevelsAtOrAbove,
+} from "../../domain/messageDisplayTaxonomy";
 
 type TriggerMode = "event" | "condition";
 
@@ -115,6 +120,8 @@ export default function AutomationRuleListPage() {
     routeEventId,
   );
   const [conditionVariable, setConditionVariable] = useState<string>();
+  const [formTemplateId, setFormTemplateId] = useState<string>();
+  const [riskOverride, setRiskOverride] = useState<RiskLevel>();
   const [reviewSubmitRuleId, setReviewSubmitRuleId] = useState<string>();
   const [replacementRuleIds, setReplacementRuleIds] = useState<string[]>([]);
   const [form] = Form.useForm();
@@ -141,9 +148,6 @@ export default function AutomationRuleListPage() {
   const selectedTemplate = selectedSnapshot
     ? store.templates.find((item) => item.id === selectedSnapshot.templateId)
     : undefined;
-  const recentTriggers = selected
-    ? store.triggerRecords.filter((item) => item.ruleId === selected.id)
-    : [];
   const reviewSubmitRule = store.rules.find(
     (item) => item.id === reviewSubmitRuleId,
   );
@@ -157,12 +161,23 @@ export default function AutomationRuleListPage() {
   const selectedConditionEvent = store.events.find(
     (item) => item.id === conditionEventId,
   );
+  const compatibleEventTemplates = eventTemplates.filter(
+    (template) => template.eventId === conditionEventId,
+  );
+  const formTemplate = store.templates.find(
+    (item) => item.id === formTemplateId,
+  );
+  const effectiveRisk = formTemplate
+    ? getEffectiveRiskLevel(formTemplate.risk, riskOverride)
+    : undefined;
 
   const resetCreateForm = () => {
     form.resetFields();
     setTriggerMode("event");
     setConditionEventId(routeEventId);
     setConditionVariable(undefined);
+    setFormTemplateId(undefined);
+    setRiskOverride(undefined);
   };
 
   const openCreateForm = () => {
@@ -196,6 +211,8 @@ export default function AutomationRuleListPage() {
     setTriggerMode(condition.triggerMode);
     setConditionEventId(rule.eventId);
     setConditionVariable(condition.conditionVariable);
+    setFormTemplateId(snapshot.templateId);
+    setRiskOverride(rule.riskOverride);
     setSelectedId(undefined);
     setCreating(false);
     setEditingRuleId(rule.id);
@@ -230,6 +247,10 @@ export default function AutomationRuleListPage() {
         Message.error("消息模板必须来自事件消息模板");
         return;
       }
+      if (template.eventId !== values.eventId) {
+        Message.error("请选择与系统事件匹配的已发布模板");
+        return;
+      }
       if (!template?.content) {
         Message.error("所选模板缺少可用内容");
         return;
@@ -251,6 +272,10 @@ export default function AutomationRuleListPage() {
         targetLocales: template.locales.filter(
           (locale) => locale !== template.sourceLocale,
         ),
+        riskOverride:
+          values.triggerMode === "condition"
+            ? values.riskOverride
+            : undefined,
       };
       const rule = editingRuleId
         ? updateEventRule(editingRuleId, draftInput)
@@ -350,7 +375,24 @@ export default function AutomationRuleListPage() {
         );
       },
     },
+    {
+      title: "前台展示位置",
+      width: 180,
+      render: (_, rule) =>
+        formatDisplayLocation(rule.category, rule.topic),
+    },
     { title: "触发条件", dataIndex: "conditionExpression", width: 210 },
+    {
+      title: "最终风险",
+      dataIndex: "risk",
+      width: 90,
+      render: (risk, rule) => (
+        <Tag color={risk === "关键" ? "red" : risk === "高" ? "orangered" : "orange"}>
+          {risk}
+          {rule.riskOverride ? " · 覆盖" : ""}
+        </Tag>
+      ),
+    },
     {
       title: "渠道",
       width: 150,
@@ -486,6 +528,26 @@ export default function AutomationRuleListPage() {
                     ? `${selectedTemplate.name} · ${selectedTemplate.id}`
                     : "未找到绑定模板",
                 },
+                {
+                  label: "前台展示位置",
+                  value: formatDisplayLocation(
+                    selected.category,
+                    selected.topic,
+                  ),
+                },
+                {
+                  label: "模板风险",
+                  value: selectedTemplate?.risk || selected.risk,
+                },
+                ...(selected.riskOverride
+                  ? [
+                      {
+                        label: "条件风险覆盖",
+                        value: selected.riskOverride,
+                      },
+                    ]
+                  : []),
+                { label: "最终生效风险", value: selected.risk },
                 { label: "触发条件", value: selected.conditionExpression },
                 { label: "主体映射", value: selected.subjectMapping },
                 { label: "幂等键", value: <span className="mono">ruleId:eventInstanceId</span> },
@@ -529,32 +591,6 @@ export default function AutomationRuleListPage() {
                   : []),
               ]}
             />
-            <div>
-              <div className="drawer-section-title">
-                <strong>最近触发</strong>
-                <span className="muted">规则状态与单次触发结果相互独立</span>
-              </div>
-              {recentTriggers.length ? (
-                <Table
-                  rowKey="id"
-                  pagination={false}
-                  data={recentTriggers.slice(0, 5)}
-                  columns={[
-                    { title: "触发编号", dataIndex: "id" },
-                    { title: "事件实例", dataIndex: "eventInstanceId" },
-                    {
-                      title: "结果",
-                      render: (_: unknown, item: (typeof recentTriggers)[number]) => (
-                        <StatusTag status={item.status} />
-                      ),
-                    },
-                    { title: "接收时间", dataIndex: "receivedAt" },
-                  ]}
-                />
-              ) : (
-                <Alert type="info" content="该规则还没有触发记录。" />
-              )}
-            </div>
           </Space>
         )}
       </Drawer>
@@ -650,6 +686,7 @@ export default function AutomationRuleListPage() {
                   subjectMapping: editingRule.subjectMapping,
                   templateId: editingSnapshot.templateId,
                   channels: editingRule.channels,
+                  riskOverride: editingRule.riskOverride,
                 }
               : {
                   triggerMode: "event",
@@ -672,10 +709,14 @@ export default function AutomationRuleListPage() {
                   onChange={(value) => {
                     setConditionEventId(value);
                     setConditionVariable(undefined);
+                    setFormTemplateId(undefined);
+                    setRiskOverride(undefined);
                     form.setFieldsValue({
                       conditionVariable: undefined,
                       conditionOperator: undefined,
                       conditionThreshold: undefined,
+                      templateId: undefined,
+                      riskOverride: undefined,
                     });
                   }}
                   options={store.events.map((event) => ({
@@ -697,10 +738,12 @@ export default function AutomationRuleListPage() {
                     setTriggerMode(value);
                     if (value === "event") {
                       setConditionVariable(undefined);
+                      setRiskOverride(undefined);
                       form.setFieldsValue({
                         conditionVariable: undefined,
                         conditionOperator: undefined,
                         conditionThreshold: undefined,
+                        riskOverride: undefined,
                       });
                     }
                   }}
@@ -785,13 +828,55 @@ export default function AutomationRuleListPage() {
             <Grid.Col span={12}>
               <Form.Item label="消息模板" field="templateId" required rules={[{ required: true }]}>
                 <Select
-                  options={eventTemplates.map((template) => ({
+                  disabled={!conditionEventId}
+                  placeholder={
+                    conditionEventId
+                      ? "请选择该事件的已发布模板"
+                      : "请先选择系统事件"
+                  }
+                  onChange={(value) => {
+                    setFormTemplateId(value);
+                    setRiskOverride(undefined);
+                    form.setFieldValue("riskOverride", undefined);
+                  }}
+                  options={compatibleEventTemplates.map((template) => ({
                     label: template.name,
                     value: template.id,
                   }))}
                 />
               </Form.Item>
             </Grid.Col>
+            {triggerMode === "condition" && (
+              <Grid.Col span={12}>
+                <Form.Item
+                  label="条件风险覆盖"
+                  field="riskOverride"
+                  extra={
+                    formTemplate
+                      ? `模板风险为${formTemplate.risk}，仅允许保持或升级风险`
+                      : "选择消息模板后，可设置不低于模板风险的等级"
+                  }
+                >
+                  <Select
+                    allowClear
+                    disabled={!formTemplate}
+                    placeholder={
+                      formTemplate
+                        ? "不覆盖，继承模板风险"
+                        : "请先选择消息模板"
+                    }
+                    onChange={setRiskOverride}
+                    options={
+                      formTemplate
+                        ? getRiskLevelsAtOrAbove(formTemplate.risk).map(
+                            (value) => ({ label: value, value }),
+                          )
+                        : []
+                    }
+                  />
+                </Form.Item>
+              </Grid.Col>
+            )}
             <Grid.Col span={12}>
               <Form.Item label="正式渠道" field="channels" required rules={[{ required: true }]}>
                 <Select
@@ -801,6 +886,36 @@ export default function AutomationRuleListPage() {
               </Form.Item>
             </Grid.Col>
           </Grid.Row>
+          {formTemplate && (
+            <Descriptions
+              title="继承的前台展示位置"
+              column={3}
+              border
+              style={{ marginBottom: 16 }}
+              data={[
+                {
+                  label: "前台展示位置",
+                  value: formatDisplayLocation(
+                    formTemplate.category,
+                    formTemplate.topic,
+                  ),
+                },
+                { label: "模板风险", value: formTemplate.risk },
+                {
+                  label: "条件覆盖",
+                  value: riskOverride || "未覆盖",
+                },
+                {
+                  label: "最终生效风险",
+                  value: effectiveRisk,
+                },
+                {
+                  label: "来源",
+                  value: `继承自“${formTemplate.name}”`,
+                },
+              ]}
+            />
+          )}
           <Alert
             type="info"
             style={{ marginBottom: 16 }}

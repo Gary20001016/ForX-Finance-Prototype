@@ -49,17 +49,11 @@ export const permissionForLocation = (
   if (pathname.startsWith("/events")) {
     return { kind: "page", key: "event.catalog" };
   }
-  if (pathname.startsWith("/triggers")) {
-    return { kind: "page", key: "event.triggers" };
-  }
   if (pathname.startsWith("/multilingual-review")) {
     return { kind: "multilingual-review" };
   }
   if (pathname.startsWith("/approvals")) {
     return { kind: "page", key: "operations.approvals" };
-  }
-  if (pathname.startsWith("/deliveries")) {
-    return { kind: "page", key: "operations.deliveries" };
   }
   if (pathname.startsWith("/analytics")) {
     return { kind: "page", key: "operations.analytics" };

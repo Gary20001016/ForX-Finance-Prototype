@@ -70,7 +70,7 @@ it("explains every available variable in the event detail table", async () => {
   expect(screen.getByRole("columnheader", { name: "模板变量" })).toBeVisible();
   expect(screen.getByRole("columnheader", { name: "说明" })).toBeVisible();
   expect(screen.getByRole("columnheader", { name: "示例" })).toBeVisible();
-  expect(screen.getByText("{{ symbol }}")).toBeVisible();
-  expect(screen.getByText("事件涉及的交易对")).toBeVisible();
-  expect(screen.getByText("BTC/USDT")).toBeVisible();
+  expect(screen.getByText("{{ network }}")).toBeVisible();
+  expect(screen.getByText("充值使用的区块链网络")).toBeVisible();
+  expect(screen.getByText("TRON")).toBeVisible();
 });

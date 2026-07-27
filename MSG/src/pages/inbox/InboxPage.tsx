@@ -44,7 +44,7 @@ export default function InboxPage() {
           const categoryInfo = messageCategories.find((item) => item.code === message.category)!;
           return <button key={message.id} className={`inbox-message ${message.read ? 'is-read':'is-unread'} risk-${message.risk}`} onClick={() => openMessage(message)}>
             <span className={`message-category-icon category-${message.category}`}>{categoryInfo.name.slice(0,1)}</span>
-            <span className="message-main"><span className="message-meta"><Tag color={categoryInfo.color}>{categoryInfo.name}</Tag>{message.risk !== '普通' && <Tag color={message.risk === '紧急' ? 'red':'orange'}>{message.risk}</Tag>}<time>{message.createdAt}</time></span><strong>{message.title}</strong><span>{message.summary}</span></span>
+            <span className="message-main"><span className="message-meta"><Tag color={categoryInfo.color}>{categoryInfo.name}</Tag>{message.risk !== '低' && <Tag color={message.risk === '关键' ? 'red':message.risk === '高' ? 'orangered' : 'orange'}>{message.risk}</Tag>}<time>{message.createdAt}</time></span><strong>{message.title}</strong><span>{message.summary}</span></span>
             {!message.read && <i className="unread-dot" aria-label="未读" />}
           </button>;
         })}

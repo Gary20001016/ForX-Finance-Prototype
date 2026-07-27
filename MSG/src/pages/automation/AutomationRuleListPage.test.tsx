@@ -41,12 +41,13 @@ it("does not expose rule content versions", () => {
   expect(screen.queryByText("当前内容版本")).not.toBeInTheDocument();
   fireEvent.click(screen.getAllByText("详情")[0]);
   expect(screen.queryByText("内容版本", { selector: "strong" })).not.toBeInTheDocument();
+  expect(screen.queryByText("最近触发")).not.toBeInTheDocument();
   expect(
     screen.queryByRole("button", { name: "创建内容版本" }),
   ).not.toBeInTheDocument();
 });
 
-it("offers only published event templates when creating a rule", async () => {
+it("offers only published templates bound to the selected event", async () => {
   const user = userEvent.setup();
   render(
     <MemoryRouter>
@@ -55,15 +56,30 @@ it("offers only published event templates when creating a rule", async () => {
   );
 
   await user.click(screen.getByRole("button", { name: "创建通知规则" }));
-  const templateField = screen
+  const dialog = screen.getByRole("dialog", { name: "创建事件通知规则" });
+  const templateField = within(dialog)
     .getByText("消息模板", { selector: "label" })
     .closest(".arco-form-item")
     ?.querySelector(".arco-select");
   expect(templateField).not.toBeNull();
+  expect(templateField).toHaveClass("arco-select-disabled");
+
+  const eventField = within(dialog)
+    .getByText("系统事件", { selector: "label" })
+    .closest(".arco-form-item")
+    ?.querySelector(".arco-select");
+  expect(eventField).not.toBeNull();
+  await user.click(eventField!);
+  fireEvent.click(
+    screen.getByRole("option", { name: /充值到账 · deposit\.credited/ }),
+  );
+
   await user.click(templateField!);
 
-  expect(screen.getByRole("option", { name: /提现成功通知/ })).toBeVisible();
   expect(screen.getByRole("option", { name: /充值到账通知/ })).toBeVisible();
+  expect(
+    screen.queryByRole("option", { name: /提现成功通知/ }),
+  ).not.toBeInTheDocument();
   expect(
     screen.queryByRole("option", { name: /异常登录提醒/ }),
   ).not.toBeInTheDocument();
@@ -76,6 +92,46 @@ it("offers only published event templates when creating a rule", async () => {
   expect(
     screen.queryByRole("option", { name: /网络维护公告/ }),
   ).not.toBeInTheDocument();
+});
+
+it("clears the selected template after changing the event", async () => {
+  const user = userEvent.setup();
+  render(
+    <MemoryRouter>
+      <AutomationRuleListPage />
+    </MemoryRouter>,
+  );
+
+  await user.click(screen.getByRole("button", { name: "创建通知规则" }));
+  const dialog = screen.getByRole("dialog", { name: "创建事件通知规则" });
+  const chooseOption = async (
+    label: string,
+    option: string | RegExp,
+  ) => {
+    const select = within(dialog)
+      .getByText(label, { selector: "label" })
+      .closest(".arco-form-item")
+      ?.querySelector(".arco-select");
+    expect(select).not.toBeNull();
+    await user.click(select!);
+    fireEvent.click(screen.getByRole("option", { name: option }));
+  };
+
+  await chooseOption("系统事件", /充值到账 · deposit\.credited/);
+  await chooseOption("消息模板", "充值到账通知");
+  expect(
+    within(dialog)
+      .getByText("消息模板", { selector: "label" })
+      .closest(".arco-form-item"),
+  ).toHaveTextContent("充值到账通知");
+
+  await chooseOption("系统事件", /订单成交 · order\.filled/);
+
+  expect(
+    within(dialog)
+      .getByText("消息模板", { selector: "label" })
+      .closest(".arco-form-item"),
+  ).not.toHaveTextContent("充值到账通知");
 });
 
 it("inherits content and languages from the selected template", async () => {
@@ -190,7 +246,17 @@ it("builds the condition expression and records the creator as owner", async () 
     within(dialog).getByRole("textbox", { name: "阈值" }),
     "1000",
   );
+  const riskOverrideBeforeTemplate = within(dialog)
+    .getByText("条件风险覆盖", { selector: "label" })
+    .closest(".arco-form-item")
+    ?.querySelector(".arco-select");
+  expect(riskOverrideBeforeTemplate).not.toBeNull();
+  expect(riskOverrideBeforeTemplate).toHaveClass("arco-select-disabled");
   await chooseOption("消息模板", "充值到账通知");
+  expect(
+    within(dialog).getByText("条件风险覆盖", { selector: "label" }),
+  ).toBeVisible();
+  await chooseOption("条件风险覆盖", "高");
   await user.click(within(dialog).getByRole("button", { name: "保存草稿" }));
 
   await waitFor(() =>
@@ -205,6 +271,8 @@ it("builds the condition expression and records the creator as owner", async () 
   ).toMatchObject({
     eventId: "deposit.credited",
     conditionExpression: "amount >= 1000",
+    riskOverride: "高",
+    risk: "高",
     owner: "Gary Ma",
   });
 });
@@ -270,7 +338,7 @@ it("edits a draft rule in place with its existing values", async () => {
 it("optionally pauses any enabled rule after approval", async () => {
   const user = userEvent.setup();
   const template = getPrototypeState().templates.find(
-    (item) => item.id === "TPL-1001",
+    (item) => item.id === "TPL-1009",
   )!;
   const rule = createEventRule({
     name: "订单成交通知新版",
@@ -325,7 +393,7 @@ it("optionally pauses any enabled rule after approval", async () => {
 it("submits a rule without pausing another rule", async () => {
   const user = userEvent.setup();
   const template = getPrototypeState().templates.find(
-    (item) => item.id === "TPL-1001",
+    (item) => item.id === "TPL-1008",
   )!;
   const rule = createEventRule({
     name: "充值到账通知 V2",

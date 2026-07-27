@@ -75,7 +75,7 @@ export default function EventListPage() {
     const result = testSystemEvent(selected.id);
     if (result.ok)
       Message.success(
-        `测试事件已通过规则 ${result.ruleId} 生成触发记录 ${result.triggerId}`,
+        `测试事件已通过规则 ${result.ruleId} 完成后台处理`,
       );
     else Message.error(result.reason || "测试事件执行失败");
   };

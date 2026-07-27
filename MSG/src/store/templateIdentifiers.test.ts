@@ -17,7 +17,8 @@ afterEach(() => vi.useRealTimers());
 
 const templateInput = (name: string) => ({
   name,
-  category: "系统公告",
+  category: "announcement" as const,
+  topic: "maintenance" as const,
   nature: "事务",
   risk: "低" as const,
   channels: ["站内信" as const],

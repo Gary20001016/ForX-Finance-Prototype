@@ -132,3 +132,4 @@ Expected: exit code 0.
 git add src/pages/templates src/pages/tasks
 git commit -m "fix: hide manual template versions"
 ```
+

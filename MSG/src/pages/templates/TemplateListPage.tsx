@@ -25,8 +25,17 @@ import {
   isReusableMessageTemplate,
   templateSupportsScope,
 } from "./templateScope";
-import { isApprovedManualTemplateLocked } from "../../domain/templatePolicy";
+import { isPublishedTemplateLocked } from "../../domain/templatePolicy";
 import { MANUAL_TEMPLATE_STATUSES } from "../../domain/manualTemplateStatus";
+import {
+  formatDisplayLocation,
+  getTopicsForCategory,
+  MESSAGE_DISPLAY_CATEGORIES,
+} from "../../domain/messageDisplayTaxonomy";
+import type {
+  MessageCategoryCode,
+  MessageTopicCode,
+} from "../../domain/types";
 import WritePermissionButton from "../../components/WritePermissionButton";
 import { useCurrentPagePermission } from "../../components/PagePermissionBoundary";
 
@@ -41,7 +50,8 @@ export default function TemplateListPage() {
   const [progressBatch, setProgressBatch] = useState<TranslationBatch>();
   const [keyword, setKeyword] = useState("");
   const [status, setStatus] = useState<string>();
-  const [nature, setNature] = useState<string>();
+  const [category, setCategory] = useState<MessageCategoryCode>();
+  const [topic, setTopic] = useState<MessageTopicCode>();
   const [channel, setChannel] = useState<string>();
   const store = usePrototypeStore();
   const taskUsageFor = (template: MessageTemplate) =>
@@ -73,7 +83,8 @@ export default function TemplateListPage() {
         .toLowerCase()
         .includes(keyword.toLowerCase()) &&
       (!status || item.status === status) &&
-      (!nature || item.nature === nature) &&
+      (!category || item.category === category) &&
+      (!topic || item.topic === topic) &&
       (!channel ||
         item.channels.includes(channel as MessageTemplate["channels"][number])),
   );
@@ -88,17 +99,47 @@ export default function TemplateListPage() {
         </div>
       ),
     },
+    ...(entryScope === "event"
+      ? [
+          {
+            title: "系统事件",
+            width: 220,
+            render: (_: unknown, template: MessageTemplate) => {
+              const event = store.events.find(
+                (item) => item.id === template.eventId,
+              );
+              return (
+                <div>
+                  <Typography.Text className="strong">
+                    {event?.name || "未绑定事件"}
+                  </Typography.Text>
+                  <div className="mono muted">{template.eventId || "—"}</div>
+                </div>
+              );
+            },
+          },
+        ]
+      : []),
     {
-      title: "分类 / 性质",
-      width: 150,
+      title: "展示位置",
+      width: 180,
       render: (_, r) => (
-        <div>
-          {r.category}
-          <div className="muted">{r.nature}</div>
-        </div>
+        <Typography.Text>
+          {formatDisplayLocation(r.category, r.topic)}
+        </Typography.Text>
       ),
     },
     { title: "风险", dataIndex: "risk", width: 80 },
+    ...(entryScope === "event"
+      ? [
+          {
+            title: "所有者团队",
+            dataIndex: "owner",
+            width: 120,
+            render: (owner: string | undefined) => owner || "—",
+          },
+        ]
+      : []),
     {
       title: "渠道",
       width: 200,
@@ -190,7 +231,7 @@ export default function TemplateListPage() {
       fixed: "right",
       width: 220,
       render: (_, r) => {
-        const locked = isApprovedManualTemplateLocked(r);
+        const locked = isPublishedTemplateLocked(r);
         return (
           <Space>
             {locked || !canWrite ? (
@@ -229,7 +270,8 @@ export default function TemplateListPage() {
         onReset={() => {
           setKeyword("");
           setStatus(undefined);
-          setNature(undefined);
+          setCategory(undefined);
+          setTopic(undefined);
           setChannel(undefined);
         }}
       >
@@ -240,15 +282,32 @@ export default function TemplateListPage() {
           style={{ width: 280 }}
         />
         <Select
-          placeholder="消息性质"
-          value={nature}
-          onChange={setNature}
+          placeholder="一级分类"
+          value={category}
+          onChange={(value) => {
+            setCategory(value);
+            setTopic(undefined);
+          }}
           style={{ width: 140 }}
           allowClear
-          options={["事务", "服务", "营销"].map((value) => ({
-            label: value,
-            value,
+          options={MESSAGE_DISPLAY_CATEGORIES.map((item) => ({
+            label: item.name,
+            value: item.code,
           }))}
+        />
+        <Select
+          placeholder="二级主题"
+          value={topic}
+          onChange={setTopic}
+          style={{ width: 140 }}
+          allowClear
+          disabled={!category}
+          options={(category ? getTopicsForCategory(category) : []).map(
+            (item) => ({
+              label: item.name,
+              value: item.code,
+            }),
+          )}
         />
         <Select
           placeholder="渠道"
@@ -294,13 +353,14 @@ export default function TemplateListPage() {
                   ?.translationBatchId || preview.translationBatchId),
             )}
             onEdit={() => {
-              setPreview(undefined);
-              setEditing(
+              const currentTemplate =
                 store.templates.find((item) => item.id === preview.id) ||
-                  preview,
-              );
+                preview;
+              if (isPublishedTemplateLocked(currentTemplate)) return;
+              setPreview(undefined);
+              setEditing(currentTemplate);
             }}
-            readOnly={!canWrite}
+            readOnly={!canWrite || isPublishedTemplateLocked(preview)}
           />
         )}
       </Drawer>
@@ -379,7 +439,11 @@ export default function TemplateListPage() {
         visible={Boolean(editing)}
         template={editing === "new" ? undefined : editing}
         entryScope={entryScope}
-        readOnly={!canWrite}
+        readOnly={
+          !canWrite ||
+          (editing !== "new" &&
+            Boolean(editing && isPublishedTemplateLocked(editing)))
+        }
         onClose={() => setEditing(undefined)}
         onCreated={(item) => setPreview(item)}
       />

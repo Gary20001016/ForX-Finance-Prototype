@@ -7,8 +7,12 @@ import {
 } from "@arco-design/web-react";
 import MessagePreview from "../../components/MessagePreview";
 import StatusTag from "../../components/StatusTag";
-import type { MessageTemplate } from "../../domain/types";
-import { APPROVED_MANUAL_TEMPLATE_LOCK_MESSAGE } from "../../domain/templatePolicy";
+import type {
+  MessageTemplate,
+  SystemEventDefinition,
+} from "../../domain/types";
+import { formatDisplayLocation } from "../../domain/messageDisplayTaxonomy";
+import { PUBLISHED_TEMPLATE_LOCK_MESSAGE } from "../../domain/templatePolicy";
 
 const usageScopeLabel: Record<MessageTemplate["usageScope"], string> = {
   manual: "人工消息",
@@ -19,17 +23,20 @@ const usageScopeLabel: Record<MessageTemplate["usageScope"], string> = {
 export default function TemplateReadOnlyDetails({
   template,
   showOwnerTeam = false,
+  events = [],
 }: {
   template: MessageTemplate;
   showOwnerTeam?: boolean;
+  events?: SystemEventDefinition[];
 }) {
+  const event = events.find((item) => item.id === template.eventId);
   return (
     <Space direction="vertical" size={20} style={{ width: "100%" }}>
       <Alert
         type="info"
         showIcon
         title="模板已锁定"
-        content={`${APPROVED_MANUAL_TEMPLATE_LOCK_MESSAGE}，以下信息仅供查看。`}
+        content={`${PUBLISHED_TEMPLATE_LOCK_MESSAGE}，以下信息仅供查看。`}
       />
 
       <Descriptions
@@ -44,10 +51,27 @@ export default function TemplateReadOnlyDetails({
           { label: "模板名称", value: template.name },
           { label: "状态", value: <StatusTag status={template.status} /> },
           { label: "更新时间", value: template.updatedAt },
-          { label: "消息分类", value: template.category },
-          { label: "消息性质", value: template.nature },
+          {
+            label: "前台展示位置",
+            value: formatDisplayLocation(template.category, template.topic),
+          },
           { label: "风险等级", value: template.risk },
           { label: "适用场景", value: usageScopeLabel[template.usageScope] },
+          ...(showOwnerTeam
+            ? [
+                {
+                  label: "系统事件",
+                  value: template.eventId ? (
+                    <div>
+                      <div>{event?.name || "未找到事件定义"}</div>
+                      <span className="mono muted">{template.eventId}</span>
+                    </div>
+                  ) : (
+                    "未绑定"
+                  ),
+                },
+              ]
+            : []),
           ...(showOwnerTeam
             ? [{ label: "所有者团队", value: template.owner || "—" }]
             : []),

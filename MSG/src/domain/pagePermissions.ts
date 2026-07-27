@@ -7,9 +7,7 @@ export type PagePermissionKey =
   | "event.rules"
   | "event.templates"
   | "event.catalog"
-  | "event.triggers"
   | "operations.approvals"
-  | "operations.deliveries"
   | "operations.analytics"
   | "settings.categories"
   | "settings.links"
@@ -48,9 +46,7 @@ export const pagePermissionGroups: PagePermissionGroup[] = [
       { key: "event.rules", label: "事件通知规则" },
       { key: "event.templates", label: "事件消息模板" },
       { key: "event.catalog", label: "事件目录" },
-      { key: "event.triggers", label: "触发记录" },
       { key: "operations.approvals", label: "审核中心" },
-      { key: "operations.deliveries", label: "发送记录" },
       { key: "operations.analytics", label: "数据分析" },
     ],
   },
@@ -58,7 +54,7 @@ export const pagePermissionGroups: PagePermissionGroup[] = [
     key: "settings",
     label: "系统配置",
     resources: [
-      { key: "settings.categories", label: "消息分类" },
+      { key: "settings.categories", label: "前台展示分类" },
       { key: "settings.links", label: "跳转白名单" },
       { key: "settings.languageReview", label: "语言审核策略" },
       { key: "settings.testAccounts", label: "测试账号" },

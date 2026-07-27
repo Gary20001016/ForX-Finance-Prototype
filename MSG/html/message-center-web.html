@@ -1,0 +1,1472 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ForX Finance · Web 消息中心</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #090b11;
+      --nav: #0d1017;
+      --surface: #11151e;
+      --surface-2: #171c27;
+      --line: rgba(255,255,255,.08);
+      --text: #f2f5fb;
+      --muted: #8c94a5;
+      --brand: #4f7cff;
+      --brand-soft: rgba(79,124,255,.14);
+      --red: #ff5c69;
+      --orange: #ffae50;
+      --green: #38d7a0;
+      --sidebar: 224px;
+      --summary: 292px;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; background: var(--bg); color: var(--text); font-family: Inter, "PingFang SC", "Microsoft YaHei", system-ui, sans-serif; }
+    body { background: radial-gradient(circle at 72% -20%, rgba(60,94,200,.18), transparent 34%), var(--bg); }
+    button, input { font: inherit; color: inherit; }
+    button { cursor: pointer; }
+    button:focus-visible, input:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+    .app { min-height: 100vh; display: grid; grid-template-columns: var(--sidebar) minmax(520px, 1fr) var(--summary); }
+    .sidebar {
+      min-height: 100vh; padding: 24px 16px; border-right: 1px solid var(--line);
+      background: rgba(13,16,23,.9); backdrop-filter: blur(20px); position: sticky; top: 0;
+    }
+    .brand { display: flex; align-items: center; gap: 11px; padding: 0 8px 28px; }
+    .brand-mark { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 11px; background: linear-gradient(145deg,#5c88ff,#315be5); font-weight: 850; box-shadow: 0 8px 24px rgba(49,91,229,.28); }
+    .brand strong { display: block; font-size: 14px; letter-spacing: .02em; }
+    .brand span { color: #666f81; font-size: 10px; }
+    .product-nav { display: grid; gap: 5px; }
+    .product-link {
+      width: 100%; border: 0; background: transparent; color: #777f90;
+      padding: 11px 12px; border-radius: 10px; display: flex; align-items: center; gap: 11px; text-align: left;
+    }
+    .product-link.active { background: var(--brand-soft); color: #b5c8ff; }
+    .product-link b { width: 19px; font-weight: 500; text-align: center; }
+    .nav-label { padding: 28px 12px 8px; color: #4d5565; font-size: 10px; letter-spacing: .12em; }
+    .price-alert {
+      margin-top: 6px; width: 100%; border: 1px solid var(--line); border-radius: 11px;
+      background: rgba(255,255,255,.025); padding: 11px 12px; color: #9da5b5;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .operator { position: absolute; bottom: 20px; left: 16px; right: 16px; border-top: 1px solid var(--line); padding: 16px 8px 0; display: flex; align-items: center; gap: 10px; }
+    .avatar { width: 32px; height: 32px; border-radius: 50%; background: #242a37; display: grid; place-items: center; color: #bbc3d2; font-size: 11px; }
+    .operator strong { display: block; font-size: 12px; }
+    .operator span { display: block; color: #626a79; font-size: 10px; margin-top: 2px; }
+    .main { min-width: 0; padding: 32px 34px 50px; }
+    .topbar { display: flex; justify-content: space-between; align-items: flex-start; gap: 24px; }
+    .topbar h1 { margin: 0; font-size: 28px; letter-spacing: -.04em; }
+    .topbar p { margin: 8px 0 0; color: var(--muted); font-size: 13px; }
+    .top-actions { display: flex; align-items: center; gap: 9px; }
+    .search {
+      width: 230px; border: 1px solid var(--line); border-radius: 11px; background: var(--surface);
+      padding: 10px 13px; color: #d9deea;
+    }
+    .search::placeholder { color: #596171; }
+    .read-all {
+      border: 1px solid rgba(79,124,255,.28); border-radius: 11px; padding: 10px 13px;
+      color: #b9caff; background: var(--brand-soft);
+    }
+    .read-all:disabled { opacity: .38; cursor: default; }
+    .category-tabs {
+      margin-top: 28px; display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px;
+    }
+    .category-tab {
+      border: 1px solid transparent; border-radius: 11px; background: transparent; color: #81899a;
+      padding: 10px 13px; white-space: nowrap;
+    }
+    .category-tab.active { border-color: var(--line); background: var(--surface-2); color: #fff; box-shadow: inset 0 -2px 0 var(--brand); }
+    .filter-row {
+      margin: 19px 0 13px; min-height: 36px; display: flex; justify-content: space-between; align-items: center; gap: 20px;
+    }
+    .topics { display: flex; align-items: center; gap: 7px; overflow-x: auto; }
+    .topic { border: 0; border-radius: 999px; padding: 7px 11px; background: rgba(255,255,255,.045); color: #777f90; font-size: 12px; white-space: nowrap; }
+    .topic.active { color: #b8caff; background: var(--brand-soft); }
+    .unread-filter { border: 0; background: transparent; color: #7d8595; display: flex; align-items: center; gap: 7px; white-space: nowrap; }
+    .check { width: 17px; height: 17px; border: 1px solid #464d5c; border-radius: 5px; display: grid; place-items: center; font-size: 10px; }
+    .unread-filter.on { color: #b7c9ff; }
+    .unread-filter.on .check { border-color: var(--brand); background: var(--brand); color: white; }
+    .risk-banner {
+      display: none; margin-bottom: 12px; border: 1px solid rgba(255,92,105,.28); border-radius: 13px;
+      background: linear-gradient(90deg, rgba(255,92,105,.14), rgba(255,92,105,.04));
+      padding: 13px 15px; align-items: center; justify-content: space-between; gap: 20px;
+    }
+    .risk-banner.show { display: flex; }
+    .risk-banner strong { display: block; font-size: 13px; }
+    .risk-banner span { display: block; margin-top: 4px; color: #c89098; font-size: 11px; }
+    .risk-banner button { border: 0; background: rgba(255,92,105,.15); color: #ff9ba4; padding: 7px 10px; border-radius: 8px; font-size: 11px; }
+    .list-card { border: 1px solid var(--line); border-radius: 16px; overflow: hidden; background: rgba(17,21,30,.82); }
+    .list-head {
+      padding: 12px 18px; display: grid; grid-template-columns: minmax(0,1fr) 110px 90px;
+      color: #646d7e; font-size: 10px; letter-spacing: .06em; border-bottom: 1px solid var(--line);
+    }
+    .message {
+      width: 100%; border: 0; border-bottom: 1px solid var(--line); background: transparent;
+      padding: 16px 18px; display: grid; grid-template-columns: minmax(0,1fr) 110px 90px;
+      text-align: left; align-items: center; transition: background .15s;
+    }
+    .message:last-child { border-bottom: 0; }
+    .message:hover { background: rgba(255,255,255,.025); }
+    .message-content { display: grid; grid-template-columns: 42px minmax(0,1fr); gap: 13px; align-items: center; }
+    .message-icon { width: 42px; height: 42px; border-radius: 13px; display: grid; place-items: center; color: #abc0ff; background: var(--brand-soft); font-size: 13px; font-weight: 750; }
+    .message[data-group="公告"] .message-icon { color: #d5d9e3; background: rgba(255,255,255,.07); }
+    .message[data-group="资产"] .message-icon { color: #76e6be; background: rgba(56,215,160,.11); }
+    .message[data-group="安全与风控"] .message-icon { color: #ff8f99; background: rgba(255,92,105,.11); }
+    .message[data-group="活动与奖励"] .message-icon { color: #d9b0ff; background: rgba(172,98,255,.12); }
+    .message-title-row { display: flex; align-items: center; gap: 7px; }
+    .message h2 { margin: 0; max-width: 620px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; font-weight: 530; }
+    .message.unread h2 { font-weight: 730; }
+    .message p { margin: 6px 0 0; max-width: 680px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #747d8e; font-size: 11px; }
+    .dot { width: 6px; height: 6px; border-radius: 50%; background: #5f89ff; box-shadow: 0 0 0 4px rgba(95,137,255,.1); }
+    .topic-label { color: #8b93a3; font-size: 11px; }
+    .risk { width: max-content; margin-top: 5px; border-radius: 5px; padding: 2px 5px; font-size: 9px; }
+    .risk.重要 { color: #ffc276; background: rgba(255,174,80,.12); }
+    .risk.紧急 { color: #ff8c97; background: rgba(255,92,105,.12); }
+    .message time { color: #626a79; font-size: 11px; }
+    .empty { padding: 80px 20px; color: #666e7e; text-align: center; font-size: 13px; }
+    .summary {
+      min-height: 100vh; padding: 32px 22px; border-left: 1px solid var(--line);
+      background: rgba(13,16,23,.68); position: sticky; top: 0;
+    }
+    .summary h2 { margin: 0 0 18px; font-size: 14px; }
+    .unread-card {
+      padding: 18px; border: 1px solid var(--line); border-radius: 15px;
+      background: linear-gradient(145deg, rgba(79,124,255,.13), rgba(255,255,255,.025));
+    }
+    .unread-card span { color: #8992a3; font-size: 11px; }
+    .unread-card strong { display: block; margin-top: 4px; font-size: 31px; }
+    .progress { height: 5px; border-radius: 5px; background: #242a35; overflow: hidden; margin-top: 13px; }
+    .progress i { display: block; height: 100%; background: linear-gradient(90deg,#547fff,#7ea0ff); }
+    .summary-section { padding-top: 24px; }
+    .summary-section h3 { margin: 0 0 12px; color: #70798a; font-size: 10px; letter-spacing: .09em; }
+    .summary-row { display: flex; justify-content: space-between; padding: 9px 0; color: #8e96a6; font-size: 11px; }
+    .summary-row strong { color: #dde2ec; }
+    .summary-note { margin-top: 20px; padding: 12px; border: 1px solid var(--line); border-radius: 12px; color: #727b8c; font-size: 10px; line-height: 1.6; }
+    .drawer-mask { position: fixed; inset: 0; z-index: 30; background: rgba(0,0,0,.62); opacity: 0; pointer-events: none; transition: opacity .2s; }
+    .drawer-mask.open { opacity: 1; pointer-events: auto; }
+    .drawer {
+      position: absolute; top: 0; right: 0; width: min(520px, 100%); height: 100%; overflow: auto;
+      transform: translateX(100%); transition: transform .28s ease; background: #131720; border-left: 1px solid var(--line); padding: 28px 32px;
+    }
+    .drawer-mask.open .drawer { transform: translateX(0); }
+    .drawer-head { display: flex; justify-content: space-between; align-items: center; }
+    .drawer-head span { color: #8891a2; font-size: 11px; }
+    .close { width: 34px; height: 34px; border: 1px solid var(--line); border-radius: 10px; background: transparent; color: #9da5b4; }
+    .drawer h2 { margin: 28px 0 10px; font-size: 24px; line-height: 1.4; }
+    .drawer .lead { margin: 0 0 24px; color: #9ca4b3; line-height: 1.6; font-size: 14px; }
+    .drawer .body { white-space: pre-line; line-height: 1.85; color: #d5dae4; font-size: 14px; }
+    .drawer-risk { display: none; margin: 18px 0; padding: 13px; border-radius: 11px; color: #ffafb6; background: rgba(255,92,105,.11); font-size: 12px; }
+    .drawer-risk.show { display: block; }
+    .drawer-action { width: 100%; margin-top: 28px; border: 0; border-radius: 12px; padding: 12px; background: var(--brand); color: white; font-weight: 720; }
+    .toast {
+      position: fixed; z-index: 50; left: 50%; top: 24px; transform: translate(-50%,-20px);
+      opacity: 0; pointer-events: none; transition: .2s; border-radius: 10px; padding: 10px 14px;
+      color: #edf0f7; background: #292f3b; box-shadow: 0 14px 40px rgba(0,0,0,.35); font-size: 12px;
+    }
+    .toast.show { opacity: 1; transform: translate(-50%,0); }
+    @media (max-width: 1120px) {
+      :root { --summary: 0px; }
+      .app { grid-template-columns: var(--sidebar) minmax(0,1fr); }
+      .summary { display: none; }
+    }
+    @media (max-width: 760px) {
+      :root { --sidebar: 68px; }
+      .sidebar { padding: 20px 10px; }
+      .brand { padding: 0 6px 24px; }
+      .brand div:last-child, .product-link span, .nav-label, .price-alert span, .operator div:last-child { display: none; }
+      .brand-mark { width: 36px; height: 36px; }
+      .product-link { justify-content: center; padding: 11px; }
+      .price-alert { justify-content: center; }
+      .main { padding: 24px 18px 40px; }
+      .topbar { display: block; }
+      .top-actions { margin-top: 18px; }
+      .search { width: min(100%, 260px); }
+      .list-head { display: none; }
+      .message { grid-template-columns: 1fr; gap: 10px; }
+      .message > .topic-label, .message > time { margin-left: 55px; }
+    }
+
+    /* Web 前台改版：Aster 式独立列表页 + Apex 式右侧详情抽屉。 */
+    :root {
+      --bg: #0b0b0d;
+      --nav: #08090a;
+      --surface: #111214;
+      --surface-2: #1a1b1d;
+      --line: rgba(255,255,255,.08);
+      --text: #f4f4f2;
+      --muted: #858783;
+      --brand: #69f0a0;
+      --brand-soft: rgba(105,240,160,.10);
+    }
+    html, body { background: var(--bg); }
+    body { background: var(--bg); }
+    .app {
+      min-height: 100vh;
+      display: block;
+    }
+    .sidebar {
+      position: sticky;
+      top: 0;
+      z-index: 25;
+      min-height: 0;
+      height: 64px;
+      padding: 0 28px;
+      border: 0;
+      border-bottom: 1px solid var(--line);
+      background: rgba(8,9,10,.96);
+      backdrop-filter: blur(18px);
+      display: flex;
+      align-items: center;
+      gap: 38px;
+    }
+    .brand {
+      flex: 0 0 auto;
+      gap: 10px;
+      padding: 0;
+    }
+    .brand-mark {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      color: #07110b;
+      background: var(--brand);
+      box-shadow: none;
+    }
+    .brand strong { font-size: 13px; }
+    .brand span { display: none; }
+    .product-nav {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .product-link {
+      width: auto;
+      padding: 21px 12px 20px;
+      border-radius: 0;
+      color: #858985;
+      font-size: 12px;
+    }
+    .product-link b { display: none; }
+    .product-link.active {
+      color: #f1f3f0;
+      background: transparent;
+      box-shadow: inset 0 -2px 0 var(--brand);
+    }
+    .platform-actions {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .platform-action {
+      min-width: 32px;
+      height: 32px;
+      padding: 0 10px;
+      border: 1px solid var(--line);
+      border-radius: 3px;
+      color: #858985;
+      background: #101113;
+      font-size: 11px;
+    }
+    .platform-action:hover {
+      color: #f2f4f1;
+      border-color: rgba(255,255,255,.16);
+    }
+    .platform-avatar {
+      width: 32px;
+      height: 32px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      color: #07110b;
+      background: var(--brand);
+      font-size: 10px;
+      font-weight: 800;
+    }
+    .nav-label, .price-alert, .operator { display: none; }
+    .main {
+      width: min(100%, 1320px);
+      margin: 0 auto;
+      padding: 56px 32px 80px;
+      display: grid;
+      grid-template-columns: 220px minmax(0,1fr);
+      grid-template-areas:
+        "top top"
+        "cats filters"
+        "cats risk"
+        "cats list";
+      column-gap: 46px;
+      align-items: start;
+    }
+    .topbar {
+      grid-area: top;
+      align-items: center;
+      padding-bottom: 34px;
+      border-bottom: 1px solid var(--line);
+    }
+    .topbar h1 {
+      font-size: 32px;
+      font-weight: 720;
+      letter-spacing: -.035em;
+    }
+    .topbar p {
+      margin-top: 7px;
+      color: #6f736f;
+      font-size: 12px;
+    }
+    .top-actions { gap: 8px; }
+    .search {
+      width: 248px;
+      height: 38px;
+      padding: 0 13px;
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      background: #111214;
+      font-size: 12px;
+    }
+    .read-all {
+      height: 38px;
+      padding: 0 14px;
+      border: 1px solid rgba(105,240,160,.28);
+      border-radius: 4px;
+      color: var(--brand);
+      background: rgba(105,240,160,.06);
+      font-size: 12px;
+    }
+    .category-tabs {
+      grid-area: cats;
+      position: sticky;
+      top: 96px;
+      margin: 34px 0 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      overflow: visible;
+      border-right: 1px solid var(--line);
+    }
+    .category-tab {
+      width: 100%;
+      min-height: 52px;
+      padding: 0 20px;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+      color: #747874;
+      text-align: left;
+      font-size: 13px;
+    }
+    .category-tab:hover { color: #c9cdc9; }
+    .category-tab.active {
+      color: #f4f5f3;
+      background: #1a1b1d;
+      border: 0;
+      box-shadow: inset 2px 0 0 var(--brand);
+    }
+    .filter-row {
+      grid-area: filters;
+      min-height: 68px;
+      margin: 18px 0 0;
+      padding: 0;
+      border-bottom: 1px solid var(--line);
+    }
+    .topics { gap: 24px; }
+    .topic {
+      position: relative;
+      padding: 25px 0 22px;
+      border-radius: 0;
+      color: #6f736f;
+      background: transparent;
+      font-size: 12px;
+    }
+    .topic.active {
+      color: #f4f5f3;
+      background: transparent;
+    }
+    .topic.active::after {
+      content: "";
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: -1px;
+      height: 2px;
+      background: var(--brand);
+    }
+    .unread-filter {
+      color: #767a76;
+      font-size: 12px;
+    }
+    .check {
+      width: 28px;
+      height: 16px;
+      padding: 2px;
+      border: 0;
+      border-radius: 999px;
+      background: #252826;
+      color: transparent;
+      display: flex;
+      align-items: center;
+      justify-content: start;
+      overflow: hidden;
+      font-size: 0;
+      line-height: 0;
+    }
+    .check::after {
+      content: "";
+      flex: 0 0 auto;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #727672;
+      transition: transform .18s;
+    }
+    .unread-filter.on { color: #b6bbb6; }
+    .unread-filter.on .check {
+      border: 0;
+      background: rgba(105,240,160,.32);
+      color: transparent;
+    }
+    .unread-filter.on .check::after {
+      transform: translateX(12px);
+      background: var(--brand);
+    }
+    .risk-banner {
+      grid-area: risk;
+      margin: 18px 0 0;
+      padding: 12px 0 14px;
+      border: 0;
+      border-bottom: 1px solid rgba(255,98,111,.24);
+      border-radius: 0;
+      background: transparent;
+    }
+    .risk-banner strong { color: #f1e6e7; font-size: 12px; }
+    .risk-banner span { color: #92666b; font-size: 11px; }
+    .risk-banner button {
+      border: 0;
+      border-radius: 2px;
+      color: #ff8f99;
+      background: rgba(255,98,111,.08);
+    }
+    .list-card {
+      grid-area: list;
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+      overflow: visible;
+    }
+    .list-head { display: none; }
+    .message {
+      min-height: 118px;
+      padding: 20px 0;
+      grid-template-columns: minmax(0,1fr) 96px;
+      gap: 24px;
+      border-bottom: 1px solid var(--line);
+      background: transparent;
+    }
+    .message:first-child { border-top: 0; }
+    .message:hover { background: rgba(255,255,255,.018); }
+    .message-copy { min-width: 0; }
+    .message-meta {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 16px;
+      color: #646864;
+      font-size: 10px;
+    }
+    .message-title {
+      display: block;
+      margin-top: 8px;
+      overflow: hidden;
+      color: #d9dcda;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 15px;
+      line-height: 1.45;
+      font-weight: 540;
+    }
+    .message.unread .message-title {
+      color: #f5f7f5;
+      font-weight: 700;
+    }
+    .message-summary {
+      display: block;
+      margin-top: 8px;
+      overflow: hidden;
+      color: #747874;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 12px;
+    }
+    .message-status {
+      min-height: 70px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      justify-content: space-between;
+    }
+    .message time {
+      color: #5d615d;
+      font-size: 10px;
+    }
+    .dot {
+      width: 6px;
+      height: 6px;
+      background: var(--brand);
+      box-shadow: 0 0 0 4px rgba(105,240,160,.06);
+    }
+    .risk {
+      width: auto;
+      margin: 0;
+      padding: 0;
+      border-radius: 0;
+      background: transparent !important;
+      font-size: 9px;
+    }
+    .risk.重要 { color: var(--orange); }
+    .risk.紧急 { color: var(--red); }
+    .empty {
+      padding: 96px 0;
+      color: #686c68;
+      border-bottom: 1px solid var(--line);
+    }
+    .summary { display: none; }
+    .drawer-mask { background: rgba(0,0,0,.68); }
+    .drawer {
+      width: min(480px, 100%);
+      padding: 26px 30px 42px;
+      border-left: 1px solid var(--line);
+      background: #101113;
+    }
+    .drawer-head {
+      padding-bottom: 18px;
+      border-bottom: 1px solid var(--line);
+    }
+    .drawer-head span { color: #6f736f; font-size: 10px; }
+    .close {
+      border: 0;
+      border-radius: 0;
+      color: #858985;
+      background: transparent;
+      font-size: 18px;
+    }
+    .drawer h2 {
+      margin: 30px 0 12px;
+      color: #f3f5f3;
+      font-size: 22px;
+    }
+    .drawer .lead {
+      color: #8b8f8b;
+      font-size: 13px;
+    }
+    .drawer .body {
+      color: #c8ccc8;
+      font-size: 13px;
+      line-height: 1.9;
+    }
+    .drawer-risk {
+      padding: 12px 14px;
+      border-radius: 0;
+      border-left: 2px solid var(--red);
+      background: rgba(255,98,111,.05);
+    }
+    .drawer-action {
+      border-radius: 2px;
+      color: #07110b;
+      background: var(--brand);
+    }
+    .toast {
+      border: 1px solid #263029;
+      border-radius: 3px;
+      background: #111713;
+      color: #eef2ef;
+    }
+    @media (max-width: 900px) {
+      .sidebar { padding: 0 18px; gap: 18px; }
+      .product-link { padding-inline: 8px; }
+      .main {
+        padding: 38px 22px 64px;
+        display: block;
+      }
+      .topbar { padding-bottom: 26px; }
+      .category-tabs {
+        position: static;
+        margin-top: 22px;
+        flex-direction: row;
+        gap: 4px;
+        overflow-x: auto;
+        border-right: 0;
+        border-bottom: 1px solid var(--line);
+      }
+      .category-tab {
+        width: auto;
+        min-width: max-content;
+        padding: 0 14px;
+      }
+      .category-tab.active { box-shadow: inset 0 -2px 0 var(--brand); }
+      .filter-row { margin-top: 0; }
+    }
+    @media (max-width: 640px) {
+      .sidebar { gap: 12px; }
+      .brand div:last-child { display: none; }
+      .product-link span { display: none; }
+      .product-link b { display: block; }
+      .platform-action:first-child { display: none; }
+      .topbar { display: block; }
+      .top-actions { margin-top: 18px; flex-wrap: wrap; }
+      .search { width: 100%; }
+      .message { grid-template-columns: minmax(0,1fr) 72px; }
+      .drawer { width: 100%; }
+    }
+
+    /* 消息中心入口收敛为右上角图标，列表仅在侧栏内出现。 */
+    .notification-trigger {
+      position: relative;
+      width: 34px;
+      min-width: 34px;
+      padding: 0;
+      display: grid;
+      place-items: center;
+      font-size: 15px;
+    }
+    .notification-badge {
+      position: absolute;
+      top: 5px;
+      right: 5px;
+      min-width: 13px;
+      height: 13px;
+      padding: 0 3px;
+      display: grid;
+      place-items: center;
+      border: 2px solid #08090a;
+      border-radius: 999px;
+      color: #07110b;
+      background: var(--brand);
+      font-size: 7px;
+      font-weight: 800;
+    }
+    .trading-shell {
+      width: min(100%, 1480px);
+      min-height: calc(100vh - 64px);
+      margin: 0 auto;
+      padding: 22px 28px 36px;
+    }
+    .market-strip {
+      min-height: 76px;
+      padding: 0 20px;
+      display: flex;
+      align-items: center;
+      gap: 34px;
+      border: 1px solid var(--line);
+      background: #0e0f11;
+    }
+    .market-pair strong {
+      display: block;
+      color: #f0f2ef;
+      font-size: 17px;
+    }
+    .market-pair span,
+    .market-stat span {
+      display: block;
+      margin-top: 5px;
+      color: #626662;
+      font-size: 10px;
+    }
+    .market-price {
+      color: var(--brand);
+      font-size: 20px;
+      font-weight: 720;
+    }
+    .market-stat strong {
+      color: #b9bdb9;
+      font-size: 12px;
+      font-weight: 550;
+    }
+    .trading-grid {
+      margin-top: 8px;
+      min-height: 630px;
+      display: grid;
+      grid-template-columns: minmax(0,1fr) 250px 280px;
+      grid-template-rows: 440px 182px;
+      gap: 8px;
+    }
+    .trade-panel {
+      position: relative;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      background: #0d0e10;
+    }
+    .trade-panel h2 {
+      height: 42px;
+      margin: 0;
+      padding: 0 15px;
+      display: flex;
+      align-items: center;
+      border-bottom: 1px solid var(--line);
+      color: #929692;
+      font-size: 11px;
+      font-weight: 550;
+    }
+    .chart-panel {
+      background:
+        linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px),
+        #0d0e10;
+      background-size: 100% 72px, 92px 100%, auto;
+    }
+    .chart-line {
+      position: absolute;
+      inset: 88px 38px 54px;
+      width: calc(100% - 76px);
+      height: calc(100% - 142px);
+    }
+    .chart-line polyline {
+      fill: none;
+      stroke: var(--brand);
+      stroke-width: 2;
+      vector-effect: non-scaling-stroke;
+    }
+    .orderbook {
+      padding: 12px 14px;
+    }
+    .book-row {
+      height: 27px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      align-items: center;
+      color: #686c68;
+      font-size: 9px;
+    }
+    .book-row b { text-align: right; font-weight: 500; }
+    .book-row.sell b { color: #c4636d; }
+    .book-row.buy b { color: #55c988; }
+    .book-price {
+      margin: 9px 0;
+      color: var(--brand);
+      font-size: 16px;
+      font-weight: 700;
+    }
+    .order-form { padding: 18px 16px; }
+    .order-tabs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 4px;
+    }
+    .order-tabs span {
+      padding: 9px;
+      color: #6f736f;
+      background: #141517;
+      text-align: center;
+      font-size: 10px;
+    }
+    .order-tabs span:first-child {
+      color: #07110b;
+      background: var(--brand);
+    }
+    .fake-input {
+      height: 38px;
+      margin-top: 10px;
+      padding: 0 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      color: #626662;
+      border: 1px solid var(--line);
+      background: #101113;
+      font-size: 10px;
+    }
+    .fake-submit {
+      height: 40px;
+      margin-top: 18px;
+      display: grid;
+      place-items: center;
+      color: #07110b;
+      background: var(--brand);
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .positions-panel {
+      grid-column: 1 / -1;
+    }
+    .position-empty {
+      height: 138px;
+      display: grid;
+      place-items: center;
+      color: #4e524e;
+      font-size: 11px;
+    }
+    .inbox-mask {
+      display: none;
+      position: fixed;
+      inset: 64px 0 0;
+      z-index: 28;
+      background: rgba(0,0,0,.58);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .18s ease;
+    }
+    .inbox-mask.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .inbox-panel {
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: min(520px, 100%);
+      height: 100%;
+      border-left: 1px solid var(--line);
+      background: #0e0f11;
+      transform: translateX(100%);
+      transition: transform .24s ease;
+    }
+    .inbox-mask.open .inbox-panel { transform: translateX(0); }
+    .inbox-panel .main {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      padding: 22px 26px 42px;
+      display: block;
+      overflow-y: auto;
+    }
+    .inbox-panel .topbar {
+      display: block;
+      padding-bottom: 18px;
+    }
+    .inbox-title {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 18px;
+    }
+    .inbox-panel .topbar h1 { font-size: 21px; }
+    .inbox-panel .topbar p { font-size: 10px; }
+    .inbox-panel .top-actions {
+      margin-top: 18px;
+      display: grid;
+      grid-template-columns: minmax(0,1fr) auto;
+    }
+    .inbox-panel .search { width: 100%; }
+    .inbox-panel .category-tabs {
+      position: static;
+      margin: 0;
+      padding: 0;
+      flex-direction: row;
+      overflow-x: auto;
+      border-right: 0;
+      border-bottom: 1px solid var(--line);
+    }
+    .inbox-panel .category-tab {
+      width: auto;
+      min-width: max-content;
+      min-height: 48px;
+      padding: 0 12px;
+      text-align: center;
+    }
+    .inbox-panel .category-tab.active {
+      background: transparent;
+      box-shadow: inset 0 -2px 0 var(--brand);
+    }
+    .inbox-panel .filter-row {
+      min-height: 54px;
+      margin: 0;
+    }
+    .inbox-panel .topics { gap: 16px; }
+    .inbox-panel .topic { padding: 18px 0; }
+    .inbox-panel .risk-banner { margin-top: 8px; }
+    .inbox-panel .message {
+      min-height: 96px;
+      padding: 16px 0;
+      grid-template-columns: minmax(0,1fr) 72px;
+      gap: 14px;
+    }
+    .inbox-panel .message-title { font-size: 13px; }
+    .inbox-panel .message-summary { font-size: 10px; }
+    .inbox-panel .message-status { min-height: 62px; }
+    .drawer-mask { z-index: 32; }
+
+    /* 完整消息中心：由快捷侧栏中的“查看全部”进入。 */
+    body.full-inbox .trading-shell { display: none; }
+    body.full-inbox .inbox-mask {
+      display: block;
+      position: static;
+      min-height: calc(100vh - 64px);
+      opacity: 1;
+      pointer-events: auto;
+      background: transparent;
+    }
+    body.full-inbox .inbox-panel {
+      position: static;
+      width: 100%;
+      height: auto;
+      min-height: calc(100vh - 64px);
+      border-left: 0;
+      background: var(--bg);
+      transform: none;
+    }
+    body.full-inbox .inbox-panel .main {
+      width: min(100%, 1320px);
+      height: auto;
+      margin: 0 auto;
+      padding: 56px 32px 80px;
+      display: grid;
+      grid-template-columns: 220px minmax(0,1fr);
+      grid-template-areas:
+        "top top"
+        "cats filters"
+        "cats risk"
+        "cats list";
+      column-gap: 46px;
+      overflow: visible;
+    }
+    body.full-inbox .inbox-panel .topbar {
+      grid-area: top;
+      padding-bottom: 34px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    body.full-inbox .inbox-title { min-width: 0; }
+    body.full-inbox .inbox-panel .topbar h1 { font-size: 32px; }
+    body.full-inbox .inbox-panel .topbar p { font-size: 12px; }
+    body.full-inbox .inbox-panel .top-actions {
+      margin-top: 0;
+      margin-left: auto;
+      display: grid;
+      grid-template-columns: 248px auto;
+    }
+    body.full-inbox .inbox-panel .category-tabs {
+      grid-area: cats;
+      position: sticky;
+      top: 96px;
+      margin: 34px 0 0;
+      padding: 0;
+      flex-direction: column;
+      overflow: visible;
+      border-right: 1px solid var(--line);
+      border-bottom: 0;
+    }
+    body.full-inbox .inbox-panel .category-tab {
+      width: 100%;
+      min-height: 52px;
+      padding: 0 20px;
+      text-align: left;
+    }
+    body.full-inbox .inbox-panel .category-tab.active {
+      background: #1a1b1d;
+      box-shadow: inset 2px 0 0 var(--brand);
+    }
+    body.full-inbox .inbox-panel .filter-row {
+      grid-area: filters;
+      min-height: 68px;
+      margin: 18px 0 0;
+    }
+    body.full-inbox .inbox-panel .topics { gap: 24px; }
+    body.full-inbox .inbox-panel .topic { padding: 25px 0 22px; }
+    body.full-inbox .inbox-panel .risk-banner {
+      grid-area: risk;
+      margin-top: 18px;
+    }
+    body.full-inbox .inbox-panel .list-card { grid-area: list; }
+    body.full-inbox .inbox-panel .message {
+      min-height: 118px;
+      padding: 20px 0;
+      grid-template-columns: minmax(0,1fr) 96px;
+      gap: 24px;
+    }
+    body.full-inbox .inbox-panel .message-title { font-size: 15px; }
+    body.full-inbox .inbox-panel .message-summary { font-size: 12px; }
+    body.full-inbox .inbox-panel .message-status { min-height: 70px; }
+
+    /* 消息详情始终使用独立全页面，不再使用覆盖式详情抽屉。 */
+    body.full-detail .app { min-height: 64px; }
+    body.full-detail .trading-shell,
+    body.full-detail .inbox-mask {
+      display: none;
+    }
+    body.full-detail .drawer-mask {
+      position: static;
+      min-height: calc(100vh - 64px);
+      opacity: 1;
+      pointer-events: auto;
+      background: var(--bg);
+      transition: none;
+    }
+    body.full-detail .drawer {
+      position: static;
+      width: min(100%, 960px);
+      height: auto;
+      min-height: calc(100vh - 64px);
+      margin: 0 auto;
+      padding: 48px 32px 80px;
+      overflow: visible;
+      border-left: 0;
+      background: var(--bg);
+      transform: none;
+      transition: none;
+    }
+    body.full-detail .drawer-head {
+      padding-bottom: 22px;
+      flex-direction: row-reverse;
+      justify-content: flex-end;
+      gap: 20px;
+    }
+    body.full-detail .drawer-head span {
+      padding-top: 8px;
+      font-size: 11px;
+    }
+    body.full-detail .close {
+      width: auto;
+      height: 34px;
+      padding: 0 12px;
+      border: 1px solid var(--line);
+      color: #9da19d;
+      background: #111214;
+      font-size: 11px;
+    }
+    body.full-detail .drawer h2 {
+      margin-top: 42px;
+      font-size: 32px;
+      line-height: 1.35;
+    }
+    body.full-detail .drawer .lead {
+      margin-bottom: 34px;
+      font-size: 15px;
+    }
+    body.full-detail .drawer .body {
+      padding-top: 26px;
+      border-top: 1px solid var(--line);
+      font-size: 14px;
+      line-height: 2;
+    }
+    body.full-detail .drawer-risk {
+      margin: 24px 0;
+      padding: 14px 16px;
+    }
+    body.full-detail .drawer-action {
+      width: auto;
+      min-width: 160px;
+      margin-top: 38px;
+      padding: 13px 24px;
+    }
+    @media (max-width: 980px) {
+      .trading-grid {
+        grid-template-columns: minmax(0,1fr) 230px;
+      }
+      .order-form { display: none; }
+      body.full-inbox .inbox-panel .main {
+        padding: 38px 22px 64px;
+        display: block;
+      }
+      body.full-inbox .inbox-panel .category-tabs {
+        position: static;
+        margin-top: 22px;
+        flex-direction: row;
+        gap: 4px;
+        overflow-x: auto;
+        border-right: 0;
+        border-bottom: 1px solid var(--line);
+      }
+      body.full-inbox .inbox-panel .category-tab {
+        width: auto;
+        min-width: max-content;
+        padding: 0 14px;
+      }
+      body.full-inbox .inbox-panel .category-tab.active {
+        background: transparent;
+        box-shadow: inset 0 -2px 0 var(--brand);
+      }
+      body.full-inbox .inbox-panel .filter-row { margin-top: 0; }
+    }
+    @media (max-width: 640px) {
+      .trading-shell { padding: 14px; }
+      .market-stat { display: none; }
+      .trading-grid { grid-template-columns: 1fr; }
+      .orderbook { display: none; }
+      .inbox-panel { width: 100%; }
+      .inbox-panel .main { padding-inline: 18px; }
+    }
+  </style>
+  <script src="https://mcp.figma.com/mcp/html-to-design/capture.js" async></script>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand"><span class="brand-mark">F</span><div><strong>ForX Finance</strong><span>数字资产交易平台</span></div></div>
+      <nav class="product-nav">
+        <button class="product-link"><b>⌂</b><span>首页</span></button>
+        <button class="product-link"><b>↗</b><span>行情</span></button>
+        <button class="product-link active"><b>⇄</b><span>交易</span></button>
+        <button class="product-link"><b>◇</b><span>资产</span></button>
+      </nav>
+      <div class="platform-actions" aria-label="平台工具">
+        <button class="platform-action" onclick="showToast('当前时区：UTC+8')">UTC+8</button>
+        <button class="platform-action notification-trigger" id="notificationTrigger" onclick="openFullInbox()" aria-label="打开消息中心">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+            <path d="M10 21h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+          </svg>
+          <span class="notification-badge" id="notificationBadge">4</span>
+        </button>
+        <span class="platform-avatar" title="Gary Ma">GM</span>
+      </div>
+      <div class="nav-label">提醒工具</div>
+      <button class="price-alert" onclick="showToast('价格提醒作为独立订阅能力展示')"><span>价格提醒</span><b>›</b></button>
+      <div class="operator"><span class="avatar">GM</span><div><strong>Gary Ma</strong><span>UID 82719035</span></div></div>
+    </aside>
+
+    <section class="trading-shell" aria-label="交易工作区">
+      <div class="market-strip">
+        <div class="market-pair"><strong>BTC/USDT</strong><span>永续合约 · 全仓</span></div>
+        <div class="market-price">65,379.7</div>
+        <div class="market-stat"><strong>+1.42%</strong><span>24h 涨跌</span></div>
+        <div class="market-stat"><strong>66,120.5</strong><span>24h 最高</span></div>
+        <div class="market-stat"><strong>63,908.2</strong><span>24h 最低</span></div>
+        <div class="market-stat"><strong>1.28B USDT</strong><span>24h 成交额</span></div>
+      </div>
+      <div class="trading-grid">
+        <section class="trade-panel chart-panel">
+          <h2>BTC/USDT 行情图表</h2>
+          <svg class="chart-line" viewBox="0 0 1000 280" preserveAspectRatio="none" aria-hidden="true">
+            <polyline points="0,225 80,214 145,230 220,171 295,184 370,126 448,148 520,92 595,117 666,72 735,98 810,38 878,62 940,29 1000,46"></polyline>
+          </svg>
+        </section>
+        <section class="trade-panel">
+          <h2>订单簿</h2>
+          <div class="orderbook">
+            <div class="book-row sell"><span>65,386.5</span><b>0.679</b></div>
+            <div class="book-row sell"><span>65,385.5</span><b>0.548</b></div>
+            <div class="book-row sell"><span>65,384.5</span><b>0.510</b></div>
+            <div class="book-row sell"><span>65,383.5</span><b>0.636</b></div>
+            <div class="book-price">65,379.7 ↑</div>
+            <div class="book-row buy"><span>65,376.6</span><b>0.611</b></div>
+            <div class="book-row buy"><span>65,375.6</span><b>0.543</b></div>
+            <div class="book-row buy"><span>65,374.6</span><b>0.635</b></div>
+            <div class="book-row buy"><span>65,373.6</span><b>0.449</b></div>
+          </div>
+        </section>
+        <section class="trade-panel">
+          <h2>下单</h2>
+          <div class="order-form">
+            <div class="order-tabs"><span>买入 / 做多</span><span>卖出 / 做空</span></div>
+            <div class="fake-input"><span>委托价格</span><b>USDT</b></div>
+            <div class="fake-input"><span>合约数量</span><b>BTC</b></div>
+            <div class="fake-input"><span>可用余额</span><b>0.00 USDT</b></div>
+            <div class="fake-submit">买入 / 做多</div>
+          </div>
+        </section>
+        <section class="trade-panel positions-panel">
+          <h2>当前持仓　活动委托　历史订单　资金流水</h2>
+          <div class="position-empty">暂无持仓数据</div>
+        </section>
+      </div>
+    </section>
+
+    <div class="inbox-mask" id="inboxMask">
+      <section class="inbox-panel" aria-labelledby="inboxTitle">
+      <main class="main">
+      <header class="topbar">
+        <div class="inbox-title">
+          <div><h1 id="inboxTitle">消息中心</h1><p id="unreadSummary">加载中</p></div>
+        </div>
+        <div class="top-actions">
+          <input class="search" id="searchInput" type="search" placeholder="搜索消息标题或内容" oninput="renderMessages()" />
+          <button class="read-all" id="readAllButton" onclick="markAllRead()">全部已读</button>
+        </div>
+      </header>
+
+      <nav class="category-tabs" id="categoryTabs" aria-label="消息分类"></nav>
+      <section class="filter-row">
+        <div class="topics" id="topics" aria-label="消息主题"></div>
+        <button class="unread-filter" id="unreadFilter" onclick="toggleUnread()"><span class="check">✓</span><span>只看未读</span></button>
+      </section>
+
+      <section class="risk-banner" id="riskBanner">
+        <div><strong id="riskTitle"></strong><span id="riskSummary"></span></div>
+        <button id="riskAction">立即处理</button>
+      </section>
+
+      <section class="list-card">
+        <div class="list-head"><span>消息内容</span><span>主题</span><span>时间</span></div>
+        <div id="messageList" aria-live="polite"></div>
+      </section>
+    </main>
+      </section>
+    </div>
+
+    <aside class="summary">
+      <h2>消息概览</h2>
+      <section class="unread-card">
+        <span>当前未读</span><strong id="summaryUnread">0</strong>
+        <div class="progress"><i id="readProgress" style="width:0"></i></div>
+      </section>
+      <section class="summary-section">
+        <h3>分类未读</h3>
+        <div id="categorySummary"></div>
+      </section>
+      <div class="summary-note">重要与紧急消息优先展示。Web 与 App 共享消息内容和已读状态。</div>
+    </aside>
+  </div>
+
+  <div class="drawer-mask" id="drawerMask" onclick="closeDetail(event)">
+    <article class="drawer" aria-labelledby="drawerTitle">
+      <div class="drawer-head"><span id="drawerMeta"></span><button class="close" onclick="forceCloseDetail()">← 返回消息中心</button></div>
+      <h2 id="drawerTitle"></h2>
+      <p class="lead" id="drawerSummary"></p>
+      <div class="drawer-risk" id="drawerRisk"></div>
+      <div class="body" id="drawerBody"></div>
+      <button class="drawer-action" id="drawerAction"></button>
+    </article>
+  </div>
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // 后台分类映射到前台用户分组，映射只参与展示，不改变后台分类语义。
+    const categoryToGroup = {
+      system_notice: "公告",
+      trade_notice: "交易",
+      asset_notice: "资产",
+      security_notice: "安全与风控",
+      risk_notice: "安全与风控",
+      campaign_notice: "活动与奖励",
+      reward_notice: "活动与奖励"
+    };
+
+    const groupConfig = [
+      { name: "全部", icon: "全", topics: ["全部"] },
+      { name: "公告", icon: "告", topics: ["全部", "上新", "下架", "维护", "规则与更新"] },
+      { name: "交易", icon: "交", topics: ["全部", "订单", "成交", "合约"] },
+      { name: "资产", icon: "资", topics: ["全部", "充值", "提现", "其他资产变动"] },
+      { name: "安全与风控", icon: "盾", topics: ["全部", "账户安全", "风险预警"] },
+      { name: "活动与奖励", icon: "奖", topics: ["全部", "活动", "奖励到账"] }
+    ];
+
+    const messages = [
+      {
+        id: "W-1001", category: "risk_notice", topic: "风险预警", risk: "紧急", read: false,
+        title: "BTC/USDT 强平风险预警", summary: "您的合约账户保证金率已降至 18.6%，请及时处理仓位。",
+        body: "BTC/USDT 永续仓位当前保证金率为 18.6%，标记价格为 58,420.5 USDT。\n\n市场波动可能导致仓位被强制平仓，请及时追加保证金或降低仓位。",
+        time: "刚刚", action: "查看仓位"
+      },
+      {
+        id: "W-1002", category: "asset_notice", topic: "充值", risk: "重要", read: false,
+        title: "充值到账 1,250 USDT", summary: "您充值的 1,250 USDT 已到账，可以开始交易。",
+        body: "充值网络：TRON\n到账金额：1,250 USDT\n到账时间：2026-07-24 16:12 UTC+8",
+        time: "12分钟前", action: "查看资产"
+      },
+      {
+        id: "W-1003", category: "trade_notice", topic: "成交", risk: "普通", read: false,
+        title: "ETH/USDT 订单已全部成交", summary: "买入 2.5 ETH，成交均价 3,248.20 USDT。",
+        body: "您的 ETH/USDT 限价买单已全部成交。\n\n成交数量：2.5 ETH\n成交均价：3,248.20 USDT",
+        time: "38分钟前", action: "查看订单"
+      },
+      {
+        id: "W-1004", category: "system_notice", topic: "上新", risk: "普通", read: false,
+        title: "ForX 将上线 RWA 永续合约专区", summary: "CRM、GME、RIVN 等交易对将于 7 月 25 日开放交易。",
+        body: "ForX Finance 将上线 RWA 永续合约专区。相关交易对的开放时间、杠杆倍数及风险限制请以产品页面为准。",
+        time: "今天 14:30", action: "查看公告"
+      },
+      {
+        id: "W-1005", category: "security_notice", topic: "账户安全", risk: "重要", read: true,
+        title: "检测到新设备登录", summary: "您的账户于上海通过 iPhone 设备完成登录。",
+        body: "登录时间：2026-07-24 11:26 UTC+8\n登录地区：上海\n设备：iPhone 16 Pro\n\n若非本人操作，请立即冻结账户并修改密码。",
+        time: "今天 11:26", action: "检查设备"
+      },
+      {
+        id: "W-1006", category: "campaign_notice", topic: "活动", risk: "普通", read: true,
+        title: "夏季交易赛已开启", summary: "完成合约交易任务，瓜分 100,000 USDT 奖池。",
+        body: "活动时间：7 月 24 日至 8 月 7 日。完成报名后，活动期间的有效合约交易量将自动计入排名。",
+        time: "昨天", action: "参与活动"
+      },
+      {
+        id: "W-1007", category: "reward_notice", topic: "奖励到账", risk: "普通", read: true,
+        title: "本周返佣 86.42 USDT 已到账", summary: "代理返佣已发放至资金账户，可前往资产记录查看。",
+        body: "结算周期：2026-07-13 至 2026-07-19\n返佣金额：86.42 USDT\n到账账户：资金账户",
+        time: "7月23日", action: "查看记录"
+      },
+      {
+        id: "W-1008", category: "system_notice", topic: "下架", risk: "普通", read: true,
+        title: "TONUSDT 永续合约下架公告", summary: "TONUSDT 永续合约将于 7 月 29 日 09:00 UTC 停止交易。",
+        body: "为保护用户权益，ForX Finance 将于 7 月 29 日 09:00 UTC 停止 TONUSDT 永续合约交易。请提前完成平仓。",
+        time: "7月22日", action: "查看公告"
+      }
+    ].map(item => ({ ...item, group: categoryToGroup[item.category] }));
+
+    let selectedGroup = "全部";
+    let selectedTopic = "全部";
+    let unreadOnly = false;
+
+    function groupIcon(name) {
+      return groupConfig.find(item => item.name === name)?.icon || "信";
+    }
+
+    function visibleMessages() {
+      const query = document.getElementById("searchInput").value.trim().toLowerCase();
+      return messages
+        .filter(item => selectedGroup === "全部" || item.group === selectedGroup)
+        .filter(item => selectedTopic === "全部" || item.topic === selectedTopic)
+        .filter(item => !unreadOnly || !item.read)
+        .filter(item => !query || `${item.title} ${item.summary} ${item.body}`.toLowerCase().includes(query))
+        .sort((a, b) => Number(b.risk === "紧急" && !b.read) - Number(a.risk === "紧急" && !a.read));
+    }
+
+    function renderTabs() {
+      document.getElementById("categoryTabs").innerHTML = groupConfig.map(item => {
+        const count = messages.filter(message => !message.read && (item.name === "全部" || message.group === item.name)).length;
+        return `<button class="category-tab ${selectedGroup === item.name ? "active" : ""}" onclick="selectGroup('${item.name}')">${item.name}${count ? ` · ${count}` : ""}</button>`;
+      }).join("");
+    }
+
+    function renderTopics() {
+      const config = groupConfig.find(item => item.name === selectedGroup) || groupConfig[0];
+      document.getElementById("topics").innerHTML = config.topics.map(topic =>
+        `<button class="topic ${selectedTopic === topic ? "active" : ""}" onclick="selectTopic('${topic}')">${topic}</button>`
+      ).join("");
+    }
+
+    function renderMessages() {
+      const visible = visibleMessages();
+      const unread = messages.filter(item => !item.read).length;
+      document.getElementById("unreadSummary").textContent = unread ? `${unread} 条未读，重要资金和风险消息会优先展示` : "所有消息均已阅读";
+      document.getElementById("readAllButton").disabled = unread === 0;
+      document.getElementById("unreadFilter").classList.toggle("on", unreadOnly);
+      const badge = document.getElementById("notificationBadge");
+      badge.textContent = unread;
+      badge.hidden = unread === 0;
+
+      const urgent = visible.find(item => item.risk === "紧急" && !item.read);
+      const banner = document.getElementById("riskBanner");
+      banner.classList.toggle("show", Boolean(urgent));
+      if (urgent) {
+        document.getElementById("riskTitle").textContent = urgent.title;
+        document.getElementById("riskSummary").textContent = "紧急风险消息，请立即核对并处理。";
+        document.getElementById("riskAction").onclick = () => openDetail(urgent.id);
+      }
+
+      document.getElementById("messageList").innerHTML = visible.length ? visible.map(item => `
+        <button class="message ${item.read ? "" : "unread"}" data-group="${item.group}" onclick="openDetail('${item.id}')">
+          <span class="message-copy">
+            <span class="message-meta">
+              <span>${item.group} · ${item.topic}</span>
+              ${item.risk !== "普通" ? `<span class="risk ${item.risk}">${item.risk}</span>` : ""}
+            </span>
+            <strong class="message-title">${item.title}</strong>
+            <span class="message-summary">${item.summary}</span>
+          </span>
+          <span class="message-status">
+            <time>${item.time}</time>
+            ${item.read ? "" : '<i class="dot"></i>'}
+          </span>
+        </button>
+      `).join("") : `<div class="empty">当前筛选下没有消息</div>`;
+
+      renderSummary();
+    }
+
+    function renderSummary() {
+      const unread = messages.filter(item => !item.read).length;
+      document.getElementById("summaryUnread").textContent = unread;
+      document.getElementById("readProgress").style.width = `${Math.round((messages.length - unread) / messages.length * 100)}%`;
+      document.getElementById("categorySummary").innerHTML = groupConfig.slice(1).map(group => {
+        const count = messages.filter(item => item.group === group.name && !item.read).length;
+        return `<div class="summary-row"><span>${group.name}</span><strong>${count}</strong></div>`;
+      }).join("");
+    }
+
+    function selectGroup(group) {
+      selectedGroup = group;
+      selectedTopic = "全部";
+      render();
+    }
+
+    function selectTopic(topic) {
+      selectedTopic = topic;
+      renderTopics();
+      renderMessages();
+    }
+
+    function toggleUnread() {
+      unreadOnly = !unreadOnly;
+      renderMessages();
+    }
+
+    function markAllRead() {
+      messages.forEach(item => item.read = true);
+      render();
+      showToast("已将全部消息标记为已读");
+    }
+
+    function openFullInbox() {
+      document.getElementById("inboxMask").classList.remove("open");
+      document.body.classList.add("full-inbox");
+      document.body.style.overflow = "";
+      history.replaceState(null, "", `${location.pathname}?view=full${location.hash}`);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    function openDetail(id) {
+      const item = messages.find(message => message.id === id);
+      if (!item) return;
+      item.read = true;
+      document.getElementById("drawerMeta").textContent = `${item.group} · ${item.topic} · ${item.time}`;
+      document.getElementById("drawerTitle").textContent = item.title;
+      document.getElementById("drawerSummary").textContent = item.summary;
+      document.getElementById("drawerBody").textContent = item.body;
+      const risk = document.getElementById("drawerRisk");
+      risk.classList.toggle("show", item.risk !== "普通");
+      risk.textContent = item.risk === "紧急" ? "紧急风险提示：请立即核对账户状态并处理相关风险。" : "重要通知：请及时核对相关信息。";
+      const action = document.getElementById("drawerAction");
+      action.textContent = item.action;
+      action.onclick = () => showToast(`演示：${item.action}`);
+      document.getElementById("inboxMask").classList.remove("open");
+      document.body.classList.remove("full-inbox");
+      document.body.classList.add("full-detail");
+      document.getElementById("drawerMask").classList.add("open");
+      document.body.style.overflow = "";
+      history.replaceState(null, "", `${location.pathname}?view=detail&message=${encodeURIComponent(id)}${location.hash}`);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      render();
+    }
+
+    function closeDetail(event) {
+      if (event.target === event.currentTarget) forceCloseDetail();
+    }
+
+    function forceCloseDetail() {
+      document.getElementById("drawerMask").classList.remove("open");
+      if (document.body.classList.contains("full-detail")) {
+        document.body.classList.remove("full-detail");
+        document.body.classList.add("full-inbox");
+        history.replaceState(null, "", `${location.pathname}?view=full${location.hash}`);
+        document.body.style.overflow = "";
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        return;
+      }
+      document.body.style.overflow = document.getElementById("inboxMask").classList.contains("open") ? "hidden" : "";
+    }
+
+    function showToast(text) {
+      const toast = document.getElementById("toast");
+      toast.textContent = text;
+      toast.classList.add("show");
+      clearTimeout(showToast.timer);
+      showToast.timer = setTimeout(() => toast.classList.remove("show"), 1800);
+    }
+
+    function render() {
+      renderTabs();
+      renderTopics();
+      renderMessages();
+    }
+
+    render();
+    const previewParams = new URLSearchParams(location.search);
+    if (previewParams.get("view") === "full") document.body.classList.add("full-inbox");
+    const previewGroup = previewParams.get("group");
+    if (previewGroup && groupConfig.some(item => item.name === previewGroup)) selectGroup(previewGroup);
+    const previewMessage = previewParams.get("message");
+    if (previewMessage) openDetail(previewMessage);
+  </script>
+</body>
+</html>

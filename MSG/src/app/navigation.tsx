@@ -112,13 +112,6 @@ export const navigationGroups: NavigationGroup[] = [
         icon: <IconExperiment />,
         permissionKey: 'event.catalog',
       }),
-      groupedItem('event-automation', '事件通知', {
-        key: '/triggers',
-        path: '/triggers',
-        label: '触发记录',
-        icon: <IconArchive />,
-        permissionKey: 'event.triggers',
-      }),
     ],
   },
   {
@@ -138,13 +131,6 @@ export const navigationGroups: NavigationGroup[] = [
         label: '审核中心',
         icon: <IconCheckCircle />,
         permissionKey: 'operations.approvals',
-      }),
-      groupedItem('operations-governance', '运营与治理', {
-        key: '/deliveries',
-        path: '/deliveries',
-        label: '发送记录',
-        icon: <IconArchive />,
-        permissionKey: 'operations.deliveries',
       }),
     ],
   },

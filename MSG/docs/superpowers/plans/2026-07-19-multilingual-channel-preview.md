@@ -220,3 +220,4 @@ Expected: all tests PASS and build exits with code 0.
 git add src/pages/multilingual/MultilingualProgressDrawer.tsx src/pages/multilingual/MultilingualMessagePreview.tsx src/pages/multilingual/MultilingualProgress.test.tsx src/styles.css
 git commit -m "feat: preview every translated language"
 ```
+

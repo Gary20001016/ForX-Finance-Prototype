@@ -89,6 +89,11 @@ export interface EventNotificationRule {
   eventVersion: string;
   conditionExpression: string;
   subjectMapping: string;
+  category: MessageCategoryCode;
+  topic: MessageTopicCode;
+  nature: string;
+  risk: RiskLevel;
+  riskOverride?: RiskLevel;
   status: EventRuleStatus;
   currentVersionId?: string;
   replacementRuleIds?: string[];
@@ -212,7 +217,8 @@ export interface MessageTask {
   id: string;
   name: string;
   type: string;
-  category: string;
+  category: MessageCategoryCode;
+  topic: MessageTopicCode;
   nature: string;
   risk: RiskLevel;
   template: string;
@@ -255,8 +261,10 @@ export type ManualTemplateStatus = "草稿" | "审核中" | "驳回" | "已发�
 export interface MessageTemplate {
   id: string;
   code: string;
+  eventId?: string;
   name: string;
-  category: string;
+  category: MessageCategoryCode;
+  topic: MessageTopicCode;
   nature: string;
   risk: RiskLevel;
   channels: Channel[];
@@ -406,6 +414,9 @@ export interface ApprovalItem {
   version: string;
   risk: RiskLevel;
   nature: string;
+  category?: MessageCategoryCode;
+  topic?: MessageTopicCode;
+  sourceType?: "人工消息" | "系统事件";
   audience: number;
   cost: string;
   schedule: string;
@@ -450,8 +461,11 @@ export interface DeliveryRecord {
   retryCount: number;
   cost: string;
   eventCode?: string;
-  category?: string;
-  risk?: string;
+  category?: MessageCategoryCode;
+  topic?: MessageTopicCode;
+  source?: "人工消息" | "系统事件";
+  risk?: RiskLevel;
+  locale?: string;
   devicePlatform?: "iOS" | "Android" | "Web";
   providerMessageId?: string;
   clickedAt?: string;
@@ -517,6 +531,9 @@ export interface SystemEventDefinition {
   variables: string[];
   lastTestAt?: string;
   description?: string;
+  defaultCategory?: MessageCategoryCode;
+  defaultTopic?: MessageTopicCode;
+  defaultRisk?: RiskLevel;
 }
 
 export interface EventTaskValidationResult {
@@ -559,24 +576,50 @@ export interface CompliancePolicy {
 }
 
 export type MessageCategoryCode =
-  | "system_notice"
-  | "trade_notice"
-  | "asset_notice"
-  | "security_notice"
-  | "reward_notice"
-  | "campaign_notice"
-  | "risk_notice";
-export type MessageRisk = "普通" | "重要" | "紧急";
+  | "announcement"
+  | "trade"
+  | "asset"
+  | "security_risk"
+  | "campaign_reward";
+export type MessageTopicCode =
+  | "maintenance"
+  | "listing"
+  | "delisting"
+  | "rule_update"
+  | "order_update"
+  | "order_filled"
+  | "contract_notice"
+  | "deposit"
+  | "withdrawal"
+  | "transfer"
+  | "balance_change"
+  | "abnormal_login"
+  | "account_security"
+  | "liquidation_warning"
+  | "campaign"
+  | "trial_fund"
+  | "commission"
+  | "campaign_reward";
 export type MessageNature = "事务" | "服务" | "营销";
+
+export interface MessageTopic {
+  code: MessageTopicCode;
+  name: string;
+  defaultRisk: RiskLevel;
+  defaultNature: MessageNature;
+  order: number;
+  enabled: boolean;
+}
 
 export interface MessageCategory {
   code: MessageCategoryCode;
   name: string;
   color: string;
-  defaultRisk: MessageRisk;
-  defaultNature: MessageNature;
+  defaultRisk: RiskLevel;
   defaultRetentionDays: number;
+  order: number;
   enabled: boolean;
+  topics: MessageTopic[];
 }
 
 export interface UserMessage {
@@ -585,10 +628,11 @@ export interface UserMessage {
   summary: string;
   body: string;
   category: MessageCategoryCode;
+  topic: MessageTopicCode;
   createdAt: string;
   read: boolean;
-  risk: MessageRisk;
-  source: "系统事件" | "人工发送";
+  risk: RiskLevel;
+  source: "系统事件" | "人工消息";
   actionText?: string;
   targetUrl?: string;
   expiresAt?: string;
