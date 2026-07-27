@@ -29,8 +29,8 @@ import {
 import TranslationReviewDrawer from "../approvals/TranslationReviewDrawer";
 import { deriveMultilingualProgress } from "../multilingual/multilingualProgress";
 import {
-  APPROVED_MANUAL_TEMPLATE_LOCK_MESSAGE,
-  isApprovedManualTemplateLocked,
+  isPublishedTemplateLocked,
+  PUBLISHED_TEMPLATE_LOCK_MESSAGE,
 } from "../../domain/templatePolicy";
 
 const statusColor: Record<TranslationItemStatus, string> = {
@@ -110,7 +110,7 @@ export default function TranslationWorkflowPanel({
   const navigate = useNavigate();
   const [targets, setTargets] = useState<string[]>(["en-US"]);
   const [ordinaryReviewId, setOrdinaryReviewId] = useState<string>();
-  const sourceEditingLocked = isApprovedManualTemplateLocked(template);
+  const sourceEditingLocked = isPublishedTemplateLocked(template);
   const singleLanguageReady =
     template.translationReadiness === "已通过" &&
     template.locales.length === 1 &&
@@ -155,7 +155,7 @@ export default function TranslationWorkflowPanel({
             type="warning"
             showIcon
             title="模板已锁定"
-            content={`${APPROVED_MANUAL_TEMPLATE_LOCK_MESSAGE}，当前模板没有可展示的翻译批次。`}
+            content={`${PUBLISHED_TEMPLATE_LOCK_MESSAGE}，当前模板没有可展示的翻译批次。`}
           />
         ) : (
           <>
@@ -336,7 +336,7 @@ export default function TranslationWorkflowPanel({
         {!temporaryTask && (
           <Space>
             {sourceEditingLocked ? (
-              <Tooltip content={APPROVED_MANUAL_TEMPLATE_LOCK_MESSAGE}>
+              <Tooltip content={PUBLISHED_TEMPLATE_LOCK_MESSAGE}>
                 <span><Button disabled>编辑源文案</Button></span>
               </Tooltip>
             ) : (

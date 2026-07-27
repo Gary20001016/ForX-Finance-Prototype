@@ -93,6 +93,7 @@ export interface EventNotificationRule {
   topic: MessageTopicCode;
   nature: string;
   risk: RiskLevel;
+  riskOverride?: RiskLevel;
   status: EventRuleStatus;
   currentVersionId?: string;
   replacementRuleIds?: string[];
@@ -260,6 +261,7 @@ export type ManualTemplateStatus = "草稿" | "审核中" | "驳回" | "已发�
 export interface MessageTemplate {
   id: string;
   code: string;
+  eventId?: string;
   name: string;
   category: MessageCategoryCode;
   topic: MessageTopicCode;

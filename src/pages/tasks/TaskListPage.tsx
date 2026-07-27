@@ -428,14 +428,11 @@ export default function TaskListPage() {
                 },
                 {
                   label: "发送结果",
-                  value:
-                    selected.triggerType === "event" ? (
-                      "查看发送记录"
-                    ) : (
-                      <StatusTag
-                        status={selected.deliveryResult || "未开始"}
-                      />
-                    ),
+                  value: (
+                    <StatusTag
+                      status={selected.deliveryResult || "未开始"}
+                    />
+                  ),
                 },
                 {
                   label: "触发方式",

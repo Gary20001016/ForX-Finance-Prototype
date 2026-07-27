@@ -390,7 +390,7 @@ export default function SettingsPage() {
                   "18:12 Gary Ma 新增 Deep Link 白名单 · LINK-004",
                   "18:03 赵辰使无效 Push Token 进入抑制名单",
                   "17:58 林夏提交夏季交易赛任务 · MSG-260712-002",
-                  "16:32 Gary Ma 导出脱敏发送记录 · EXP-2201",
+                  "16:32 Gary Ma 导出脱敏后台日志 · EXP-2201",
                 ].map((item) => <Timeline.Item key={item}>{item}</Timeline.Item>)}
               </Timeline>
             </Card>

@@ -1,0 +1,885 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>ForX Finance · App 消息中心</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #090b10;
+      --surface: #12151c;
+      --surface-2: #191d26;
+      --line: rgba(255,255,255,.08);
+      --text: #f4f6fb;
+      --muted: #9299a9;
+      --brand: #4c7dff;
+      --brand-soft: rgba(76,125,255,.16);
+      --red: #ff5b68;
+      --orange: #ffad4d;
+      --green: #37d59b;
+      --radius: 18px;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; background: #050608; color: var(--text); font-family: Inter, "PingFang SC", "Microsoft YaHei", system-ui, sans-serif; }
+    button { color: inherit; font: inherit; }
+    button:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+    .phone {
+      width: min(100%, 430px);
+      min-height: 100vh;
+      margin: 0 auto;
+      background:
+        radial-gradient(circle at 90% 0%, rgba(58,103,237,.18), transparent 28%),
+        var(--bg);
+      position: relative;
+      overflow: hidden;
+    }
+    .status {
+      height: 32px;
+      padding: 10px 20px 0;
+      display: flex;
+      justify-content: space-between;
+      color: #dce1ee;
+      font-size: 12px;
+      font-weight: 650;
+    }
+    .header {
+      padding: 12px 18px 16px;
+      display: grid;
+      grid-template-columns: 42px 1fr 42px;
+      align-items: center;
+    }
+    .header h1 { margin: 0; text-align: center; font-size: 20px; letter-spacing: .02em; }
+    .icon-btn {
+      width: 38px; height: 38px; border: 0; border-radius: 12px;
+      background: rgba(255,255,255,.06); display: grid; place-items: center;
+      cursor: pointer; font-size: 18px;
+    }
+    .intro {
+      padding: 0 18px 14px;
+      display: flex; align-items: flex-end; justify-content: space-between; gap: 12px;
+    }
+    .intro strong { display: block; font-size: 25px; letter-spacing: -.03em; }
+    .intro span { display: block; margin-top: 5px; color: var(--muted); font-size: 13px; }
+    .read-all {
+      border: 0; background: transparent; color: #83a4ff; padding: 7px 0;
+      cursor: pointer; white-space: nowrap; font-size: 13px;
+    }
+    .read-all:disabled { color: #555c6b; cursor: default; }
+    .primary-tabs {
+      position: sticky; top: 0; z-index: 10;
+      display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none;
+      padding: 5px 18px 12px;
+      background: linear-gradient(180deg, rgba(9,11,16,.98), rgba(9,11,16,.92));
+      backdrop-filter: blur(18px);
+    }
+    .primary-tabs::-webkit-scrollbar { display: none; }
+    .primary-tab {
+      flex: 0 0 auto; border: 1px solid transparent; background: transparent;
+      color: #8f96a6; border-radius: 11px; padding: 9px 13px;
+      cursor: pointer; font-size: 14px; white-space: nowrap;
+    }
+    .primary-tab.active { color: #fff; background: var(--surface-2); border-color: var(--line); box-shadow: inset 0 -2px 0 var(--brand); }
+    .toolbar {
+      padding: 0 18px 12px;
+      display: flex; justify-content: space-between; align-items: center; gap: 12px;
+    }
+    .topics { display: flex; gap: 7px; overflow-x: auto; scrollbar-width: none; }
+    .topics::-webkit-scrollbar { display: none; }
+    .topic {
+      flex: 0 0 auto; border: 0; border-radius: 999px; padding: 7px 11px;
+      color: #878e9f; background: rgba(255,255,255,.045); cursor: pointer; font-size: 12px;
+    }
+    .topic.active { color: #bcd0ff; background: var(--brand-soft); }
+    .unread-switch {
+      flex: 0 0 auto; display: flex; align-items: center; gap: 7px; border: 0;
+      background: transparent; color: var(--muted); cursor: pointer; font-size: 12px;
+    }
+    .switch-dot { width: 28px; height: 16px; border-radius: 999px; background: #343946; padding: 2px; transition: .2s; }
+    .switch-dot::after { content: ""; display: block; width: 12px; height: 12px; border-radius: 50%; background: #9299a9; transition: .2s; }
+    .unread-switch.on { color: #bed0ff; }
+    .unread-switch.on .switch-dot { background: var(--brand); }
+    .unread-switch.on .switch-dot::after { transform: translateX(12px); background: #fff; }
+    .risk-callout {
+      margin: 0 18px 12px; padding: 13px 14px; border: 1px solid rgba(255,91,104,.28);
+      background: linear-gradient(135deg, rgba(255,91,104,.16), rgba(255,91,104,.05));
+      border-radius: 14px; display: none; align-items: center; gap: 11px;
+      cursor: pointer;
+    }
+    .risk-callout.show { display: flex; }
+    .risk-callout .shield { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 11px; color: #fff; background: rgba(255,91,104,.22); }
+    .risk-callout strong { display: block; font-size: 13px; }
+    .risk-callout span { display: block; color: #d49ca3; font-size: 11px; margin-top: 3px; }
+    .list { padding: 0 12px 108px; }
+    .message {
+      width: 100%; border: 1px solid var(--line); border-radius: var(--radius);
+      background: linear-gradient(145deg, rgba(28,32,42,.96), rgba(18,21,28,.96));
+      padding: 15px; margin-bottom: 9px; display: grid;
+      grid-template-columns: minmax(0, 1fr) auto; gap: 14px; text-align: left;
+      cursor: pointer; transition: transform .15s, border-color .15s;
+    }
+    .message:active { transform: scale(.988); }
+    .message.unread { border-color: rgba(93,132,255,.23); }
+    .message-main { min-width: 0; }
+    .message-top { display: flex; align-items: center; gap: 7px; margin-bottom: 6px; }
+    .group-label { color: #8f97a7; font-size: 11px; }
+    .risk-tag { border-radius: 5px; padding: 2px 5px; font-size: 9px; font-weight: 750; }
+    .risk-tag.重要 { color: #ffc374; background: rgba(255,173,77,.13); }
+    .risk-tag.紧急 { color: #ff8c96; background: rgba(255,91,104,.14); }
+    .message h2 { margin: 0; font-size: 15px; line-height: 1.42; letter-spacing: -.01em; font-weight: 560; }
+    .message.unread h2 { font-weight: 720; }
+    .message p { margin: 6px 0 0; color: #858c9c; font-size: 12px; line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .message-side { display: flex; flex-direction: column; align-items: flex-end; justify-content: space-between; gap: 12px; }
+    .message time { color: #666e7e; font-size: 10px; white-space: nowrap; }
+    .unread-dot { width: 7px; height: 7px; border-radius: 50%; background: #648eff; box-shadow: 0 0 0 4px rgba(100,142,255,.10); }
+    .empty { padding: 60px 20px; text-align: center; color: #687080; font-size: 13px; }
+    .bottom-nav {
+      position: fixed; z-index: 15; left: 50%; bottom: 0; transform: translateX(-50%);
+      width: min(100%, 430px); padding: 10px 24px max(15px, env(safe-area-inset-bottom));
+      display: flex; justify-content: space-around; background: rgba(12,14,20,.92);
+      backdrop-filter: blur(22px); border-top: 1px solid var(--line);
+    }
+    .nav-item { border: 0; background: transparent; color: #606879; font-size: 10px; display: grid; justify-items: center; gap: 4px; cursor: pointer; }
+    .nav-item b { font-size: 18px; font-weight: 500; }
+    .nav-item.active { color: #88a7ff; }
+    .toast {
+      position: fixed; left: 50%; top: 54px; z-index: 50; transform: translate(-50%, -20px);
+      opacity: 0; pointer-events: none; transition: .2s; padding: 9px 13px;
+      border-radius: 10px; background: #292e3a; color: #edf0f7; font-size: 12px;
+      box-shadow: 0 10px 35px rgba(0,0,0,.35);
+    }
+    .toast.show { opacity: 1; transform: translate(-50%, 0); }
+    @media (min-width: 600px) {
+      body { padding: 24px 0; background: radial-gradient(circle at top, #182037, #050608 46%); }
+      .phone { min-height: calc(100vh - 48px); border-radius: 30px; border: 1px solid rgba(255,255,255,.1); box-shadow: 0 24px 80px rgba(0,0,0,.5); }
+      .bottom-nav { bottom: 24px; border-radius: 0 0 30px 30px; }
+    }
+
+    /* 参考交易所资产页重构：纯黑、扁平、荧光绿强调。 */
+    :root {
+      --bg: #030705;
+      --surface: #030705;
+      --surface-2: #0a0f0c;
+      --line: rgba(184, 211, 193, .09);
+      --text: #f1f5f2;
+      --muted: #68716b;
+      --brand: #69f0a0;
+      --brand-soft: rgba(105, 240, 160, .10);
+      --red: #ff626f;
+      --orange: #e6a85e;
+      --green: #69f0a0;
+      --radius: 0;
+    }
+    html, body {
+      background: #030705;
+      color: var(--text);
+    }
+    .phone {
+      background: #030705;
+      overflow: hidden;
+    }
+    .status {
+      height: 42px;
+      padding: 14px 28px 0;
+      color: #f4f7f5;
+      font-size: 13px;
+      font-weight: 760;
+    }
+    .header {
+      min-height: 76px;
+      padding: 10px 27px 15px;
+      grid-template-columns: 30px minmax(0, 1fr) auto;
+      gap: 12px;
+      border-bottom: 1px solid var(--line);
+    }
+    .header-copy { min-width: 0; }
+    .header h1 {
+      margin: 0;
+      text-align: left;
+      font-size: 19px;
+      letter-spacing: -.03em;
+      font-weight: 720;
+    }
+    .header-summary {
+      display: block;
+      margin-top: 3px;
+      color: #58615b;
+      font-size: 10px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .icon-btn {
+      width: 30px;
+      height: 38px;
+      border-radius: 0;
+      background: transparent;
+      color: #a8b1aa;
+      font-size: 29px;
+      justify-content: start;
+    }
+    .read-all {
+      padding: 7px 0 7px 8px;
+      color: var(--brand);
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .read-all:disabled { color: #3c443f; }
+    .primary-tabs {
+      position: sticky;
+      top: 0;
+      padding: 14px 27px 0;
+      gap: 30px;
+      background: rgba(3, 7, 5, .96);
+      border-bottom: 1px solid var(--line);
+      backdrop-filter: blur(16px);
+    }
+    .primary-tab {
+      position: relative;
+      padding: 8px 0 16px;
+      border: 0;
+      border-radius: 0;
+      color: #535c56;
+      font-size: 14px;
+      font-weight: 650;
+    }
+    .primary-tab.active {
+      color: #f3f6f4;
+      border: 0;
+      background: transparent;
+      box-shadow: none;
+    }
+    .primary-tab.active::after {
+      content: "";
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: -1px;
+      height: 2px;
+      border-radius: 2px;
+      background: var(--brand);
+    }
+    .toolbar {
+      min-height: 54px;
+      padding: 9px 27px;
+      gap: 18px;
+      border-bottom: 1px solid var(--line);
+    }
+    .topics { gap: 22px; }
+    .topic {
+      position: relative;
+      padding: 8px 0;
+      border-radius: 0;
+      background: transparent;
+      color: #555e58;
+      font-size: 12px;
+    }
+    .topic.active {
+      color: var(--brand);
+      background: transparent;
+    }
+    .topic.active::after {
+      content: "";
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 2px;
+      height: 1px;
+      background: var(--brand);
+    }
+    .unread-switch {
+      gap: 8px;
+      color: #59625c;
+      font-size: 11px;
+    }
+    .switch-dot {
+      width: 28px;
+      height: 15px;
+      background: #1b231e;
+      padding: 2px;
+    }
+    .switch-dot::after {
+      width: 11px;
+      height: 11px;
+      background: #58615b;
+    }
+    .unread-switch.on { color: #96a49b; }
+    .unread-switch.on .switch-dot { background: rgba(105,240,160,.35); }
+    .unread-switch.on .switch-dot::after {
+      transform: translateX(13px);
+      background: var(--brand);
+    }
+    .risk-callout {
+      margin: 16px 27px 2px;
+      padding: 13px 15px;
+      border: 0;
+      border-left: 2px solid var(--red);
+      border-radius: 0;
+      background: rgba(255, 98, 111, .035);
+    }
+    .risk-callout .shield {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      color: var(--red);
+      background: transparent;
+      border: 1px solid rgba(255,98,111,.34);
+      font-size: 12px;
+    }
+    .risk-callout strong { color: #ecf0ed; font-size: 12px; }
+    .risk-callout span { color: #875960; }
+    .list { padding: 8px 27px 102px; }
+    .message {
+      min-height: 103px;
+      margin: 0;
+      padding: 17px 0;
+      grid-template-columns: 36px minmax(0, 1fr) auto;
+      gap: 13px;
+      border: 0;
+      border-bottom: 1px solid var(--line);
+      border-radius: 0;
+      background: transparent;
+      transition: opacity .15s;
+    }
+    .message:active {
+      transform: none;
+      opacity: .62;
+    }
+    .message.unread { border-color: var(--line); }
+    .message-top {
+      gap: 7px;
+      margin-bottom: 6px;
+    }
+    .group-label {
+      color: #5b655f;
+      font-size: 9px;
+    }
+    .risk-tag {
+      padding: 0;
+      border-radius: 0;
+      background: transparent !important;
+      font-size: 9px;
+    }
+    .risk-tag.重要 { color: var(--orange); }
+    .risk-tag.紧急 { color: var(--red); }
+    .message h2 {
+      color: #e9edea;
+      font-size: 13px;
+      line-height: 1.42;
+      font-weight: 520;
+    }
+    .message.unread h2 {
+      color: #f7faf8;
+      font-weight: 700;
+    }
+    .message p {
+      margin-top: 6px;
+      color: #626b65;
+      font-size: 11px;
+      line-height: 1.55;
+    }
+    .message-side {
+      padding-top: 1px;
+      gap: 15px;
+    }
+    .message time {
+      color: #49514c;
+      font-size: 9px;
+    }
+    .unread-dot {
+      width: 6px;
+      height: 6px;
+      background: var(--brand);
+      box-shadow: 0 0 0 4px rgba(105,240,160,.06), 0 0 9px rgba(105,240,160,.38);
+    }
+    .empty { color: #515a54; }
+    .bottom-nav {
+      padding: 11px 20px max(16px, env(safe-area-inset-bottom));
+      background: rgba(3,7,5,.96);
+      border-top: 1px solid var(--line);
+      backdrop-filter: blur(18px);
+    }
+    .nav-item {
+      color: #3f4842;
+      font-size: 9px;
+      gap: 5px;
+    }
+    .nav-item b {
+      font-size: 18px;
+      font-weight: 400;
+    }
+    .nav-item.active { color: var(--brand); }
+    .toast {
+      border: 1px solid #263229;
+      border-radius: 4px;
+      background: #0d1510;
+      color: #e4eae6;
+      box-shadow: none;
+    }
+    @media (min-width: 600px) {
+      body { background: #030705; }
+      .phone {
+        min-height: calc(100vh - 48px);
+        border: 1px solid #172019;
+        border-radius: 8px;
+        box-shadow: 0 24px 80px rgba(0,0,0,.55);
+      }
+      .bottom-nav {
+        bottom: 24px;
+        border-radius: 0 0 8px 8px;
+      }
+    }
+
+    /* 标准手机画布：桌面 390 × 844，移动端占满真实视口。 */
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+    }
+    body {
+      display: grid;
+      place-items: center;
+      padding: 16px 0;
+      background: #030705;
+    }
+    .phone {
+      width: 390px;
+      max-width: none;
+      height: min(844px, calc(100dvh - 32px));
+      min-height: 0;
+      margin: 0;
+      position: relative;
+      overflow: hidden;
+      border: 1px solid #172019;
+      border-radius: 8px;
+      box-shadow: 0 24px 80px rgba(0,0,0,.55);
+    }
+    .phone-scroll {
+      height: 100%;
+      overflow-x: hidden;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      scrollbar-width: none;
+      padding-bottom: max(72px, env(safe-area-inset-bottom));
+    }
+    .phone-scroll::-webkit-scrollbar { display: none; }
+    .top-shell {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      background: rgba(3,7,5,.97);
+      backdrop-filter: blur(16px);
+    }
+    .primary-tabs { position: static; }
+    .bottom-nav {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      transform: none;
+      width: 100%;
+      border-radius: 0 0 8px 8px;
+    }
+    .toast {
+      position: absolute;
+      top: max(54px, env(safe-area-inset-top));
+    }
+    .message {
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 14px;
+    }
+    .detail-page {
+      position: absolute;
+      inset: 0;
+      z-index: 40;
+      display: flex;
+      flex-direction: column;
+      background: #030705;
+      transform: translateX(100%);
+      transition: transform .24s ease;
+      pointer-events: none;
+    }
+    .detail-page.open {
+      transform: translateX(0);
+      pointer-events: auto;
+    }
+    .detail-header {
+      min-height: 58px;
+      padding: 8px 18px;
+      display: grid;
+      grid-template-columns: 40px minmax(0, 1fr) 40px;
+      align-items: center;
+      border-bottom: 1px solid var(--line);
+      background: rgba(3,7,5,.97);
+    }
+    .detail-header h1 {
+      margin: 0;
+      text-align: center;
+      color: #f3f6f4;
+      font-size: 15px;
+      font-weight: 680;
+    }
+    .detail-back {
+      width: 40px;
+      height: 40px;
+      border: 0;
+      background: transparent;
+      color: #e8ece9;
+      font-size: 30px;
+      line-height: 1;
+      cursor: pointer;
+    }
+    .detail-scroll {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      scrollbar-width: none;
+      padding: 24px 27px max(34px, env(safe-area-inset-bottom));
+    }
+    .detail-scroll::-webkit-scrollbar { display: none; }
+    .detail-meta {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 7px;
+      color: #68716b;
+      font-size: 10px;
+    }
+    .detail-title {
+      margin: 17px 0 9px;
+      color: #f4f7f5;
+      font-size: 21px;
+      line-height: 1.38;
+      letter-spacing: -.025em;
+    }
+    .detail-summary {
+      margin: 0 0 22px;
+      color: #8c958f;
+      font-size: 13px;
+      line-height: 1.65;
+    }
+    .detail-risk {
+      display: none;
+      margin: 0 0 22px;
+      padding: 13px 14px;
+      border-left: 2px solid var(--red);
+      color: #d99198;
+      background: rgba(255,98,111,.04);
+      font-size: 11px;
+      line-height: 1.6;
+    }
+    .detail-risk.show { display: block; }
+    .detail-body {
+      color: #d0d6d2;
+      font-size: 13px;
+      line-height: 1.9;
+      white-space: pre-line;
+    }
+    .detail-action {
+      display: none;
+      width: 100%;
+      margin-top: 32px;
+      padding: 13px;
+      border: 0;
+      border-radius: 2px;
+      background: var(--brand);
+      color: #031108;
+      font-weight: 800;
+      cursor: pointer;
+    }
+    .detail-action.show { display: block; }
+    @media (max-width: 599px) {
+      body {
+        display: block;
+        padding: 0;
+      }
+      .phone {
+        width: 100%;
+        height: 100dvh;
+        border: 0;
+        border-radius: 0;
+        box-shadow: none;
+      }
+      .status {
+        height: calc(42px + env(safe-area-inset-top));
+        padding-top: max(14px, env(safe-area-inset-top));
+      }
+      .bottom-nav { border-radius: 0; }
+    }
+  </style>
+  <script src="https://mcp.figma.com/mcp/html-to-design/capture.js" async></script>
+</head>
+<body>
+  <main class="phone">
+    <div class="phone-scroll">
+      <div class="top-shell">
+        <div class="status"><span>9:41</span><span>5G&nbsp;&nbsp;●●●&nbsp;&nbsp;86%</span></div>
+        <header class="header">
+          <button class="icon-btn" aria-label="返回">‹</button>
+          <div class="header-copy">
+            <h1>消息中心</h1>
+            <span class="header-summary" id="unreadSummary">加载中</span>
+          </div>
+          <button class="read-all" id="readAllButton" onclick="markAllRead()">全部已读</button>
+        </header>
+
+        <nav class="primary-tabs" id="primaryTabs" aria-label="消息分类"></nav>
+      </div>
+
+      <section class="toolbar">
+        <div class="topics" id="topics" aria-label="消息主题"></div>
+        <button class="unread-switch" id="unreadSwitch" onclick="toggleUnread()">
+          <span class="switch-dot"></span><span>只看未读</span>
+        </button>
+      </section>
+
+      <button class="risk-callout" id="riskCallout">
+        <span class="shield">!</span>
+        <span><strong id="riskTitle"></strong><span id="riskSummary"></span></span>
+      </button>
+
+      <section class="list" id="messageList" aria-live="polite"></section>
+    </div>
+
+    <nav class="bottom-nav" aria-label="主导航">
+      <button class="nav-item"><b>⌂</b><span>首页</span></button>
+      <button class="nav-item"><b>↗</b><span>行情</span></button>
+      <button class="nav-item"><b>⇄</b><span>交易</span></button>
+      <button class="nav-item"><b>◇</b><span>资产</span></button>
+      <button class="nav-item active"><b>●</b><span>我的</span></button>
+    </nav>
+
+    <section class="detail-page" id="detailPage" aria-hidden="true">
+      <div class="status detail-status"><span>9:41</span><span>5G&nbsp;&nbsp;●●●&nbsp;&nbsp;86%</span></div>
+      <header class="detail-header">
+        <button class="detail-back" aria-label="返回消息列表" onclick="closeDetail()">‹</button>
+        <h1>消息详情</h1>
+        <span></span>
+      </header>
+      <div class="detail-scroll" id="detailScroll">
+        <div class="detail-meta" id="detailMeta"></div>
+        <h2 class="detail-title" id="detailTitle"></h2>
+        <p class="detail-summary" id="detailSummary"></p>
+        <div class="detail-risk" id="detailRisk"></div>
+        <div class="detail-body" id="detailBody"></div>
+        <button class="detail-action" id="detailAction"></button>
+      </div>
+    </section>
+    <div class="toast" id="toast"></div>
+  </main>
+
+  <script>
+    // 后台七类只负责治理；前台统一映射为五个用户认知分组。
+    const categoryToGroup = {
+      system_notice: "公告",
+      trade_notice: "交易",
+      asset_notice: "资产",
+      security_notice: "安全与风控",
+      risk_notice: "安全与风控",
+      campaign_notice: "活动与奖励",
+      reward_notice: "活动与奖励"
+    };
+
+    const groupConfig = [
+      { name: "全部", icon: "全", topics: ["全部"] },
+      { name: "公告", icon: "告", topics: ["全部", "上新", "下架", "维护", "规则与更新"] },
+      { name: "交易", icon: "交", topics: ["全部", "订单", "成交", "合约"] },
+      { name: "资产", icon: "资", topics: ["全部", "充值", "提现", "其他资产变动"] },
+      { name: "安全与风控", icon: "盾", topics: ["全部", "账户安全", "风险预警"] },
+      { name: "活动与奖励", icon: "奖", topics: ["全部", "活动", "奖励到账"] }
+    ];
+
+    const messages = [
+      {
+        id: "M-1001", category: "risk_notice", topic: "风险预警", risk: "紧急", read: false,
+        title: "BTC/USDT 强平风险预警",
+        summary: "您的合约账户保证金率已降至 18.6%，请及时处理仓位。",
+        body: "BTC/USDT 永续仓位当前保证金率为 18.6%，标记价格为 58,420.5 USDT。\n\n市场波动可能导致仓位被强制平仓，请及时追加保证金或降低仓位。",
+        time: "刚刚", action: "查看仓位", targetUrl: "forxfinance://futures/positions"
+      },
+      {
+        id: "M-1002", category: "asset_notice", topic: "充值", risk: "重要", read: false,
+        title: "充值到账 1,250 USDT",
+        summary: "您充值的 1,250 USDT 已到账，可以开始交易。",
+        body: "充值网络：TRON\n到账金额：1,250 USDT\n到账时间：2026-07-24 16:12 UTC+8",
+        time: "12分钟前", action: "查看资产", targetUrl: "forxfinance://assets"
+      },
+      {
+        id: "M-1003", category: "trade_notice", topic: "成交", risk: "普通", read: false,
+        title: "ETH/USDT 订单已全部成交",
+        summary: "买入 2.5 ETH，成交均价 3,248.20 USDT。",
+        body: "您的 ETH/USDT 限价买单已全部成交。\n\n成交数量：2.5 ETH\n成交均价：3,248.20 USDT",
+        time: "38分钟前", action: "查看订单", targetUrl: "forxfinance://orders"
+      },
+      {
+        id: "M-1004", category: "system_notice", topic: "上新", risk: "普通", read: false,
+        title: "ForX 将上线 RWA 永续合约专区",
+        summary: "CRM、GME、RIVN 等交易对将于 7 月 25 日开放交易。",
+        body: "ForX Finance 将上线 RWA 永续合约专区。相关交易对的开放时间、杠杆倍数及风险限制请以产品页面为准。",
+        time: "今天 14:30", action: "查看公告"
+      },
+      {
+        id: "M-1005", category: "security_notice", topic: "账户安全", risk: "重要", read: true,
+        title: "检测到新设备登录",
+        summary: "您的账户于上海通过 iPhone 设备完成登录。",
+        body: "登录时间：2026-07-24 11:26 UTC+8\n登录地区：上海\n设备：iPhone 16 Pro\n\n若非本人操作，请立即冻结账户并修改密码。",
+        time: "今天 11:26", action: "检查设备", targetUrl: "forxfinance://security/devices"
+      },
+      {
+        id: "M-1006", category: "campaign_notice", topic: "活动", risk: "普通", read: true,
+        title: "夏季交易赛已开启",
+        summary: "完成合约交易任务，瓜分 100,000 USDT 奖池。",
+        body: "活动时间：7 月 24 日至 8 月 7 日。完成报名后，活动期间的有效合约交易量将自动计入排名。",
+        time: "昨天", action: "参与活动", targetUrl: "forxfinance://campaign/summer-trading"
+      },
+      {
+        id: "M-1007", category: "reward_notice", topic: "奖励到账", risk: "普通", read: true,
+        title: "本周返佣 86.42 USDT 已到账",
+        summary: "代理返佣已发放至资金账户，可前往资产记录查看。",
+        body: "结算周期：2026-07-13 至 2026-07-19\n返佣金额：86.42 USDT\n到账账户：资金账户",
+        time: "7月23日", action: "查看记录", targetUrl: "forxfinance://assets/records"
+      },
+      {
+        id: "M-1008", category: "system_notice", topic: "下架", risk: "普通", read: true,
+        title: "TONUSDT 永续合约下架公告",
+        summary: "TONUSDT 永续合约将于 7 月 29 日 09:00 UTC 停止交易。",
+        body: "为保护用户权益，ForX Finance 将于 7 月 29 日 09:00 UTC 停止 TONUSDT 永续合约交易。请提前完成平仓。",
+        time: "7月22日", action: "查看公告"
+      }
+    ].map(item => ({ ...item, group: categoryToGroup[item.category] }));
+
+    let selectedGroup = "全部";
+    let selectedTopic = "全部";
+    let unreadOnly = false;
+
+    function getVisibleMessages() {
+      return messages
+        .filter(item => selectedGroup === "全部" || item.group === selectedGroup)
+        .filter(item => selectedTopic === "全部" || item.topic === selectedTopic)
+        .filter(item => !unreadOnly || !item.read)
+        .sort((a, b) => Number(b.risk === "紧急" && !b.read) - Number(a.risk === "紧急" && !a.read));
+    }
+
+    function renderTabs() {
+      document.getElementById("primaryTabs").innerHTML = groupConfig.map(item => {
+        const count = messages.filter(message => !message.read && (item.name === "全部" || message.group === item.name)).length;
+        return `<button class="primary-tab ${selectedGroup === item.name ? "active" : ""}" onclick="selectGroup('${item.name}')">${item.name}${count ? ` · ${count}` : ""}</button>`;
+      }).join("");
+    }
+
+    function renderTopics() {
+      const config = groupConfig.find(item => item.name === selectedGroup) || groupConfig[0];
+      document.getElementById("topics").innerHTML = config.topics.map(topic =>
+        `<button class="topic ${selectedTopic === topic ? "active" : ""}" onclick="selectTopic('${topic}')">${topic}</button>`
+      ).join("");
+    }
+
+    function renderMessages() {
+      const visible = getVisibleMessages();
+      const unreadCount = messages.filter(item => !item.read).length;
+      document.getElementById("unreadSummary").textContent = unreadCount ? `${unreadCount} 条未读 · 重要消息优先展示` : "所有消息均已阅读";
+      document.getElementById("readAllButton").disabled = unreadCount === 0;
+      document.getElementById("unreadSwitch").classList.toggle("on", unreadOnly);
+
+      const urgent = visible.find(item => item.risk === "紧急" && !item.read);
+      const callout = document.getElementById("riskCallout");
+      callout.classList.toggle("show", Boolean(urgent));
+      if (urgent) {
+        document.getElementById("riskTitle").textContent = urgent.title;
+        document.getElementById("riskSummary").textContent = "紧急风险消息，请立即处理";
+        callout.onclick = () => openDetail(urgent.id);
+      }
+
+      document.getElementById("messageList").innerHTML = visible.length ? `
+        ${visible.map(item => `
+          <button class="message ${item.read ? "" : "unread"}" data-group="${item.group}" onclick="openDetail('${item.id}')">
+            <span class="message-main">
+              <span class="message-top">
+                <span class="group-label">${selectedGroup === "全部" ? item.group + " · " : ""}${item.topic}</span>
+                ${item.risk !== "普通" ? `<span class="risk-tag ${item.risk}">${item.risk}</span>` : ""}
+              </span>
+              <h2>${item.title}</h2>
+              <p>${item.summary}</p>
+            </span>
+            <span class="message-side"><time>${item.time}</time>${item.read ? "" : '<i class="unread-dot"></i>'}</span>
+          </button>
+        `).join("")}
+      ` : `<div class="empty">当前筛选下没有消息</div>`;
+    }
+
+    function selectGroup(group) {
+      selectedGroup = group;
+      selectedTopic = "全部";
+      render();
+    }
+
+    function selectTopic(topic) {
+      selectedTopic = topic;
+      renderTopics();
+      renderMessages();
+    }
+
+    function toggleUnread() {
+      unreadOnly = !unreadOnly;
+      renderMessages();
+    }
+
+    function markAllRead() {
+      messages.forEach(item => item.read = true);
+      render();
+      showToast("已将全部消息标记为已读");
+    }
+
+    function openDetail(id) {
+      const item = messages.find(message => message.id === id);
+      if (!item) return;
+      item.read = true;
+      document.getElementById("detailMeta").innerHTML = `<span>${item.group}</span><span>·</span><span>${item.topic}</span><span>·</span><span>${item.time}</span>`;
+      document.getElementById("detailTitle").textContent = item.title;
+      document.getElementById("detailSummary").textContent = item.summary;
+      document.getElementById("detailBody").textContent = item.body;
+      const risk = document.getElementById("detailRisk");
+      risk.classList.toggle("show", item.risk !== "普通");
+      risk.textContent = item.risk === "紧急" ? "紧急风险提示：请立即核对账户状态并处理相关风险。" : "重要通知：请及时核对相关信息。";
+      const action = document.getElementById("detailAction");
+      const hasAction = Boolean(item.action && item.targetUrl);
+      action.classList.toggle("show", hasAction);
+      action.textContent = hasAction ? item.action : "";
+      action.onclick = hasAction ? () => showToast(`将跳转：${item.action}`) : null;
+      document.getElementById("detailScroll").scrollTop = 0;
+      document.getElementById("detailPage").classList.add("open");
+      document.getElementById("detailPage").setAttribute("aria-hidden", "false");
+      render();
+    }
+
+    function closeDetail() {
+      document.getElementById("detailPage").classList.remove("open");
+      document.getElementById("detailPage").setAttribute("aria-hidden", "true");
+      render();
+    }
+
+    function showToast(text) {
+      const toast = document.getElementById("toast");
+      toast.textContent = text;
+      toast.classList.add("show");
+      clearTimeout(showToast.timer);
+      showToast.timer = setTimeout(() => toast.classList.remove("show"), 1800);
+    }
+
+    function render() {
+      renderTabs();
+      renderTopics();
+      renderMessages();
+    }
+
+    render();
+    const previewParams = new URLSearchParams(location.search);
+    const previewGroup = previewParams.get("group");
+    if (previewGroup && groupConfig.some(item => item.name === previewGroup)) selectGroup(previewGroup);
+    const previewMessage = previewParams.get("message");
+    if (previewMessage) openDetail(previewMessage);
+  </script>
+</body>
+</html>

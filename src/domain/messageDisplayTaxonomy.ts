@@ -9,6 +9,22 @@ import type {
 
 export const MESSAGE_RISK_LEVELS: RiskLevel[] = ["低", "中", "高", "关键"];
 
+export const getRiskLevelsAtOrAbove = (risk: RiskLevel): RiskLevel[] => {
+  const index = MESSAGE_RISK_LEVELS.indexOf(risk);
+  return MESSAGE_RISK_LEVELS.slice(Math.max(index, 0));
+};
+
+export const getEffectiveRiskLevel = (
+  templateRisk: RiskLevel,
+  riskOverride?: RiskLevel,
+): RiskLevel => {
+  if (!riskOverride) return templateRisk;
+  return MESSAGE_RISK_LEVELS.indexOf(riskOverride) >
+    MESSAGE_RISK_LEVELS.indexOf(templateRisk)
+    ? riskOverride
+    : templateRisk;
+};
+
 const topic = (
   code: MessageTopicCode,
   name: string,

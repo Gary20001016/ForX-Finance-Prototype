@@ -43,7 +43,7 @@ import {
   MESSAGE_DISPLAY_CATEGORIES,
   MESSAGE_RISK_LEVELS,
 } from "../../domain/messageDisplayTaxonomy";
-import { isApprovedManualTemplateLocked } from "../../domain/templatePolicy";
+import { isPublishedTemplateLocked } from "../../domain/templatePolicy";
 import { getEventTemplateVariables } from "../../domain/eventVariables";
 import TemplateReadOnlyDetails from "./TemplateReadOnlyDetails";
 import TemplateTestSendModal from "./TemplateTestSendModal";
@@ -61,7 +61,15 @@ const supportedLocales = [
   "de-DE",
 ];
 const defaultChannels: Channel[] = ["站内信", "Push"];
-const eventTemplateVariables = getEventTemplateVariables();
+const ownerTeamOptions = [
+  "消息运营",
+  "资产运营",
+  "交易运营",
+  "合约风控",
+  "增长运营",
+  "安全中心",
+  "资金平台",
+];
 const emptyContent: LocalizedMessageContent = {
   sourceLocale: "zh-CN",
   locales: ["zh-CN"],
@@ -104,10 +112,11 @@ export default function TemplateEditorDrawer({
   const [targetLocales, setTargetLocales] = useState<string[]>([]);
   const [selectedCategory, setSelectedCategory] =
     useState<MessageCategoryCode>("announcement");
+  const [selectedEventId, setSelectedEventId] = useState<string>();
   const [submitting, setSubmitting] = useState(false);
   const [testSendVisible, setTestSendVisible] = useState(false);
   const locked = Boolean(
-    readOnly || (template && isApprovedManualTemplateLocked(template)),
+    readOnly || (template && isPublishedTemplateLocked(template)),
   );
   useEffect(() => {
     const next = template?.content || emptyContent;
@@ -125,13 +134,19 @@ export default function TemplateEditorDrawer({
         ? [...template.channels]
         : [...defaultChannels],
     );
+    setSelectedEventId(template?.eventId);
     setSelectedCategory(nextCategory);
     form.setFieldsValue({
       name: template?.name,
       description: "",
-      category: nextCategory,
-      topic: nextTopic,
-      risk: template?.risk || "低",
+      eventId: template?.eventId,
+      category:
+        entryScope === "event" && !template ? undefined : nextCategory,
+      topic: entryScope === "event" && !template ? undefined : nextTopic,
+      risk:
+        entryScope === "event" && !template
+          ? undefined
+          : template?.risk || "低",
       owner: template?.owner || "消息运营",
       usageScope: template?.usageScope || entryScope,
     });
@@ -158,8 +173,31 @@ export default function TemplateEditorDrawer({
     setSourceLocale(locale);
     setTargetLocales((current) => current.filter((item) => item !== locale));
   };
+  const updateSelectedEvent = (eventId: string) => {
+    const event = store.events.find((item) => item.id === eventId);
+    if (!event) return;
+    const inferred = inferDisplayLocation(event.name);
+    const category = event.defaultCategory || inferred.category;
+    const topic = event.defaultTopic || inferred.topic;
+    setSelectedEventId(eventId);
+    setSelectedCategory(category);
+    form.setFieldsValue({
+      eventId,
+      category,
+      topic,
+      risk:
+        event.defaultRisk ||
+        getTopicDefaults(category, topic)?.risk ||
+        inferred.risk,
+    });
+  };
+  const selectedEvent = store.events.find(
+    (event) => event.id === selectedEventId,
+  );
   const availableTemplateVariables =
-    entryScope === "manual" ? store.templateVariables : eventTemplateVariables;
+    entryScope === "manual"
+      ? store.templateVariables
+      : getEventTemplateVariables(selectedEvent?.variables || []);
   const referencedVariableNames = Array.from(
     new Set([
       ...extractVariableNames(content.web.body),
@@ -215,6 +253,7 @@ export default function TemplateEditorDrawer({
       setSubmitting(true);
       const payload = {
         name: values.name,
+        eventId: entryScope === "event" ? values.eventId : undefined,
         category: values.category,
         topic: values.topic,
         nature: resolvedNature,
@@ -306,6 +345,7 @@ export default function TemplateEditorDrawer({
           <TemplateReadOnlyDetails
             template={template}
             showOwnerTeam={entryScope === "event"}
+            events={store.events}
           />
         )}
       </Drawer>
@@ -353,40 +393,54 @@ export default function TemplateEditorDrawer({
       />
       <Form form={form} layout="vertical" className="template-editor-form">
         <Grid.Row gutter={16}>
-          <Grid.Col span={entryScope === "event" ? 12 : 18}>
+          <Grid.Col span={entryScope === "event" ? 8 : 18}>
             <Form.Item
               label="模板名称"
               field="name"
               required
               rules={[{ required: true }]}
             >
-              <Input
-                placeholder="后台识别名称"
-                onChange={(name) => {
-                  if (entryScope !== "event" || template) return;
-                  const inferred = inferDisplayLocation(name);
-                  setSelectedCategory(inferred.category);
-                  form.setFieldsValue({
-                    category: inferred.category,
-                    topic: inferred.topic,
-                    risk: inferred.risk,
-                  });
-                }}
-              />
+              <Input placeholder="后台识别名称" />
             </Form.Item>
           </Grid.Col>
           {entryScope === "event" && (
-            <Grid.Col span={6}>
-              <Form.Item label="所有者团队" field="owner" required>
+            <Grid.Col span={8}>
+              <Form.Item
+                label="系统事件"
+                field="eventId"
+                required
+                rules={[{ required: true, message: "请选择系统事件" }]}
+              >
                 <Select
-                  options={["消息运营", "增长运营", "安全中心", "资金平台"].map(
-                    (value) => ({ label: value, value }),
-                  )}
+                  disabled={Boolean(template)}
+                  placeholder="从事件目录选择"
+                  onChange={updateSelectedEvent}
+                  options={store.events.map((event) => ({
+                    label: `${event.name} · ${event.id}`,
+                    value: event.id,
+                  }))}
                 />
               </Form.Item>
             </Grid.Col>
           )}
-          <Grid.Col span={6}>
+          {entryScope === "event" && (
+            <Grid.Col span={4}>
+              <Form.Item
+                label="所有者团队"
+                field="owner"
+                required
+                rules={[{ required: true, message: "请选择所有者团队" }]}
+              >
+                <Select
+                  options={ownerTeamOptions.map((value) => ({
+                    label: value,
+                    value,
+                  }))}
+                />
+              </Form.Item>
+            </Grid.Col>
+          )}
+          <Grid.Col span={entryScope === "event" ? 4 : 6}>
             <Form.Item label="适用场景" field="usageScope" required>
               <Select
                 options={
@@ -410,6 +464,7 @@ export default function TemplateEditorDrawer({
               rules={[{ required: true }]}
             >
               <Select
+                disabled={entryScope === "event"}
                 onChange={(category: MessageCategoryCode) => {
                   const firstTopic =
                     store.categories
@@ -439,6 +494,7 @@ export default function TemplateEditorDrawer({
               rules={[{ required: true }]}
             >
               <Select
+                disabled={entryScope === "event"}
                 options={(
                   store.categories.find(
                     (item) => item.code === selectedCategory,
@@ -461,6 +517,7 @@ export default function TemplateEditorDrawer({
               rules={[{ required: true }]}
             >
               <Select
+                disabled={entryScope === "event"}
                 options={MESSAGE_RISK_LEVELS.map((value) => ({
                   label: value,
                   value,

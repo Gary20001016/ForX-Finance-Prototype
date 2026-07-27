@@ -305,6 +305,7 @@ export const templates: MessageTemplate[] = [
   {
     id: "TPL-1001",
     code: "withdraw_success",
+    eventId: "withdrawal.succeeded",
     name: "提现成功通知",
     category: "asset",
     topic: "withdrawal",
@@ -318,6 +319,7 @@ export const templates: MessageTemplate[] = [
     version: "v12",
     status: "已发布",
     updatedAt: "07-12 18:42",
+    owner: "资产运营",
     usageScope: "event",
   },
   {
@@ -377,6 +379,7 @@ export const templates: MessageTemplate[] = [
   {
     id: "TPL-1005",
     code: "liquidation_warning",
+    eventId: "liquidation.warning",
     name: "强平风险预警",
     category: "security_risk",
     topic: "liquidation_warning",
@@ -390,11 +393,13 @@ export const templates: MessageTemplate[] = [
     version: "v21",
     status: "草稿",
     updatedAt: "07-13 11:26",
+    owner: "合约风控",
     usageScope: "event",
   },
   {
     id: "TPL-1009",
     code: "order_filled",
+    eventId: "order.filled",
     name: "订单成交通知",
     category: "trade",
     topic: "order_filled",
@@ -408,6 +413,7 @@ export const templates: MessageTemplate[] = [
     version: "v1",
     status: "已发布",
     updatedAt: "07-13 11:20",
+    owner: "交易运营",
     usageScope: "event",
   },
   {
@@ -470,6 +476,7 @@ export const templates: MessageTemplate[] = [
   {
     id: "TPL-1008",
     code: "deposit_credited",
+    eventId: "deposit.credited",
     name: "充值到账通知",
     category: "asset",
     topic: "deposit",
@@ -489,7 +496,7 @@ export const templates: MessageTemplate[] = [
       "user_nickname",
       "amount",
       "currency",
-      "symbol",
+      "network",
       "occurred_at",
     ],
     content: {
@@ -498,7 +505,7 @@ export const templates: MessageTemplate[] = [
       web: {
         title: "充值到账通知",
         summary: "您的充值已到账，请查看资产明细。",
-        body: "尊敬的 {{ user_nickname }}，您充值的 {{ amount }} {{ currency }} 已于 {{ occurred_at }} 到账，充值币种为 {{ symbol }}。",
+        body: "尊敬的 {{ user_nickname }}，您充值的 {{ amount }} {{ currency }} 已于 {{ occurred_at }} 到账，充值网络为 {{ network }}。",
         actionText: "查看资产明细",
         targetUrl: "forxfinance://assets/deposit-history",
       },

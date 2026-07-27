@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   MESSAGE_DISPLAY_CATEGORIES,
   formatDisplayLocation,
+  getEffectiveRiskLevel,
+  getRiskLevelsAtOrAbove,
   getTopicDefaults,
   getTopicsForCategory,
 } from "./messageDisplayTaxonomy";
@@ -52,5 +54,12 @@ describe("unified front-display taxonomy", () => {
     expect(normalizeRiskLevel("普通")).toBe("低");
     expect(normalizeRiskLevel("重要")).toBe("高");
     expect(normalizeRiskLevel("紧急")).toBe("关键");
+  });
+
+  it("keeps a template risk as the floor for a rule override", () => {
+    expect(getRiskLevelsAtOrAbove("中")).toEqual(["中", "高", "关键"]);
+    expect(getEffectiveRiskLevel("中", "高")).toBe("高");
+    expect(getEffectiveRiskLevel("高", "中")).toBe("高");
+    expect(getEffectiveRiskLevel("关键")).toBe("关键");
   });
 });

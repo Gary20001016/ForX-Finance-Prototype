@@ -20,6 +20,7 @@ import type {
   MessageTask,
   MessageTemplate,
   OperatorTestAccount,
+  RiskLevel,
   RuleContentVersion,
   RuleContentVersionOperation,
   SystemEventDefinition,
@@ -56,8 +57,8 @@ import {
 import { normalizeTemplateUsageScopes } from "../pages/templates/templateScope";
 import { normalizeManualTemplateStatuses } from "../domain/manualTemplateStatus";
 import {
-  APPROVED_MANUAL_TEMPLATE_LOCK_MESSAGE,
-  isApprovedManualTemplateLocked,
+  isPublishedTemplateLocked,
+  PUBLISHED_TEMPLATE_LOCK_MESSAGE,
 } from "../domain/templatePolicy";
 import {
   deriveTranslationBatchStatus,
@@ -87,12 +88,15 @@ import {
   reassignInvalidTranslationReview,
 } from "../domain/translationReviewAssignment";
 import {
+  getEffectiveRiskLevel,
   getDisplayCategory,
+  getRiskLevelsAtOrAbove,
   getTopicDefaults,
   inferDisplayLocation,
   normalizeDisplayLocation,
   normalizeRiskLevel,
 } from "../domain/messageDisplayTaxonomy";
+import { getEventVariableNames } from "../domain/eventVariables";
 
 export interface PrototypeState {
   messages: UserMessage[];
@@ -481,7 +485,7 @@ const eventSeed: SystemEventDefinition[] = [
     failure: index === 4 ? "1.84%" : "0.04%",
     last: "18:06:31",
     status: index === 4 ? "轻微延迟" : "运行正常",
-    variables: ["user_nickname", "amount", "currency", "symbol", "occurred_at"],
+    variables: getEventVariableNames(id),
     description: `${name}业务事件，由 ${caller} 推送。`,
     defaultCategory: display.category,
     defaultTopic: display.topic,
@@ -638,26 +642,46 @@ const createAutomationSeed = (seededTemplates: MessageTemplate[]) => {
 
 const enrichTemplates = (): MessageTemplate[] =>
   templates.map((template) => {
-    const display = inferDisplayLocation(template.name, template.category);
+    const event = template.eventId
+      ? eventSeed.find((item) => item.id === template.eventId)
+      : undefined;
+    const display = event
+      ? {
+          category:
+            event.defaultCategory ||
+            inferDisplayLocation(event.name).category,
+          topic:
+            event.defaultTopic ||
+            inferDisplayLocation(event.name).topic,
+          risk:
+            event.defaultRisk ||
+            inferDisplayLocation(event.name).risk,
+        }
+      : inferDisplayLocation(template.name, template.category);
+    const nature =
+      getTopicDefaults(display.category, display.topic)?.nature ||
+      template.nature;
     return {
       ...template,
       channels: template.channels.filter(
         (channel) => channel === "站内信" || channel === "Push",
       ),
-      category: template.category || display.category,
-      topic: template.topic || display.topic,
-      nature:
-        getTopicDefaults(
-          template.category || display.category,
-          template.topic || display.topic,
-        )?.nature || display.nature,
+      category: event ? display.category : template.category || display.category,
+      topic: event ? display.topic : template.topic || display.topic,
+      risk: event ? display.risk : template.risk,
+      nature,
       content:
         template.content ||
         contentFor(
           template.name,
-          getDisplayCategory(template.category || display.category)?.name,
+          getDisplayCategory(
+            event ? display.category : template.category || display.category,
+          )?.name,
         ),
-      variables: ["user_nickname", "amount", "currency", "symbol", "occurred_at"],
+      variables:
+        event?.variables ||
+        template.variables ||
+        ["user_nickname", "amount", "currency", "symbol", "occurred_at"],
       owner: template.owner || "消息运营",
     };
   });
@@ -903,9 +927,48 @@ const createSeed = (): PrototypeState => {
   };
 };
 
+const legacyEventTemplateBindings: Record<
+  string,
+  { eventId: string; owner: string }
+> = {
+  deposit_credited: { eventId: "deposit.credited", owner: "资产运营" },
+  withdraw_success: {
+    eventId: "withdrawal.succeeded",
+    owner: "资产运营",
+  },
+  order_filled: { eventId: "order.filled", owner: "交易运营" },
+  liquidation_warning: {
+    eventId: "liquidation.warning",
+    owner: "合约风控",
+  },
+};
+
 const normalizeTemplateDisplay = (
   template: MessageTemplate,
+  events: SystemEventDefinition[] = eventSeed,
 ): MessageTemplate => {
+  const legacyBinding = legacyEventTemplateBindings[template.code];
+  const eventId =
+    template.usageScope === "event"
+      ? template.eventId || legacyBinding?.eventId
+      : undefined;
+  const event = events.find((item) => item.id === eventId);
+  if (template.usageScope === "event" && event) {
+    const inferred = inferDisplayLocation(event.name);
+    const category = event.defaultCategory || inferred.category;
+    const topic = event.defaultTopic || inferred.topic;
+    const defaults = getTopicDefaults(category, topic);
+    return {
+      ...template,
+      eventId: event.id,
+      owner: template.owner || legacyBinding?.owner || "消息运营",
+      category,
+      topic,
+      risk: event.defaultRisk || defaults?.risk || inferred.risk,
+      nature: defaults?.nature || inferred.nature,
+      variables: [...event.variables],
+    };
+  }
   const display =
     template.usageScope === "event"
       ? inferDisplayLocation(template.name)
@@ -916,6 +979,11 @@ const normalizeTemplateDisplay = (
         );
   return {
     ...template,
+    eventId,
+    owner:
+      template.usageScope === "event"
+        ? template.owner || legacyBinding?.owner || "消息运营"
+        : template.owner,
     category: display.category,
     topic: display.topic,
     risk: normalizeRiskLevel(template.risk, display.risk),
@@ -950,13 +1018,58 @@ export const migrateSavedState = (saved: PrototypeState): PrototypeState => {
   const normalizedLanguageReviewPolicies = normalizeLanguageReviewPolicies(
     saved.languageReviewPolicies || fresh.languageReviewPolicies,
   );
+  const mergedEvents = fresh.events.map((event) => {
+    const persisted = saved.events?.find((item) => item.id === event.id);
+    if (!persisted) return event;
+    const {
+      template: _template,
+      templateId: _templateId,
+      ...definition
+    } = persisted;
+    const display = normalizeDisplayLocation(
+      event.name,
+      definition.defaultCategory,
+      definition.defaultTopic,
+    );
+    return {
+      ...event,
+      ...definition,
+      variables: persisted.variables || event.variables,
+      defaultCategory: display.category,
+      defaultTopic: display.topic,
+      defaultRisk: normalizeRiskLevel(definition.defaultRisk, display.risk),
+    };
+  });
+  for (const event of saved.events || []) {
+    if (!mergedEvents.some((item) => item.id === event.id)) {
+      const {
+        template: _template,
+        templateId: _templateId,
+        ...definition
+      } = event;
+      const display = normalizeDisplayLocation(
+        event.name,
+        definition.defaultCategory,
+        definition.defaultTopic,
+      );
+      mergedEvents.push({
+        ...definition,
+        defaultCategory: display.category,
+        defaultTopic: display.topic,
+        defaultRisk: normalizeRiskLevel(definition.defaultRisk, display.risk),
+      });
+    }
+  }
   const savedTemplates = saved.templates || [];
   const mergedTemplateCandidates = normalizeTemplateTranslationReadiness([
     ...savedTemplates.map((template) =>
-      normalizeTemplateDisplay({
-        ...fresh.templates.find((item) => item.id === template.id),
-        ...template,
-      } as MessageTemplate),
+      normalizeTemplateDisplay(
+        {
+          ...fresh.templates.find((item) => item.id === template.id),
+          ...template,
+        } as MessageTemplate,
+        mergedEvents,
+      ),
     ),
     ...fresh.templates.filter(
       (template) => !savedTemplates.some((item) => item.id === template.id),
@@ -1011,42 +1124,8 @@ export const migrateSavedState = (saved: PrototypeState): PrototypeState => {
       mergedTemplateCandidates,
       mergedTasks,
       mergedRuleVersions,
-    ).map(normalizeTemplateDisplay),
+    ).map((template) => normalizeTemplateDisplay(template, mergedEvents)),
   );
-  const mergedEvents = fresh.events.map((event) => {
-    const persisted = saved.events?.find((item) => item.id === event.id);
-    if (!persisted) return event;
-    const { template: _template, templateId: _templateId, ...definition } = persisted;
-    const display = normalizeDisplayLocation(
-      event.name,
-      definition.defaultCategory,
-      definition.defaultTopic,
-    );
-    return {
-      ...event,
-      ...definition,
-      variables: persisted.variables || event.variables,
-      defaultCategory: display.category,
-      defaultTopic: display.topic,
-      defaultRisk: normalizeRiskLevel(definition.defaultRisk, display.risk),
-    };
-  });
-  for (const event of saved.events || []) {
-    if (!mergedEvents.some((item) => item.id === event.id)) {
-      const { template: _template, templateId: _templateId, ...definition } = event;
-      const display = normalizeDisplayLocation(
-        event.name,
-        definition.defaultCategory,
-        definition.defaultTopic,
-      );
-      mergedEvents.push({
-        ...definition,
-        defaultCategory: display.category,
-        defaultTopic: display.topic,
-        defaultRisk: normalizeRiskLevel(definition.defaultRisk, display.risk),
-      });
-    }
-  }
   const mergedCategories = fresh.categories.map((category) => {
     const persisted = saved.categories?.find(
       (item) => item.code === category.code,
@@ -1092,14 +1171,25 @@ export const migrateSavedState = (saved: PrototypeState): PrototypeState => {
       template?.category || rule.category,
       template?.topic || rule.topic,
     );
+    const templateRisk = normalizeRiskLevel(
+      template?.risk || rule.risk,
+      display.risk,
+    );
+    const normalizedOverride =
+      rule.conditionExpression !== "事件到达即触发" && rule.riskOverride
+        ? normalizeRiskLevel(rule.riskOverride, templateRisk)
+        : undefined;
+    const riskOverride =
+      normalizedOverride &&
+      getRiskLevelsAtOrAbove(templateRisk).includes(normalizedOverride)
+        ? normalizedOverride
+        : undefined;
     return {
       ...rule,
       category: display.category,
       topic: display.topic,
-      risk: normalizeRiskLevel(
-        template?.risk || rule.risk,
-        display.risk,
-      ),
+      riskOverride,
+      risk: getEffectiveRiskLevel(templateRisk, riskOverride),
       nature:
         template?.nature ||
         getTopicDefaults(display.category, display.topic)?.nature ||
@@ -1527,6 +1617,13 @@ export const requiresSpecialLanguageReview = (locale: string) => {
 export const prepareSingleLanguageContent = (
   input: SingleLanguagePreparationInput,
 ): { requiresReview: boolean; batch?: TranslationBatch } => {
+  if (input.subject.type === "template_version") {
+    const template = state.templates.find(
+      (item) => item.id === input.subject.id,
+    );
+    if (template && isPublishedTemplateLocked(template))
+      throw new Error(PUBLISHED_TEMPLATE_LOCK_MESSAGE);
+  }
   const policy = getLanguageReviewPolicy(input.sourceLocale);
   if (
     policy?.specialReviewRequired &&
@@ -1664,8 +1761,8 @@ export const createTranslationBatch = (
     ? undefined
     : state.templates.find((item) => item.id === input.templateId);
   if (!generalized && !template) throw new Error("模板不存在");
-  if (template && isApprovedManualTemplateLocked(template))
-    throw new Error(APPROVED_MANUAL_TEMPLATE_LOCK_MESSAGE);
+  if (template && isPublishedTemplateLocked(template))
+    throw new Error(PUBLISHED_TEMPLATE_LOCK_MESSAGE);
   const subject = generalized
     ? input.subject
     : {
@@ -2586,8 +2683,13 @@ const nextTemplateIdentifiers = (usageScope: TemplateUsageScope) => {
 };
 
 export const saveTemplate = (input: TemplateCreateInput) => {
+  if (input.usageScope === "event") {
+    if (!input.eventId || !state.events.some((event) => event.id === input.eventId))
+      throw new Error("请选择有效的系统事件");
+    if (!input.owner?.trim()) throw new Error("请选择所有者团队");
+  }
   const identifiers = nextTemplateIdentifiers(input.usageScope);
-  const template: MessageTemplate = {
+  const draft: MessageTemplate = {
     ...input,
     ...identifiers,
     translationBatchId: "",
@@ -2596,6 +2698,10 @@ export const saveTemplate = (input: TemplateCreateInput) => {
     status: "草稿",
     updatedAt: "刚刚",
   };
+  const template =
+    draft.usageScope === "event"
+      ? normalizeTemplateDisplay(draft, state.events)
+      : draft;
   update((current) => ({
     ...current,
     templates: [template, ...current.templates],
@@ -2609,31 +2715,48 @@ export const updateTemplate = (
 ) => {
   const existing = state.templates.find((item) => item.id === id);
   if (!existing) throw new Error("模板不存在");
-  if (isApprovedManualTemplateLocked(existing))
-    throw new Error(APPROVED_MANUAL_TEMPLATE_LOCK_MESSAGE);
+  if (isPublishedTemplateLocked(existing))
+    throw new Error(PUBLISHED_TEMPLATE_LOCK_MESSAGE);
 
   const {
     id: ignoredId,
     code: ignoredCode,
+    eventId: ignoredEventId,
     ...mutableChanges
   } = changes as Partial<MessageTemplate>;
   void ignoredId;
   void ignoredCode;
+  void ignoredEventId;
 
-  let result = existing;
+  const normalizedExisting =
+    existing.usageScope === "event"
+      ? normalizeTemplateDisplay(existing, state.events)
+      : existing;
+  if (
+    normalizedExisting.usageScope === "event" &&
+    !(mutableChanges.owner ?? normalizedExisting.owner)?.trim()
+  )
+    throw new Error("请选择所有者团队");
+
+  let result = normalizedExisting;
   update((current) => ({
     ...current,
     templates: current.templates.map((item) => {
       if (item.id !== id) return item;
-      result = {
-        ...item,
+      const nextTemplate: MessageTemplate = {
+        ...normalizedExisting,
         ...mutableChanges,
+        eventId: normalizedExisting.eventId,
         translationReadiness: "无结果",
         translationBatchId: "",
         status: "草稿",
         version: `v${Number(item.version.replace(/\D/g, "")) + 1}`,
         updatedAt: "刚刚",
       };
+      result =
+        nextTemplate.usageScope === "event"
+          ? normalizeTemplateDisplay(nextTemplate, current.events)
+          : nextTemplate;
       return result;
     }),
   }));
@@ -2643,8 +2766,8 @@ export const updateTemplate = (
 export const submitTemplateForApproval = (templateId: string) => {
   const template = state.templates.find((item) => item.id === templateId);
   if (!template) throw new Error("模板不存在");
-  if (isApprovedManualTemplateLocked(template))
-    throw new Error(APPROVED_MANUAL_TEMPLATE_LOCK_MESSAGE);
+  if (isPublishedTemplateLocked(template))
+    throw new Error(PUBLISHED_TEMPLATE_LOCK_MESSAGE);
   if (template.translationReadiness !== "已通过")
     throw new Error("多语言人工审核尚未全部通过");
   const existing = state.approvals.find(
@@ -2731,6 +2854,27 @@ type EventRuleDraftInput = {
   title: string;
   body: string;
   targetLocales: string[];
+  riskOverride?: RiskLevel;
+};
+
+const resolveEventRuleRisk = (
+  templateRisk: RiskLevel,
+  conditionExpression: string,
+  riskOverride?: RiskLevel,
+) => {
+  if (conditionExpression === "事件到达即触发" && riskOverride) {
+    throw new Error("事件触发不能设置风险覆盖");
+  }
+  if (
+    riskOverride &&
+    !getRiskLevelsAtOrAbove(templateRisk).includes(riskOverride)
+  ) {
+    throw new Error("条件风险不能低于模板风险");
+  }
+  return {
+    riskOverride,
+    risk: getEffectiveRiskLevel(templateRisk, riskOverride),
+  };
 };
 
 export const createEventRule = (input: EventRuleDraftInput & {
@@ -2744,6 +2888,15 @@ export const createEventRule = (input: EventRuleDraftInput & {
     throw new Error("只能选择已发布的消息模板");
   if (template.usageScope !== "event")
     throw new Error("只能选择已发布的事件消息模板");
+  if (template.eventId !== input.eventId)
+    throw new Error("所选消息模板未绑定当前系统事件");
+  const conditionExpression =
+    input.conditionExpression || "事件到达即触发";
+  const resolvedRisk = resolveEventRuleRisk(
+    template.risk,
+    conditionExpression,
+    input.riskOverride,
+  );
   const ruleId = `RULE-${stamp}`;
   const versionId = `RV-${stamp}`;
   const rule: EventNotificationRule = {
@@ -2751,12 +2904,12 @@ export const createEventRule = (input: EventRuleDraftInput & {
     name: input.name,
     eventId: input.eventId,
     eventVersion: event.version,
-    conditionExpression: input.conditionExpression || "事件到达即触发",
+    conditionExpression,
     subjectMapping: input.subjectMapping || "payload.user_id → UID",
     category: template.category,
     topic: template.topic,
     nature: template.nature,
-    risk: template.risk,
+    ...resolvedRisk,
     status: "草稿",
     channels: input.channels,
     dedupeKey: "{{ rule_id }}:{{ event_instance_id }}",
@@ -2811,18 +2964,26 @@ export const updateEventRule = (
       throw new Error("只能选择已发布的消息模板");
     if (template.usageScope !== "event")
       throw new Error("只能选择已发布的事件消息模板");
+    if (template.eventId !== input.eventId)
+      throw new Error("所选消息模板未绑定当前系统事件");
+    const conditionExpression =
+      input.conditionExpression || "事件到达即触发";
+    const resolvedRisk = resolveEventRuleRisk(
+      template.risk,
+      conditionExpression,
+      input.riskOverride,
+    );
 
     updatedRule = {
       ...rule,
       name: input.name,
       eventId: input.eventId,
       eventVersion: event.version,
-      conditionExpression:
-        input.conditionExpression || "事件到达即触发",
+      conditionExpression,
       subjectMapping: input.subjectMapping || "payload.user_id → UID",
       category: template.category,
       topic: template.topic,
-      risk: template.risk,
+      ...resolvedRisk,
       channels: input.channels,
       replacementRuleIds: [],
       updatedAt: "刚刚",
@@ -2919,6 +3080,10 @@ export const submitEventRuleForReview = (
       (item) => item.id === snapshot.templateId,
     );
     if (!template) throw new Error("规则绑定模板不存在");
+    const finalRisk = getEffectiveRiskLevel(
+      template.risk,
+      rule.riskOverride,
+    );
     const submitterId = CURRENT_REVIEW_OPERATOR_ID;
     const submitter =
       current.operators.find((operator) => operator.id === submitterId)?.name ||
@@ -2932,7 +3097,7 @@ export const submitEventRuleForReview = (
       objectType: "事件通知规则",
       name: rule.name,
       version: snapshot.version,
-      risk: template.risk,
+      risk: finalRisk,
       nature: template.nature,
       category: template.category,
       topic: template.topic,
@@ -2941,7 +3106,7 @@ export const submitEventRuleForReview = (
       cost: "Web ¥0 · Push ¥0",
       schedule: "事件到达时",
       step:
-        template.risk === "高" || template.risk === "关键"
+        finalRisk === "高" || finalRisk === "关键"
           ? "业务 + 风控双审"
           : "一级审核",
       submitter,

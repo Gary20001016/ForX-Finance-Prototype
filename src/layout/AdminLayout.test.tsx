@@ -11,7 +11,8 @@ it('shows primary navigation and current product context', () => {
   );
   expect(screen.getByTestId('nav-/tasks')).toHaveTextContent('人工消息任务');
   expect(screen.getByTestId('nav-/automation')).toHaveTextContent('事件通知规则');
-  expect(screen.getByTestId('nav-/triggers')).toHaveTextContent('触发记录');
+  expect(screen.queryByTestId('nav-/triggers')).not.toBeInTheDocument();
+  expect(screen.queryByTestId('nav-/deliveries')).not.toBeInTheDocument();
   expect(screen.getByText('审核中心')).toBeInTheDocument();
   expect(screen.getByText('演示环境')).toBeInTheDocument();
   expect(screen.getByRole('button', { name: '用户消息中心' })).toBeInTheDocument();

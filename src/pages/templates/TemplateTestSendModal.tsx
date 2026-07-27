@@ -117,7 +117,7 @@ export default function TemplateTestSendModal({
           type="info"
           showIcon
           title="自动使用本人全部测试账号"
-          content="接收账号来自系统配置，当前弹窗不能临时输入、取消选择或添加其他 UID。测试发送不会保存模板，也不会进入正式发送记录。"
+          content="接收账号来自系统配置，当前弹窗不能临时输入、取消选择或添加其他 UID。测试发送不会保存模板，也不会计入正式任务和数据统计。"
         />
 
         {accounts.length ? (

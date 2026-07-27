@@ -25,7 +25,7 @@ import {
   isReusableMessageTemplate,
   templateSupportsScope,
 } from "./templateScope";
-import { isApprovedManualTemplateLocked } from "../../domain/templatePolicy";
+import { isPublishedTemplateLocked } from "../../domain/templatePolicy";
 import { MANUAL_TEMPLATE_STATUSES } from "../../domain/manualTemplateStatus";
 import {
   formatDisplayLocation,
@@ -99,6 +99,27 @@ export default function TemplateListPage() {
         </div>
       ),
     },
+    ...(entryScope === "event"
+      ? [
+          {
+            title: "系统事件",
+            width: 220,
+            render: (_: unknown, template: MessageTemplate) => {
+              const event = store.events.find(
+                (item) => item.id === template.eventId,
+              );
+              return (
+                <div>
+                  <Typography.Text className="strong">
+                    {event?.name || "未绑定事件"}
+                  </Typography.Text>
+                  <div className="mono muted">{template.eventId || "—"}</div>
+                </div>
+              );
+            },
+          },
+        ]
+      : []),
     {
       title: "展示位置",
       width: 180,
@@ -109,6 +130,16 @@ export default function TemplateListPage() {
       ),
     },
     { title: "风险", dataIndex: "risk", width: 80 },
+    ...(entryScope === "event"
+      ? [
+          {
+            title: "所有者团队",
+            dataIndex: "owner",
+            width: 120,
+            render: (owner: string | undefined) => owner || "—",
+          },
+        ]
+      : []),
     {
       title: "渠道",
       width: 200,
@@ -200,7 +231,7 @@ export default function TemplateListPage() {
       fixed: "right",
       width: 220,
       render: (_, r) => {
-        const locked = isApprovedManualTemplateLocked(r);
+        const locked = isPublishedTemplateLocked(r);
         return (
           <Space>
             {locked || !canWrite ? (
@@ -322,13 +353,14 @@ export default function TemplateListPage() {
                   ?.translationBatchId || preview.translationBatchId),
             )}
             onEdit={() => {
-              setPreview(undefined);
-              setEditing(
+              const currentTemplate =
                 store.templates.find((item) => item.id === preview.id) ||
-                  preview,
-              );
+                preview;
+              if (isPublishedTemplateLocked(currentTemplate)) return;
+              setPreview(undefined);
+              setEditing(currentTemplate);
             }}
-            readOnly={!canWrite}
+            readOnly={!canWrite || isPublishedTemplateLocked(preview)}
           />
         )}
       </Drawer>
@@ -407,7 +439,11 @@ export default function TemplateListPage() {
         visible={Boolean(editing)}
         template={editing === "new" ? undefined : editing}
         entryScope={entryScope}
-        readOnly={!canWrite}
+        readOnly={
+          !canWrite ||
+          (editing !== "new" &&
+            Boolean(editing && isPublishedTemplateLocked(editing)))
+        }
         onClose={() => setEditing(undefined)}
         onCreated={(item) => setPreview(item)}
       />

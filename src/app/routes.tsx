@@ -7,13 +7,11 @@ import SegmentListPage from '../pages/segments/SegmentListPage';
 import EventListPage from '../pages/events/EventListPage';
 import CreateTaskPage from '../pages/tasks/CreateTaskPage';
 import ApprovalCenterPage from '../pages/approvals/ApprovalCenterPage';
-import DeliveryPage from '../pages/deliveries/DeliveryPage';
 import AnalyticsPage from '../pages/analytics/AnalyticsPage';
 import SettingsPage from '../pages/settings/SettingsPage';
 import InboxPage from '../pages/inbox/InboxPage';
 import MessageDetailPage from '../pages/inbox/MessageDetailPage';
 import AutomationRuleListPage from '../pages/automation/AutomationRuleListPage';
-import TriggerRecordPage from '../pages/triggers/TriggerRecordPage';
 import MultilingualReviewPage from '../pages/multilingual/MultilingualReviewPage';
 import TemplateVariablePage from '../pages/variables/TemplateVariablePage';
 
@@ -34,9 +32,7 @@ export const appRouter = createBrowserRouter([
       { path:'multilingual-review', element:<MultilingualReviewPage /> },
       { path:'segments', element:<SegmentListPage /> },
       { path:'events', element:<EventListPage /> },
-      { path:'triggers', element:<TriggerRecordPage /> },
       { path:'approvals', element:<ApprovalCenterPage /> },
-      { path:'deliveries', element:<DeliveryPage /> },
       { path:'analytics', element:<AnalyticsPage /> },
       { path:'settings', element:<SettingsPage /> },
     ],
