@@ -213,7 +213,33 @@ export type ManualTaskSystemAction =
   | "系统终止发送"
   | "系统标记过期";
 
-export interface MessageTask {
+export type ContentApprovalStatus =
+  | "未提交"
+  | "待审核"
+  | "已通过"
+  | "已驳回"
+  | "已撤回";
+
+export type ContentWorkflowStage =
+  | "draft"
+  | "content_review"
+  | "rejected"
+  | "translation_creating"
+  | "localization_review"
+  | "ready"
+  | "published"
+  | "sending_ready";
+
+export interface ContentApprovalState {
+  contentApprovalStatus?: ContentApprovalStatus;
+  contentApprovalId?: string;
+  contentApprovedAt?: string;
+  contentApprovedBy?: string;
+  contentApprovedHash?: string;
+  workflowStage?: ContentWorkflowStage;
+}
+
+export interface MessageTask extends ContentApprovalState {
   id: string;
   name: string;
   type: string;
@@ -258,7 +284,7 @@ export interface MessageTask {
 export type TemplateUsageScope = "manual" | "event" | "shared";
 export type ManualTemplateStatus = "草稿" | "审核中" | "驳回" | "已发布";
 
-export interface MessageTemplate {
+export interface MessageTemplate extends ContentApprovalState {
   id: string;
   code: string;
   eventId?: string;

@@ -1,0 +1,72 @@
+import type {
+  Channel,
+  ContentApprovalStatus,
+  ContentWorkflowStage,
+  LocalizedMessageContent,
+  ManualTemplateStatus,
+  MessageCategoryCode,
+  MessageTopicCode,
+  RiskLevel,
+} from "./types";
+
+export interface ContentApprovalSnapshot {
+  sourceLocale: string;
+  locales: readonly string[];
+  channels: readonly Channel[];
+  category: MessageCategoryCode;
+  topic: MessageTopicCode;
+  risk: RiskLevel;
+  content: LocalizedMessageContent;
+  variables?: readonly string[];
+}
+
+export const templateMainStatusForStage = (
+  stage: ContentWorkflowStage,
+): ManualTemplateStatus =>
+  stage === "published"
+    ? "已发布"
+    : stage === "rejected"
+      ? "驳回"
+      : stage === "draft"
+        ? "草稿"
+        : "审核中";
+
+export const shouldStartLocalization = (status: ContentApprovalStatus) =>
+  status === "已通过";
+
+const stageLabels: Record<ContentWorkflowStage, string> = {
+  draft: "编辑内容",
+  content_review: "内容待审核",
+  rejected: "内容已驳回",
+  translation_creating: "创建翻译任务",
+  localization_review: "语言审核中",
+  ready: "发布就绪",
+  published: "已发布",
+  sending_ready: "发送就绪",
+};
+
+export const contentWorkflowStageLabel = (stage?: ContentWorkflowStage) =>
+  stageLabels[stage || "draft"];
+
+const fnv1a = (value: string) => {
+  let hash = 0x811c9dc5;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return (hash >>> 0).toString(16).padStart(8, "0");
+};
+
+export const contentApprovalHash = (snapshot: ContentApprovalSnapshot) => {
+  const serialized = JSON.stringify({
+    sourceLocale: snapshot.sourceLocale,
+    locales: [...snapshot.locales].sort(),
+    channels: [...snapshot.channels].sort(),
+    category: snapshot.category,
+    topic: snapshot.topic,
+    risk: snapshot.risk,
+    content: snapshot.content,
+    variables: [...(snapshot.variables || [])].sort(),
+  });
+  return `content-${fnv1a(serialized)}`;
+};
