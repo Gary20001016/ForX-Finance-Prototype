@@ -1095,29 +1095,13 @@ describe("prototype store workflow transitions", () => {
     });
   });
 
-  it("publishes a template only after business approval", () => {
-    prepareSingleLanguageContent({
-      subject: {
-        type: "template_version",
-        id: "TPL-1005",
-        name: "强平风险预警",
-        version: "v21",
-        returnPath: "/templates?scope=event",
-      },
-      sourceLocale: "zh-CN",
-      sourceContent: {
-        title: "强平风险预警",
-        summary: "请及时调整仓位",
-        body: "您的合约持仓存在强平风险。",
-      },
-      createdBy: "Gary Ma",
-    });
+  it("starts event-template localization only after content approval", () => {
     const approval = submitTemplateForApproval("TPL-1005");
     expect(approval.objectType).toBe("事件消息模板");
     expect(
       getPrototypeState().templates.find((item) => item.id === "TPL-1005")
         ?.status,
-    ).toBe("待业务审核");
+    ).toBe("审核中");
     reviewApproval(approval.id, {
       decision: "approve",
       reviewerId: approval.assigneeId!,
@@ -1126,8 +1110,12 @@ describe("prototype store workflow transitions", () => {
     });
     expect(
       getPrototypeState().templates.find((item) => item.id === "TPL-1005")
+        ?.workflowStage,
+    ).toBe("localization_review");
+    expect(
+      getPrototypeState().templates.find((item) => item.id === "TPL-1005")
         ?.status,
-    ).toBe("已发布");
+    ).toBe("审核中");
   });
 
   it("withdraws the old approval when an existing task is edited back to draft", () => {

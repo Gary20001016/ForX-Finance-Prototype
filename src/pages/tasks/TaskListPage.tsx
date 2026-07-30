@@ -48,6 +48,7 @@ import MultilingualProgressCell from "../multilingual/MultilingualProgressCell";
 import MultilingualProgressDrawer from "../multilingual/MultilingualProgressDrawer";
 import WritePermissionButton from "../../components/WritePermissionButton";
 import { useCurrentPagePermission } from "../../components/PagePermissionBoundary";
+import { contentWorkflowStageLabel } from "../../domain/contentApprovalWorkflow";
 
 const channelColors: Record<string, string> = {
   站内信: "arcoblue",
@@ -55,6 +56,24 @@ const channelColors: Record<string, string> = {
 };
 export const canEditTask = (status: string) =>
   isManualTaskStatus(status) && canEditManualTask(status);
+
+const taskCurrentNode = (task: MessageTask) => {
+  if (task.workflowStage) return contentWorkflowStageLabel(task.workflowStage);
+  const labels: Record<string, string> = {
+    草稿: "编辑任务",
+    待审核: "任务待审核",
+    待发送: "等待调度",
+    发送中: "正在发送",
+    已暂停: "发送已暂停",
+    已完成: "发送完成",
+    待修改: "修改任务",
+    已取消: "任务已取消",
+    部分失败: "部分失败",
+    失败: "发送失败",
+    已过期: "任务已过期",
+  };
+  return labels[task.status] || task.status;
+};
 
 export default function TaskListPage() {
   const { canWrite } = useCurrentPagePermission();
@@ -93,7 +112,11 @@ export default function TaskListPage() {
   );
 
   const operationsFor = (row: MessageTask): ManualTaskOperation[] =>
-    !isManualTaskStatus(row.status)
+    ["translation_creating", "localization_review"].includes(
+      row.workflowStage || "",
+    )
+      ? ["查看详情", "编辑任务", "复制任务", "取消任务"]
+      : !isManualTaskStatus(row.status)
       ? ["查看详情", "复制任务"]
       : getManualTaskOperations({
           status: row.status,
@@ -241,6 +264,11 @@ export default function TaskListPage() {
       ),
     },
     {
+      title: "当前节点",
+      width: 132,
+      render: (_, row) => taskCurrentNode(row),
+    },
+    {
       title: "发送结果",
       width: 104,
       render: (_, row) =>
@@ -253,7 +281,16 @@ export default function TaskListPage() {
         const batch = store.translationBatches.find(
           (item) => item.id === row.translationBatchId,
         );
-        return (
+        return row.contentMode === "temporary" &&
+          ["content_review", "translation_creating"].includes(
+            row.workflowStage || "",
+          ) ? (
+          <span className="muted">
+            {row.workflowStage === "content_review"
+              ? "内容审核通过后创建"
+              : "正在创建语言任务"}
+          </span>
+        ) : (
           <MultilingualProgressCell
             batch={batch}
             onOpen={() => setProgressBatch(batch)}
@@ -433,6 +470,14 @@ export default function TaskListPage() {
                       status={selected.deliveryResult || "未开始"}
                     />
                   ),
+                },
+                {
+                  label: "当前节点",
+                  value: taskCurrentNode(selected),
+                },
+                {
+                  label: "内容审核",
+                  value: selected.contentApprovalStatus || "不适用",
                 },
                 {
                   label: "触发方式",

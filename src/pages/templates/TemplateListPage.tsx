@@ -38,6 +38,7 @@ import type {
 } from "../../domain/types";
 import WritePermissionButton from "../../components/WritePermissionButton";
 import { useCurrentPagePermission } from "../../components/PagePermissionBoundary";
+import { contentWorkflowStageLabel } from "../../domain/contentApprovalWorkflow";
 
 export default function TemplateListPage() {
   const { canWrite } = useCurrentPagePermission();
@@ -160,6 +161,18 @@ export default function TemplateListPage() {
           {r.locales.length > 3 && ` +${r.locales.length - 3}`}
           <div className="muted">默认 {r.sourceLocale}</div>
         </div>
+      ),
+    },
+    {
+      title: "当前节点",
+      width: 140,
+      render: (_, r) => contentWorkflowStageLabel(r.workflowStage),
+    },
+    {
+      title: "内容审核",
+      width: 110,
+      render: (_, r) => (
+        <StatusTag status={r.contentApprovalStatus || "未提交"} />
       ),
     },
     {
@@ -325,7 +338,7 @@ export default function TemplateListPage() {
           allowClear
           options={(entryScope === "manual"
             ? MANUAL_TEMPLATE_STATUSES
-            : ["草稿", "审核中", "待业务审核", "已发布", "已停用"]
+            : ["草稿", "审核中", "驳回", "已发布"]
           ).map((value) => ({ label: value, value }))}
         />
       </FilterBar>

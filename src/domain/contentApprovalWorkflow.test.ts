@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  type ContentApprovalSnapshot,
   contentApprovalHash,
   contentWorkflowStageLabel,
   shouldStartLocalization,
@@ -32,7 +33,7 @@ const snapshot = {
     },
   },
   variables: ["amount"],
-};
+} satisfies ContentApprovalSnapshot;
 
 describe("content-first localization workflow", () => {
   it("keeps internal stages behind the four operator-facing template statuses", () => {

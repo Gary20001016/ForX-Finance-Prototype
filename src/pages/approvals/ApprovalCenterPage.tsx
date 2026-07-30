@@ -21,6 +21,12 @@ export default function ApprovalCenterPage({ currentAdminId='admin-01' }: { curr
   const [filterOne,setFilterOne]=useState<string>();
   const [filterTwo,setFilterTwo]=useState<string>();
   const isRuleReplacement=(item:ApprovalItem)=>item.objectType==='事件通知规则'&&Boolean(item.replacementRuleIds?.length);
+  const approvalNode=(item:ApprovalItem)=>{
+    if(['消息模板','人工消息模板','事件消息模板'].includes(item.objectType)) return '模板内容审核';
+    if(item.objectType==='消息任务'&&item.changes?.some((change)=>change.includes('临时消息'))) return '临时消息内容审核';
+    if(item.objectType==='事件通知规则') return '通知规则审核';
+    return '任务配置审核';
+  };
   const pendingApprovals=useMemo(()=>approvals.filter((item)=>item.assigneeId===currentAdminId&&['待我审核','待审核','紧急'].includes(item.status)),[approvals,currentAdminId]);
   const data=useMemo(()=>approvals.filter((item)=>(tab==='all'||tab==='mine'&&item.assigneeId===currentAdminId&&['待我审核','待审核','紧急'].includes(item.status)||tab==='emergency'&&item.assigneeId===currentAdminId&&item.emergency)&&`${item.id}${item.name}${item.submitter}${item.assignee||''}`.toLowerCase().includes(keyword.toLowerCase())&&(!filterOne||item.risk===filterOne)&&(!filterTwo||item.objectType===filterTwo)),[approvals,currentAdminId,tab,keyword,filterOne,filterTwo]);
   const approvalColumns:TableColumnProps<ApprovalItem>[]=[
@@ -31,15 +37,16 @@ export default function ApprovalCenterPage({ currentAdminId='admin-01' }: { curr
     {title:'计划时间',dataIndex:'schedule',width:180},
     {title:'提交人',width:130,render:(_,item)=><div>{item.submitter}<div className="muted">{item.submittedAt}</div></div>},
     {title:'审核人',width:120,render:(_,item)=><div>{item.assignee||'未指派'}<div className="mono muted">{item.assigneeId||'—'}</div></div>},
+    {title:'审核节点',width:150,render:(_,item)=>approvalNode(item)},
     {title:'状态',width:110,render:(_,item)=><StatusTag status={item.status}/>},
     {title:'操作',fixed:'right',width:90,render:(_,item)=><Button type="text" onClick={()=>setSelected(item)}>{canWrite&&item.assigneeId===currentAdminId&&item.submitterId!==currentAdminId?'审核':'查看'}</Button>},
   ];
 
   return <section className="page-stack">
-    <PageHeader title="审核中心" description="统一处理人工任务、消息模板和事件通知规则审核。"/>
+    <PageHeader title="审核中心" description="统一处理内容审核、任务配置审核和事件通知规则审核；新内容审核通过后才进入多语言。"/>
     <Alert type="info" showIcon content="每张待审核工单随机指派给一名具备审核中心写权限的审核人，发起者不会收到自己的工单；审核人失去权限时系统自动改派。"/>
     <Tabs activeTab={tab} onChange={setTab}><Tabs.TabPane key="mine" title={`待我审核 (${pendingApprovals.length})`}/><Tabs.TabPane key="all" title={`全部工单 (${approvals.length})`}/><Tabs.TabPane key="emergency" title={`紧急审批 (${pendingApprovals.filter((item)=>item.emergency).length})`}/></Tabs>
-    <FilterBar onReset={()=>{setKeyword('');setFilterOne(undefined);setFilterTwo(undefined);}}><Input.Search value={keyword} onChange={setKeyword} placeholder="搜索审批单或对象" style={{width:280}}/><Select value={filterOne} onChange={setFilterOne} allowClear placeholder="风险等级" style={{width:140}} options={['低','中','高','关键'].map((value)=>({label:value,value}))}/><Select value={filterTwo} onChange={setFilterTwo} allowClear placeholder="对象类型" style={{width:170}} options={['消息任务','消息模板','事件消息模板','事件通知规则','紧急任务'].map((value)=>({label:value,value}))}/></FilterBar>
+    <FilterBar onReset={()=>{setKeyword('');setFilterOne(undefined);setFilterTwo(undefined);}}><Input.Search value={keyword} onChange={setKeyword} placeholder="搜索审批单或对象" style={{width:280}}/><Select value={filterOne} onChange={setFilterOne} allowClear placeholder="风险等级" style={{width:140}} options={['低','中','高','关键'].map((value)=>({label:value,value}))}/><Select value={filterTwo} onChange={setFilterTwo} allowClear placeholder="对象类型" style={{width:170}} options={['消息任务','人工消息模板','事件消息模板','事件通知规则','紧急任务'].map((value)=>({label:value,value}))}/></FilterBar>
     <ResourceTable data={data} columns={approvalColumns} rowKey="id"/>
     <ApprovalDrawer item={selected} visible={Boolean(selected)} onClose={()=>setSelected(undefined)} currentAdminId={currentAdminId} canWrite={canWrite}/>
   </section>;

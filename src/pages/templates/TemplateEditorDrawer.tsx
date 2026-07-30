@@ -29,10 +29,9 @@ import type {
   TemplateUsageScope,
 } from "../../domain/types";
 import {
-  createTranslationBatch,
-  prepareSingleLanguageContent,
   requiresSpecialLanguageReview,
   saveTemplate,
+  submitTemplateContentForApproval,
   updateTemplate,
   usePrototypeStore,
 } from "../../store/prototypeStore";
@@ -277,49 +276,8 @@ export default function TemplateEditorDrawer({
         ? updateTemplate(template.id, payload)
         : saveTemplate(payload);
       if (mode === "submit") {
-        if (targetLocales.length) {
-          createTranslationBatch({
-            templateId: entity.id,
-            targetLocales,
-            createdBy: "Gary Ma",
-          });
-          Message.success("模板已保存，并已创建外部机翻任务");
-        } else {
-          const sourceContent = {
-            title:
-              channels.length === 1 && channels.includes("Push")
-                ? content.push.title
-                : channels.length === 1
-                  ? content.web.title
-                  : `站内信：${content.web.title} / Push：${content.push.title}`,
-            summary: channels.includes("站内信")
-              ? content.web.summary
-              : undefined,
-            body:
-              channels.length === 1 && channels.includes("Push")
-                ? content.push.body
-                : channels.length === 1
-                  ? content.web.body
-                  : `【站内信】\n${content.web.body}\n\n【App Push】\n${content.push.body}`,
-          };
-          const result = prepareSingleLanguageContent({
-            subject: {
-              type: "template_version",
-              id: entity.id,
-              name: entity.name,
-              version: entity.version,
-              returnPath: "/templates",
-            },
-            sourceLocale,
-            sourceContent,
-            createdBy: "Gary Ma",
-          });
-          Message.success(
-            result.requiresReview
-              ? "模板已保存，并已提交语言审核"
-              : "单语言模板已保存，可进入业务审核",
-          );
-        }
+        const approval = submitTemplateContentForApproval(entity.id);
+        Message.success(`模板已保存，并已提交内容审核 ${approval.id}`);
       } else {
         Message.success("模板草稿已保存");
       }
@@ -353,11 +311,7 @@ export default function TemplateEditorDrawer({
   }
 
   const directReviewRequired = requiresSpecialLanguageReview(sourceLocale);
-  const submitLabel = targetLocales.length
-    ? "提交外部机翻"
-    : directReviewRequired
-      ? "提交语言审核"
-      : "保存并进入业务审核";
+  const submitLabel = "保存并提交内容审核";
 
   return (
     <Drawer
@@ -385,10 +339,10 @@ export default function TemplateEditorDrawer({
         showIcon
         content={
           targetLocales.length
-            ? "默认语言由操作者维护；目标语言提交平台后台的外部异步机翻任务，返回后必须逐语言人工审核。"
+            ? "先审核默认语言内容；通过后系统自动创建外部机翻任务，翻译返回后逐语言人工审核，全部通过后自动发布。"
             : directReviewRequired
-              ? "单语言模板，无需机器翻译；当前语言需要专项人工审核。"
-              : "单语言模板，无需机器翻译；保存后可进入业务审核。"
+              ? "先审核默认语言内容；通过后进入当前小语种专项审核，完成后自动发布。"
+              : "单语言模板先完成内容审核；审核通过后自动发布，无需机器翻译。"
         }
       />
       <Form form={form} layout="vertical" className="template-editor-form">
