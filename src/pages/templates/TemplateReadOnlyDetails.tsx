@@ -13,6 +13,7 @@ import type {
 } from "../../domain/types";
 import { formatDisplayLocation } from "../../domain/messageDisplayTaxonomy";
 import { PUBLISHED_TEMPLATE_LOCK_MESSAGE } from "../../domain/templatePolicy";
+import { templateOperatorStatusLabel } from "../../domain/contentApprovalWorkflow";
 
 const usageScopeLabel: Record<MessageTemplate["usageScope"], string> = {
   manual: "人工消息",
@@ -49,7 +50,17 @@ export default function TemplateReadOnlyDetails({
             value: <span className="mono">{template.id}</span>,
           },
           { label: "模板名称", value: template.name },
-          { label: "状态", value: <StatusTag status={template.status} /> },
+          {
+            label: "状态",
+            value: (
+              <StatusTag
+                status={templateOperatorStatusLabel(
+                  template.status,
+                  template.workflowStage,
+                )}
+              />
+            ),
+          },
           { label: "更新时间", value: template.updatedAt },
           {
             label: "前台展示位置",

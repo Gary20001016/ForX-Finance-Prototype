@@ -69,3 +69,18 @@ it('keeps the owner team in event template details', () => {
   expect(screen.getByText('deposit.credited')).toBeVisible();
   expect(screen.queryByText('版本')).not.toBeInTheDocument();
 });
+
+it('shows the precise operator-facing status during multilingual review', () => {
+  render(
+    <TemplateReadOnlyDetails
+      template={{
+        ...template,
+        status: '审核中',
+        workflowStage: 'localization_review',
+      }}
+    />,
+  );
+
+  expect(screen.getByText('多语言审核中')).toBeVisible();
+  expect(screen.queryByText('审核中')).not.toBeInTheDocument();
+});

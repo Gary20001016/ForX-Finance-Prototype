@@ -26,7 +26,6 @@ import {
   templateSupportsScope,
 } from "./templateScope";
 import { isPublishedTemplateLocked } from "../../domain/templatePolicy";
-import { MANUAL_TEMPLATE_STATUSES } from "../../domain/manualTemplateStatus";
 import {
   formatDisplayLocation,
   getTopicsForCategory,
@@ -38,7 +37,10 @@ import type {
 } from "../../domain/types";
 import WritePermissionButton from "../../components/WritePermissionButton";
 import { useCurrentPagePermission } from "../../components/PagePermissionBoundary";
-import { contentWorkflowStageLabel } from "../../domain/contentApprovalWorkflow";
+import {
+  contentWorkflowStageLabel,
+  templateOperatorStatusLabel,
+} from "../../domain/contentApprovalWorkflow";
 
 export default function TemplateListPage() {
   const { canWrite } = useCurrentPagePermission();
@@ -83,7 +85,9 @@ export default function TemplateListPage() {
       `${item.id}${item.code}${item.name}`
         .toLowerCase()
         .includes(keyword.toLowerCase()) &&
-      (!status || item.status === status) &&
+      (!status ||
+        templateOperatorStatusLabel(item.status, item.workflowStage) ===
+          status) &&
       (!category || item.category === category) &&
       (!topic || item.topic === topic) &&
       (!channel ||
@@ -228,8 +232,12 @@ export default function TemplateListPage() {
         },
     {
       title: "状态",
-      width: 100,
-      render: (_, r) => <StatusTag status={r.status} />,
+      width: 120,
+      render: (_, r) => (
+        <StatusTag
+          status={templateOperatorStatusLabel(r.status, r.workflowStage)}
+        />
+      ),
     },
     entryScope === "manual"
       ? {
@@ -336,10 +344,13 @@ export default function TemplateListPage() {
           onChange={setStatus}
           style={{ width: 140 }}
           allowClear
-          options={(entryScope === "manual"
-            ? MANUAL_TEMPLATE_STATUSES
-            : ["草稿", "审核中", "驳回", "已发布"]
-          ).map((value) => ({ label: value, value }))}
+          options={[
+            "草稿",
+            "内容审核中",
+            "多语言审核中",
+            "驳回",
+            "已发布",
+          ].map((value) => ({ label: value, value }))}
         />
       </FilterBar>
       <ResourceTable data={data} columns={columns} rowKey="id" />

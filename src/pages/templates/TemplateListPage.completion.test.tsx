@@ -49,3 +49,14 @@ it("shows task usage instead of a direct event binding", () => {
     screen.getAllByRole("button", { name: /\d+ 个任务/ }).length,
   ).toBeGreaterThan(0);
 });
+
+it("shows the precise multilingual review stage instead of a generic review status", () => {
+  render(
+    <MemoryRouter initialEntries={["/templates?scope=manual"]}>
+      <TemplateListPage />
+    </MemoryRouter>,
+  );
+
+  expect(screen.getAllByText("多语言审核中").length).toBeGreaterThan(0);
+  expect(screen.queryByText("语言审核中")).not.toBeInTheDocument();
+});

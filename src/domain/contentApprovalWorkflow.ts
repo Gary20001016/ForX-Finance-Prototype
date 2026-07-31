@@ -36,10 +36,10 @@ export const shouldStartLocalization = (status: ContentApprovalStatus) =>
 
 const stageLabels: Record<ContentWorkflowStage, string> = {
   draft: "编辑内容",
-  content_review: "内容待审核",
+  content_review: "内容审核中",
   rejected: "内容已驳回",
-  translation_creating: "创建翻译任务",
-  localization_review: "语言审核中",
+  translation_creating: "多语言任务创建中",
+  localization_review: "多语言审核中",
   ready: "发布就绪",
   published: "已发布",
   sending_ready: "发送就绪",
@@ -47,6 +47,21 @@ const stageLabels: Record<ContentWorkflowStage, string> = {
 
 export const contentWorkflowStageLabel = (stage?: ContentWorkflowStage) =>
   stageLabels[stage || "draft"];
+
+export const templateOperatorStatusLabel = (
+  status: string,
+  stage?: ContentWorkflowStage,
+) => {
+  if (status !== "审核中") return status;
+  if (stage === "content_review") return "内容审核中";
+  if (
+    stage === "translation_creating" ||
+    stage === "localization_review"
+  ) {
+    return "多语言审核中";
+  }
+  return status;
+};
 
 const fnv1a = (value: string) => {
   let hash = 0x811c9dc5;
