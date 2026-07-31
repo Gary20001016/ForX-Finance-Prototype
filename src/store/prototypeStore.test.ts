@@ -540,6 +540,27 @@ describe("prototype store workflow transitions", () => {
     ).toBe("驳回");
   });
 
+  it("reconciles a persisted template lifecycle status with its workflow stage", () => {
+    const published = getPrototypeState().templates.find(
+      (item) => item.id === "TPL-1002",
+    )!;
+
+    const normalized = normalizeTemplateTranslationReadiness([
+      {
+        ...published,
+        status: "审核中",
+        workflowStage: "published",
+        contentApprovalStatus: "已通过",
+        translationReadiness: "已通过",
+      },
+    ]);
+
+    expect(normalized[0]).toMatchObject({
+      status: "已发布",
+      workflowStage: "published",
+    });
+  });
+
   it("uses the configured language policy for direct source review", () => {
     expect(requiresSpecialLanguageReview("ja-JP")).toBe(true);
     expect(requiresSpecialLanguageReview("zh-CN")).toBe(false);

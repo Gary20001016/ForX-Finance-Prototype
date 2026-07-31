@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** 在所有相关前端页面统一展示“内容审核中”或“多语言审核中”，消除模板内容已通过但仍显示“审核中”的歧义。
+**Goal:** 保持模板四状态生命周期，并通过独立的当前节点展示“内容审核中”或“多语言审核中”。
 
-**Architecture:** 保留现有四状态生命周期，通过 `contentApprovalWorkflow` 中的纯函数按 `status` 与 `workflowStage` 派生操作者可见状态。模板列表、详情和任务当前节点共用该函数与节点标签，避免页面各自判断。
+**Architecture:** 以 `workflowStage` 作为流程事实来源，在数据归一化时校正四状态生命周期；模板列表和详情展示四状态，任务与模板当前节点共用精确节点文案。
 
 **Tech Stack:** React、TypeScript、Arco Design、Vitest
 
@@ -73,4 +73,3 @@ Run: `npm test -- src/domain/contentApprovalWorkflow.test.ts src/components/Stat
 - [ ] **Step 5: 构建验证**
 
 Run: `npm run build`
-

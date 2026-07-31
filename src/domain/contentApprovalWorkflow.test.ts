@@ -5,7 +5,6 @@ import {
   contentWorkflowStageLabel,
   shouldStartLocalization,
   templateMainStatusForStage,
-  templateOperatorStatusLabel,
 } from "./contentApprovalWorkflow";
 
 const snapshot = {
@@ -59,20 +58,6 @@ describe("content-first localization workflow", () => {
     expect(contentWorkflowStageLabel("localization_review")).toBe(
       "多语言审核中",
     );
-  });
-
-  it("derives precise operator-facing review statuses without changing lifecycle status", () => {
-    expect(templateOperatorStatusLabel("审核中", "content_review")).toBe(
-      "内容审核中",
-    );
-    expect(templateOperatorStatusLabel("审核中", "translation_creating")).toBe(
-      "多语言审核中",
-    );
-    expect(templateOperatorStatusLabel("审核中", "localization_review")).toBe(
-      "多语言审核中",
-    );
-    expect(templateOperatorStatusLabel("草稿", "draft")).toBe("草稿");
-    expect(templateOperatorStatusLabel("已发布", "published")).toBe("已发布");
   });
 
   it("changes the approved snapshot hash when governed content changes", () => {

@@ -97,7 +97,10 @@ import {
   normalizeRiskLevel,
 } from "../domain/messageDisplayTaxonomy";
 import { getEventVariableNames } from "../domain/eventVariables";
-import { contentApprovalHash } from "../domain/contentApprovalWorkflow";
+import {
+  contentApprovalHash,
+  templateMainStatusForStage,
+} from "../domain/contentApprovalWorkflow";
 
 export interface PrototypeState {
   messages: UserMessage[];
@@ -378,10 +381,15 @@ export const normalizeTemplateTranslationReadiness = (
     const normalizedTranslationReadiness = normalizeTranslationStatus(
       String(template.translationReadiness),
     );
-    const published = template.status === "已发布";
-    const rejected = ["驳回", "已驳回"].includes(template.status);
-    const editableBeforeApproval =
-      template.status === "草稿" || rejected;
+    const published = template.workflowStage
+      ? template.workflowStage === "published"
+      : template.status === "已发布";
+    const rejected = template.workflowStage
+      ? template.workflowStage === "rejected"
+      : ["驳回", "已驳回"].includes(template.status);
+    const editableBeforeApproval = template.workflowStage
+      ? ["draft", "rejected"].includes(template.workflowStage)
+      : template.status === "草稿" || rejected;
     const translationReadiness = editableBeforeApproval
       ? "无结果"
       : normalizedTranslationReadiness;
@@ -390,8 +398,20 @@ export const normalizeTemplateTranslationReadiness = (
       : template.translationBatchId;
     const inLocalization =
       Boolean(translationBatchId) && translationReadiness !== "已通过";
+    const workflowStage =
+      template.workflowStage ||
+      (published
+        ? "published"
+        : rejected
+          ? "rejected"
+          : template.status === "审核中" && inLocalization
+            ? "localization_review"
+            : template.status === "审核中"
+              ? "content_review"
+              : "draft");
     return {
       ...template,
+      status: templateMainStatusForStage(workflowStage),
       translationBatchId,
       translationReadiness,
       contentApprovalStatus:
@@ -401,17 +421,7 @@ export const normalizeTemplateTranslationReadiness = (
           : rejected
             ? "已驳回"
             : "未提交"),
-      workflowStage:
-        template.workflowStage ||
-        (published
-          ? "published"
-          : rejected
-            ? "rejected"
-            : template.status === "审核中" && inLocalization
-              ? "localization_review"
-              : template.status === "审核中"
-                ? "content_review"
-                : "draft"),
+      workflowStage,
     };
   });
 

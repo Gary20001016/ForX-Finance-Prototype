@@ -48,21 +48,6 @@ const stageLabels: Record<ContentWorkflowStage, string> = {
 export const contentWorkflowStageLabel = (stage?: ContentWorkflowStage) =>
   stageLabels[stage || "draft"];
 
-export const templateOperatorStatusLabel = (
-  status: string,
-  stage?: ContentWorkflowStage,
-) => {
-  if (status !== "审核中") return status;
-  if (stage === "content_review") return "内容审核中";
-  if (
-    stage === "translation_creating" ||
-    stage === "localization_review"
-  ) {
-    return "多语言审核中";
-  }
-  return status;
-};
-
 const fnv1a = (value: string) => {
   let hash = 0x811c9dc5;
   for (let index = 0; index < value.length; index += 1) {

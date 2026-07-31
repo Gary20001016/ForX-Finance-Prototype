@@ -70,7 +70,7 @@ it('keeps the owner team in event template details', () => {
   expect(screen.queryByText('版本')).not.toBeInTheDocument();
 });
 
-it('shows the precise operator-facing status during multilingual review', () => {
+it('keeps the lifecycle status generic while multilingual review is the current node', () => {
   render(
     <TemplateReadOnlyDetails
       template={{
@@ -81,6 +81,6 @@ it('shows the precise operator-facing status during multilingual review', () => 
     />,
   );
 
-  expect(screen.getByText('多语言审核中')).toBeVisible();
-  expect(screen.queryByText('审核中')).not.toBeInTheDocument();
+  expect(screen.getByText('审核中')).toBeVisible();
+  expect(screen.queryByText('多语言审核中')).not.toBeInTheDocument();
 });

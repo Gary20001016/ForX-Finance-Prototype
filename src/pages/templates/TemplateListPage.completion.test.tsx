@@ -50,13 +50,14 @@ it("shows task usage instead of a direct event binding", () => {
   ).toBeGreaterThan(0);
 });
 
-it("shows the precise multilingual review stage instead of a generic review status", () => {
+it("keeps the four-state lifecycle separate from the precise current node", () => {
   render(
     <MemoryRouter initialEntries={["/templates?scope=manual"]}>
       <TemplateListPage />
     </MemoryRouter>,
   );
 
-  expect(screen.getAllByText("多语言审核中").length).toBeGreaterThan(0);
+  expect(screen.getAllByText("多语言审核中")).toHaveLength(1);
+  expect(screen.getByText("审核中")).toBeVisible();
   expect(screen.queryByText("语言审核中")).not.toBeInTheDocument();
 });
