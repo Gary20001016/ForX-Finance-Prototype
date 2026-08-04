@@ -44,18 +44,14 @@ describe("content-first localization workflow", () => {
     expect(templateMainStatusForStage("published")).toBe("已发布");
   });
 
-  it("starts localization only after content and variable approval", () => {
+  it("starts localization only after content approval", () => {
     expect(shouldStartLocalization("未提交")).toBe(false);
     expect(shouldStartLocalization("待审核")).toBe(false);
     expect(shouldStartLocalization("已通过")).toBe(true);
-    expect(shouldStartLocalization("已通过", "待审核")).toBe(false);
-    expect(shouldStartLocalization("已通过", "已通过")).toBe(true);
-    expect(shouldStartLocalization("已通过", "不适用")).toBe(true);
   });
 
   it("uses concise current-node labels", () => {
     expect(contentWorkflowStageLabel("content_review")).toBe("内容审核中");
-    expect(contentWorkflowStageLabel("variable_review")).toBe("变量审核中");
     expect(contentWorkflowStageLabel("translation_creating")).toBe(
       "多语言任务创建中",
     );
