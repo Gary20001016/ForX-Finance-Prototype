@@ -7,7 +7,6 @@ import {
   reviewApproval,
   saveTemplate,
   submitTemplateContentForApproval,
-  updateTemplate,
 } from "./prototypeStore";
 
 const templateInput = (): Omit<
@@ -66,43 +65,25 @@ const approve = (approvalId: string) => {
 describe("template content-first workflow", () => {
   beforeEach(() => resetPrototypeStore());
 
-  it("routes variable-bearing templates through variable review first", () => {
+  it("creates content approval before a translation batch", () => {
     const template = saveTemplate(templateInput());
     const approval = submitTemplateContentForApproval(template.id);
     const state = getPrototypeState();
     const current = state.templates.find((item) => item.id === template.id)!;
 
     expect(approval.objectType).toBe("人工消息模板");
-    expect(approval.reviewNode).toBe("variable");
     expect(current.status).toBe("审核中");
-    expect(current.workflowStage).toBe("variable_review");
-    expect(current.variableReviewStatus).toBe("待审核");
-    expect(current.contentApprovalStatus).toBe("未提交");
+    expect(current.workflowStage).toBe("content_review");
+    expect(current.contentApprovalStatus).toBe("待审核");
     expect(
       state.translationBatches.some((item) => item.templateId === template.id),
     ).toBe(false);
   });
 
-  it("creates one content approval after variable review and localizes only after it passes", () => {
+  it("starts localization only after content approval", () => {
     const template = saveTemplate(templateInput());
-    const variableApproval = submitTemplateContentForApproval(template.id);
-    approve(variableApproval.id);
-
-    const afterVariableReview = getPrototypeState();
-    const contentApprovals = afterVariableReview.approvals.filter(
-      (item) =>
-        item.templateId === template.id &&
-        item.reviewNode === "content" &&
-        item.status === "待审核",
-    );
-    expect(contentApprovals).toHaveLength(1);
-    expect(
-      afterVariableReview.translationBatches.some(
-        (item) => item.templateId === template.id,
-      ),
-    ).toBe(false);
-
-    approve(contentApprovals[0].id);
+    const approval = submitTemplateContentForApproval(template.id);
+    approve(approval.id);
 
     const current = getPrototypeState().templates.find(
       (item) => item.id === template.id,
@@ -113,60 +94,10 @@ describe("template content-first workflow", () => {
     expect(current.status).toBe("审核中");
   });
 
-  it("routes templates without variables directly to content review", () => {
-    const input = templateInput();
-    const template = saveTemplate({
-      ...input,
-      content: {
-        ...input.content!,
-        web: {
-          ...input.content!.web,
-          body: "尊敬的用户，提现已成功。",
-        },
-      },
-      variables: [],
-    });
-
-    const approval = submitTemplateContentForApproval(template.id);
-    const current = getPrototypeState().templates.find(
-      (item) => item.id === template.id,
-    )!;
-
-    expect(approval.reviewNode).toBe("content");
-    expect(current.variableReviewStatus).toBe("不适用");
-    expect(current.contentApprovalStatus).toBe("待审核");
-    expect(current.workflowStage).toBe("content_review");
-  });
-
-  it("clears variable review data and withdraws pending reviews after an edit", () => {
-    const template = saveTemplate(templateInput());
-    const approval = submitTemplateContentForApproval(template.id);
-
-    updateTemplate(template.id, { name: "已编辑模板" });
-
-    const state = getPrototypeState();
-    const current = state.templates.find((item) => item.id === template.id)!;
-    expect(current.variableReviewStatus).toBeUndefined();
-    expect(current.variableReviewId).toBeUndefined();
-    expect(current.variableReviewedAt).toBeUndefined();
-    expect(current.variableReviewedBy).toBeUndefined();
-    expect(current.variableReviewedHash).toBeUndefined();
-    expect(state.approvals.find((item) => item.id === approval.id)?.status).toBe(
-      "已撤回",
-    );
-  });
-
   it("publishes automatically when every target language passes", () => {
     const template = saveTemplate(templateInput());
-    const variableApproval = submitTemplateContentForApproval(template.id);
-    approve(variableApproval.id);
-    const contentApproval = getPrototypeState().approvals.find(
-      (item) =>
-        item.templateId === template.id &&
-        item.reviewNode === "content" &&
-        item.status === "待审核",
-    )!;
-    approve(contentApproval.id);
+    const approval = submitTemplateContentForApproval(template.id);
+    approve(approval.id);
     const batch = getPrototypeState().translationBatches.find(
       (item) => item.templateId === template.id,
     )!;
@@ -196,15 +127,8 @@ describe("template content-first workflow", () => {
         locales: ["zh-CN"],
       },
     });
-    const variableApproval = submitTemplateContentForApproval(template.id);
-    approve(variableApproval.id);
-    const contentApproval = getPrototypeState().approvals.find(
-      (item) =>
-        item.templateId === template.id &&
-        item.reviewNode === "content" &&
-        item.status === "待审核",
-    )!;
-    approve(contentApproval.id);
+    const approval = submitTemplateContentForApproval(template.id);
+    approve(approval.id);
 
     const current = getPrototypeState().templates.find(
       (item) => item.id === template.id,

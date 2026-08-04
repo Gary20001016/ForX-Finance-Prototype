@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it } from "vitest";
+import type { MessageTask } from "../domain/types";
 import {
   approveOrdinaryTranslation,
   getPrototypeState,
   resetPrototypeStore,
   reviewApproval,
-  saveTaskDraft,
   submitTask,
 } from "./prototypeStore";
 
@@ -30,7 +30,7 @@ const submission = (
     web: {
       title: "提现服务提醒",
       summary: "请关注到账状态",
-      body: "到账 {{ amount }}",
+      body: "尊敬的用户，请查看提现进度。",
       actionText: "查看详情",
       targetUrl: "forxfinance://assets",
     },
@@ -44,9 +44,9 @@ const submission = (
   },
 });
 
-const approve = (approvalId: string) => {
+const approveTask = (task: MessageTask) => {
   const approval = getPrototypeState().approvals.find(
-    (item) => item.id === approvalId,
+    (item) => item.taskId === task.id,
   )!;
   reviewApproval(approval.id, {
     decision: "approve",
@@ -59,43 +59,20 @@ const approve = (approvalId: string) => {
 describe("temporary task content-first workflow", () => {
   beforeEach(() => resetPrototypeStore());
 
-  it("routes variable-bearing temporary messages through variable review first", () => {
+  it("does not create translation before content approval", () => {
     const task = submitTask(submission(["zh-CN", "en-US"]));
-    const state = getPrototypeState();
-    const current = state.tasks.find(
+    const current = getPrototypeState().tasks.find(
       (item) => item.id === task.id,
     )!;
-    const approval = state.approvals.find((item) => item.taskId === task.id)!;
 
-    expect(approval.reviewNode).toBe("variable");
-    expect(current.variableReviewStatus).toBe("待审核");
-    expect(current.contentApprovalStatus).toBe("未提交");
-    expect(current.workflowStage).toBe("variable_review");
+    expect(current.contentApprovalStatus).toBe("待审核");
+    expect(current.workflowStage).toBe("content_review");
     expect(current.translationBatchId).toBeUndefined();
   });
 
-  it("creates one content approval after variable review and translates only after it passes", () => {
+  it("starts translation after approval and sends automatically after language review", () => {
     const task = submitTask(submission(["zh-CN", "en-US"]));
-    const variableApproval = getPrototypeState().approvals.find(
-      (item) => item.taskId === task.id,
-    )!;
-    approve(variableApproval.id);
-
-    const afterVariableReview = getPrototypeState();
-    const contentApprovals = afterVariableReview.approvals.filter(
-      (item) =>
-        item.taskId === task.id &&
-        item.reviewNode === "content" &&
-        item.status === "待审核",
-    );
-    expect(contentApprovals).toHaveLength(1);
-    expect(
-      afterVariableReview.translationBatches.some(
-        (item) => item.subjectId === task.id,
-      ),
-    ).toBe(false);
-
-    approve(contentApprovals[0].id);
+    approveTask(task);
 
     const afterApproval = getPrototypeState().tasks.find(
       (item) => item.id === task.id,
@@ -124,65 +101,9 @@ describe("temporary task content-first workflow", () => {
     expect(completed.deliveryResult).toBe("处理中");
   });
 
-  it("routes temporary messages without variables directly to content review", () => {
-    const input = submission(["zh-CN", "en-US"]);
-    const task = submitTask({
-      ...input,
-      content: {
-        ...input.content!,
-        web: {
-          ...input.content!.web,
-          body: "到账提醒",
-        },
-      },
-    });
-    const state = getPrototypeState();
-    const current = state.tasks.find((item) => item.id === task.id)!;
-    const approval = state.approvals.find((item) => item.taskId === task.id)!;
-
-    expect(approval.reviewNode).toBe("content");
-    expect(current.variableReviewStatus).toBe("不适用");
-    expect(current.contentApprovalStatus).toBe("待审核");
-    expect(current.workflowStage).toBe("content_review");
-  });
-
-  it("clears variable review data and withdraws pending reviews after an edit", () => {
-    const input = submission(["zh-CN", "en-US"]);
-    const task = submitTask(input);
-    const approval = getPrototypeState().approvals.find(
-      (item) => item.taskId === task.id,
-    )!;
-
-    saveTaskDraft({ ...input, name: "已编辑临时消息" }, task.id);
-
-    const state = getPrototypeState();
-    const current = state.tasks.find((item) => item.id === task.id)!;
-    expect(current.variableReviewStatus).toBeUndefined();
-    expect(current.variableReviewId).toBeUndefined();
-    expect(current.variableReviewedAt).toBeUndefined();
-    expect(current.variableReviewedBy).toBeUndefined();
-    expect(current.variableReviewedHash).toBeUndefined();
-    expect(state.approvals.find((item) => item.id === approval.id)?.status).toBe(
-      "已撤回",
-    );
-  });
-
   it("sends an ordinary single-language temporary task immediately after approval", () => {
-    const input = submission(["zh-CN"]);
-    const task = submitTask({
-      ...input,
-      content: {
-        ...input.content!,
-        web: {
-          ...input.content!.web,
-          body: "到账提醒",
-        },
-      },
-    });
-    const contentApproval = getPrototypeState().approvals.find(
-      (item) => item.taskId === task.id,
-    )!;
-    approve(contentApproval.id);
+    const task = submitTask(submission(["zh-CN"]));
+    approveTask(task);
 
     const current = getPrototypeState().tasks.find(
       (item) => item.id === task.id,

@@ -99,10 +99,8 @@ import {
 import { getEventVariableNames } from "../domain/eventVariables";
 import {
   contentApprovalHash,
-  shouldStartLocalization,
   templateMainStatusForStage,
 } from "../domain/contentApprovalWorkflow";
-import { extractVariableNames } from "../domain/manualMessageVariables";
 
 export interface PrototypeState {
   messages: UserMessage[];
@@ -444,37 +442,6 @@ export const normalizeRuleContentVersions = (
 
 const STORAGE_KEY = "forx-finance-message-center-prototype-v1";
 const listeners = new Set<() => void>();
-
-const contentVariables = (content?: LocalizedMessageContent) =>
-  Array.from(
-    new Set(
-      extractVariableNames(
-        [
-          content?.web.title,
-          content?.web.summary,
-          content?.web.body,
-          content?.push.title,
-          content?.push.body,
-        ]
-          .filter(Boolean)
-          .join("\n"),
-      ),
-    ),
-  );
-
-const requiresVariableReview = (content?: LocalizedMessageContent) =>
-  contentVariables(content).length > 0;
-
-const nextApprovalId = (existing: ApprovalItem[]) => {
-  const base = `APR-${Date.now().toString().slice(-6)}`;
-  let id = base;
-  let suffix = 1;
-  while (existing.some((item) => item.id === id)) {
-    id = `${base}-${suffix}`;
-    suffix += 1;
-  }
-  return id;
-};
 
 const contentFor = (
   title: string,
@@ -2071,26 +2038,12 @@ export const createTranslationBatch = (
 
 const advanceApprovedTemplate = (templateId: string) => {
   const template = state.templates.find((item) => item.id === templateId);
-  if (
-    !template ||
-    !shouldStartLocalization(
-      template.contentApprovalStatus || "未提交",
-      template.variableReviewStatus,
-    )
-  )
-    return;
-  const approvedHash = templateContentApprovalHash(template);
+  if (!template || template.contentApprovalStatus !== "已通过") return;
   if (
     !template.contentApprovedHash ||
-    approvedHash !== template.contentApprovedHash
+    templateContentApprovalHash(template) !== template.contentApprovedHash
   ) {
     throw new Error("模板内容已变化，请重新提交内容审核");
-  }
-  if (
-    template.variableReviewStatus === "已通过" &&
-    template.variableReviewedHash !== approvedHash
-  ) {
-    throw new Error("模板变量审核结果已失效，请重新提交审核");
   }
 
   const targetLocales = template.locales.filter(
@@ -2607,11 +2560,6 @@ export const saveTaskDraft = (
     contentApprovedAt: undefined,
     contentApprovedBy: undefined,
     contentApprovedHash: "",
-    variableReviewStatus: undefined,
-    variableReviewId: undefined,
-    variableReviewedAt: undefined,
-    variableReviewedBy: undefined,
-    variableReviewedHash: undefined,
     workflowStage: "draft",
   };
   update((current) => ({
@@ -2649,58 +2597,6 @@ const taskContentApprovalHash = (task: MessageTask) => {
   });
 };
 
-const createTaskReviewApproval = (
-  task: MessageTask,
-  reviewNode: "variable" | "content" | undefined,
-  current: PrototypeState,
-): ApprovalItem => {
-  const submitterId = CURRENT_REVIEW_OPERATOR_ID;
-  const assignment = assignApprovalReviewer(current.operators, submitterId);
-  return {
-    id: nextApprovalId(current.approvals),
-    objectType: "消息任务",
-    name: task.name,
-    version: "v1",
-    risk: task.risk,
-    nature: task.nature,
-    category: task.category,
-    topic: task.topic,
-    sourceType: task.triggerType === "event" ? "系统事件" : "人工消息",
-    audience: task.audienceCount,
-    cost: "Web ¥0 · Push ¥0",
-    schedule: task.schedule,
-    step:
-      task.risk === "高" || task.risk === "关键"
-        ? "业务 + 风控双审"
-        : "一级审核",
-    submitter: task.creator,
-    submitterId,
-    ...assignment,
-    submittedAt: "刚刚",
-    status: "待审核",
-    reviewNode,
-    taskId: task.id,
-    templateId: task.templateId,
-    templateVersion: task.templateVersion,
-    triggerType: task.triggerType,
-    eventConfig: task.eventConfig,
-    channels: task.channels,
-    locales: task.content?.locales,
-    content: task.content,
-    sampleUsers: task.sampleUsers,
-    expiresAt: task.expiresAt,
-    changes:
-      reviewNode === "variable"
-        ? ["临时消息变量与内容快照已冻结", "变量审核通过后自动创建内容审核"]
-        : reviewNode === "content"
-          ? [
-              "临时消息默认语言内容与任务配置已冻结",
-              "内容审核通过后自动进入多语言",
-            ]
-          : ["首次提交审核，内容与配置已冻结"],
-  };
-};
-
 export const submitTask = (input: TaskSubmission, existingTaskId?: string) => {
   const triggerType = input.triggerType || "manual";
   if (triggerType === "event") {
@@ -2711,8 +2607,6 @@ export const submitTask = (input: TaskSubmission, existingTaskId?: string) => {
     );
     if (!validation.valid) throw new Error(validation.reason);
   }
-  const temporaryRequiresVariableReview =
-    input.contentMode === "temporary" && requiresVariableReview(input.content);
   const task: MessageTask = {
     ...input,
     translationBatchId:
@@ -2735,48 +2629,53 @@ export const submitTask = (input: TaskSubmission, existingTaskId?: string) => {
       "UID 51***02 · en-US · Android",
     ],
     contentApprovalStatus:
-      input.contentMode === "temporary"
-        ? temporaryRequiresVariableReview
-          ? "未提交"
-          : "待审核"
-        : undefined,
-    contentApprovalId: undefined,
-    contentApprovedAt: undefined,
-    contentApprovedBy: undefined,
-    contentApprovedHash: "",
-    variableReviewStatus:
-      input.contentMode === "temporary"
-        ? temporaryRequiresVariableReview
-          ? "待审核"
-          : "不适用"
-        : undefined,
-    variableReviewId: undefined,
-    variableReviewedAt: undefined,
-    variableReviewedBy: undefined,
-    variableReviewedHash: undefined,
+      input.contentMode === "temporary" ? "待审核" : undefined,
     workflowStage:
-      input.contentMode === "temporary"
-        ? temporaryRequiresVariableReview
-          ? "variable_review"
-          : "content_review"
-        : undefined,
+      input.contentMode === "temporary" ? "content_review" : undefined,
   };
-  const reviewNode =
-    task.contentMode === "temporary"
-      ? temporaryRequiresVariableReview
-        ? "variable"
-        : "content"
-      : undefined;
-  const approval = createTaskReviewApproval(task, reviewNode, state);
+  const submitterId = CURRENT_REVIEW_OPERATOR_ID;
+  const assignment = assignApprovalReviewer(state.operators, submitterId);
+  const approval: ApprovalItem = {
+    id: `APR-${Date.now().toString().slice(-6)}`,
+    objectType: "消息任务",
+    name: task.name,
+    version: "v1",
+    risk: task.risk,
+    nature: task.nature,
+    category: task.category,
+    topic: task.topic,
+    sourceType: task.triggerType === "event" ? "系统事件" : "人工消息",
+    audience: task.audienceCount,
+    cost: "Web ¥0 · Push ¥0",
+    schedule: task.schedule,
+    step:
+      task.risk === "高" || task.risk === "关键"
+        ? "业务 + 风控双审"
+        : "一级审核",
+    submitter: task.creator,
+    submitterId,
+    ...assignment,
+    submittedAt: "刚刚",
+    status: "待审核",
+    taskId: task.id,
+    templateId: task.templateId,
+    templateVersion: task.templateVersion,
+    triggerType: task.triggerType,
+    eventConfig: task.eventConfig,
+    channels: task.channels,
+    locales: task.content?.locales,
+    content: task.content,
+    sampleUsers: task.sampleUsers,
+    expiresAt: task.expiresAt,
+    changes: ["首次提交审核，内容与配置已冻结"],
+  };
   if (task.contentMode === "temporary") {
-    const reviewHash = taskContentApprovalHash(task);
-    if (reviewNode === "variable") {
-      task.variableReviewId = approval.id;
-      task.variableReviewedHash = reviewHash;
-    } else {
-      task.contentApprovalId = approval.id;
-      task.contentApprovedHash = reviewHash;
-    }
+    task.contentApprovalId = approval.id;
+    task.contentApprovedHash = taskContentApprovalHash(task);
+    approval.changes = [
+      "临时消息默认语言内容与任务配置已冻结",
+      "内容审核通过后自动进入多语言",
+    ];
   }
   update((current) => ({
     ...current,
@@ -2825,25 +2724,15 @@ const advanceApprovedTemporaryTask = (taskId: string) => {
   if (
     !task ||
     task.contentMode !== "temporary" ||
-    !shouldStartLocalization(
-      task.contentApprovalStatus || "未提交",
-      task.variableReviewStatus,
-    ) ||
+    task.contentApprovalStatus !== "已通过" ||
     !task.content
   )
     return;
-  const approvedHash = taskContentApprovalHash(task);
   if (
     !task.contentApprovedHash ||
-    approvedHash !== task.contentApprovedHash
+    taskContentApprovalHash(task) !== task.contentApprovedHash
   ) {
     throw new Error("临时消息内容已变化，请重新提交内容审核");
-  }
-  if (
-    task.variableReviewStatus === "已通过" &&
-    task.variableReviewedHash !== approvedHash
-  ) {
-    throw new Error("临时消息变量审核结果已失效，请重新提交审核");
   }
 
   const sourceLocale = task.content.sourceLocale;
@@ -3013,7 +2902,6 @@ export const reviewApproval = (
     if (!reviewer || !canReviewAssignedApproval(approval, reviewer))
       throw new Error("当前审核人已失去审核权限");
     const status = result.decision === "approve" ? "已通过" : "已驳回";
-    const reviewNode = approval.reviewNode || "content";
     const isTaskApproval = ["消息任务", "紧急任务"].includes(
       approval.objectType,
     );
@@ -3032,11 +2920,7 @@ export const reviewApproval = (
       : undefined;
     if (isTemplateApproval && !reviewedTemplate)
       throw new Error("消息模板不存在");
-    if (
-      reviewedTemplate &&
-      reviewNode === "content" &&
-      result.decision === "approve"
-    ) {
+    if (reviewedTemplate && result.decision === "approve") {
       approvedTemplateId = reviewedTemplate.id;
     }
     const reviewedTask = isTaskApproval
@@ -3047,7 +2931,6 @@ export const reviewApproval = (
       : undefined;
     if (
       reviewedTask?.contentMode === "temporary" &&
-      reviewNode === "content" &&
       result.decision === "approve"
     ) {
       approvedTemporaryTaskId = reviewedTask.id;
@@ -3070,40 +2953,19 @@ export const reviewApproval = (
         throw new Error("待暂停规则状态已变化，请重新提审");
       }
     }
-
-    let nextApproval: ApprovalItem | undefined;
-    if (reviewNode === "variable" && result.decision === "approve") {
-      if (reviewedTemplate) {
-        nextApproval = createTemplateReviewApproval(
-          reviewedTemplate,
-          "content",
-          current,
-        );
-      } else if (reviewedTask?.contentMode === "temporary") {
-        nextApproval = createTaskReviewApproval(
-          reviewedTask,
-          "content",
-          current,
-        );
-      }
-    }
-
-    const reviewedApprovals = current.approvals.map((item) =>
-      item.id === approvalId
-        ? {
-            ...item,
-            status,
-            reviewer: reviewer.name,
-            reviewedAt: "刚刚",
-            opinion: result.opinion,
-          }
-        : item,
-    );
     return {
       ...current,
-      approvals: nextApproval
-        ? [nextApproval, ...reviewedApprovals]
-        : reviewedApprovals,
+      approvals: current.approvals.map((item) =>
+        item.id === approvalId
+          ? {
+              ...item,
+              status,
+              reviewer: reviewer.name,
+              reviewedAt: "刚刚",
+              opinion: result.opinion,
+            }
+          : item,
+      ),
       tasks: current.tasks.map((task) =>
         isTaskApproval &&
         (task.id === approval.taskId || task.name === approval.name)
@@ -3115,62 +2977,29 @@ export const reviewApproval = (
                 approval: status,
               }
             : task.contentMode === "temporary"
-              ? reviewNode === "variable"
-                ? {
-                    ...task,
-                    status:
-                      result.decision === "approve" ? "待审核" : "待修改",
-                    approval:
-                      result.decision === "approve" ? task.approval : status,
-                    approvalStatus:
-                      result.decision === "approve" ? "审核中" : "驳回",
-                    deliveryResult: "未开始",
-                    variableReviewStatus:
-                      result.decision === "approve" ? "已通过" : "已驳回",
-                    variableReviewedAt: "刚刚",
-                    variableReviewedBy: reviewer.name,
-                    variableReviewedHash:
-                      result.decision === "approve"
-                        ? taskContentApprovalHash(task)
-                        : undefined,
-                    contentApprovalStatus:
-                      result.decision === "approve" ? "待审核" : "未提交",
-                    contentApprovalId:
-                      result.decision === "approve"
-                        ? nextApproval?.id
-                        : undefined,
-                    contentApprovedHash:
-                      result.decision === "approve"
-                        ? taskContentApprovalHash(task)
-                        : "",
-                    workflowStage:
-                      result.decision === "approve"
-                        ? "content_review"
-                        : "rejected",
-                  }
-                : {
-                    ...task,
-                    status:
-                      result.decision === "approve" ? "待审核" : "待修改",
-                    approval: status,
-                    approvalStatus:
-                      result.decision === "approve" ? "通过" : "驳回",
-                    deliveryResult: "未开始",
-                    contentApprovalStatus:
-                      result.decision === "approve" ? "已通过" : "已驳回",
-                    contentApprovedAt:
-                      result.decision === "approve"
-                        ? "刚刚"
-                        : task.contentApprovedAt,
-                    contentApprovedBy:
-                      result.decision === "approve"
-                        ? reviewer.name
-                        : task.contentApprovedBy,
-                    workflowStage:
-                      result.decision === "approve"
-                        ? "translation_creating"
-                        : "rejected",
-                  }
+              ? {
+                  ...task,
+                  status:
+                    result.decision === "approve" ? "待审核" : "待修改",
+                  approval: status,
+                  approvalStatus:
+                    result.decision === "approve" ? "通过" : "驳回",
+                  deliveryResult: "未开始",
+                  contentApprovalStatus:
+                    result.decision === "approve" ? "已通过" : "已驳回",
+                  contentApprovedAt:
+                    result.decision === "approve"
+                      ? "刚刚"
+                      : task.contentApprovedAt,
+                  contentApprovedBy:
+                    result.decision === "approve"
+                      ? reviewer.name
+                      : task.contentApprovedBy,
+                  workflowStage:
+                    result.decision === "approve"
+                      ? "translation_creating"
+                      : "rejected",
+                }
               : {
                 ...task,
                 status:
@@ -3191,55 +3020,28 @@ export const reviewApproval = (
       ),
       templates: current.templates.map((template) =>
         reviewedTemplate && template.id === reviewedTemplate.id
-          ? reviewNode === "variable"
-            ? {
-                ...template,
-                status:
-                  result.decision === "approve" ? "审核中" : "驳回",
-                variableReviewStatus:
-                  result.decision === "approve" ? "已通过" : "已驳回",
-                variableReviewedAt: "刚刚",
-                variableReviewedBy: reviewer.name,
-                variableReviewedHash:
-                  result.decision === "approve"
-                    ? templateContentApprovalHash(template)
-                    : undefined,
-                contentApprovalStatus:
-                  result.decision === "approve" ? "待审核" : "未提交",
-                contentApprovalId:
-                  result.decision === "approve" ? nextApproval?.id : undefined,
-                contentApprovedHash:
-                  result.decision === "approve"
-                    ? templateContentApprovalHash(template)
-                    : "",
-                workflowStage:
-                  result.decision === "approve"
-                    ? "content_review"
-                    : "rejected",
-                updatedAt: "刚刚",
-              }
-            : {
-                ...template,
-                status:
-                  result.decision === "approve"
-                    ? "审核中"
-                    : "驳回",
-                contentApprovalStatus:
-                  result.decision === "approve" ? "已通过" : "已驳回",
-                contentApprovedAt:
-                  result.decision === "approve"
-                    ? "刚刚"
-                    : template.contentApprovedAt,
-                contentApprovedBy:
-                  result.decision === "approve"
-                    ? reviewer.name
-                    : template.contentApprovedBy,
-                workflowStage:
-                  result.decision === "approve"
-                    ? "translation_creating"
-                    : "rejected",
-                updatedAt: "刚刚",
-              }
+          ? {
+              ...template,
+              status:
+                result.decision === "approve"
+                  ? "审核中"
+                  : "驳回",
+              contentApprovalStatus:
+                result.decision === "approve" ? "已通过" : "已驳回",
+              contentApprovedAt:
+                result.decision === "approve"
+                  ? "刚刚"
+                  : template.contentApprovedAt,
+              contentApprovedBy:
+                result.decision === "approve"
+                  ? reviewer.name
+                  : template.contentApprovedBy,
+              workflowStage:
+                result.decision === "approve"
+                  ? "translation_creating"
+                  : "rejected",
+              updatedAt: "刚刚",
+            }
           : template,
       ),
       rules: current.rules.map((rule) => {
@@ -3325,52 +3127,6 @@ const templateContentApprovalHash = (template: MessageTemplate) => {
   });
 };
 
-const createTemplateReviewApproval = (
-  template: MessageTemplate,
-  reviewNode: "variable" | "content",
-  current: PrototypeState,
-): ApprovalItem => {
-  const submitterId = CURRENT_REVIEW_OPERATOR_ID;
-  const assignment = assignApprovalReviewer(current.operators, submitterId);
-  return {
-    id: nextApprovalId(current.approvals),
-    objectType:
-      template.usageScope === "event" ? "事件消息模板" : "人工消息模板",
-    name: template.name,
-    version: template.version,
-    risk: template.risk,
-    nature: template.nature,
-    category: template.category,
-    topic: template.topic,
-    sourceType: template.usageScope === "event" ? "系统事件" : "人工消息",
-    audience: 0,
-    cost: "Web ¥0 · Push ¥0",
-    schedule:
-      reviewNode === "variable"
-        ? "变量审核通过后进入内容审核"
-        : "内容审核通过后进入多语言",
-    step:
-      template.risk === "高" || template.risk === "关键"
-        ? "业务 + 风控双审"
-        : "一级审核",
-    submitter: "Gary Ma",
-    submitterId,
-    ...assignment,
-    submittedAt: "刚刚",
-    status: "待审核",
-    reviewNode,
-    templateId: template.id,
-    channels: template.channels,
-    locales: template.locales,
-    content: template.content,
-    expiresAt: "长期",
-    changes:
-      reviewNode === "variable"
-        ? ["模板变量与内容快照已冻结", "变量审核通过后自动创建内容审核"]
-        : ["默认语言内容与配置已冻结", "内容审核通过后自动进入多语言"],
-  };
-};
-
 export const saveTemplate = (input: TemplateCreateInput) => {
   if (input.usageScope === "event") {
     if (!input.eventId || !state.events.some((event) => event.id === input.eventId))
@@ -3387,11 +3143,6 @@ export const saveTemplate = (input: TemplateCreateInput) => {
     status: "草稿",
     contentApprovalStatus: "未提交",
     contentApprovedHash: "",
-    variableReviewStatus: undefined,
-    variableReviewId: undefined,
-    variableReviewedAt: undefined,
-    variableReviewedBy: undefined,
-    variableReviewedHash: undefined,
     workflowStage: "draft",
     updatedAt: "刚刚",
   };
@@ -3452,11 +3203,6 @@ export const updateTemplate = (
         contentApprovedAt: undefined,
         contentApprovedBy: undefined,
         contentApprovedHash: "",
-        variableReviewStatus: undefined,
-        variableReviewId: undefined,
-        variableReviewedAt: undefined,
-        variableReviewedBy: undefined,
-        variableReviewedHash: undefined,
         workflowStage: "draft",
         version: `v${Number(item.version.replace(/\D/g, "")) + 1}`,
         updatedAt: "刚刚",
@@ -3492,11 +3238,39 @@ export const submitTemplateContentForApproval = (templateId: string) => {
       isPendingApproval(item),
   );
   if (existing) return existing;
-  const reviewNode = requiresVariableReview(template.content)
-    ? "variable"
-    : "content";
-  const approval = createTemplateReviewApproval(template, reviewNode, state);
-  const reviewHash = templateContentApprovalHash(template);
+  const submitterId = CURRENT_REVIEW_OPERATOR_ID;
+  const assignment = assignApprovalReviewer(state.operators, submitterId);
+  const approval: ApprovalItem = {
+    id: `APR-${Date.now().toString().slice(-6)}`,
+    objectType:
+      template.usageScope === "event" ? "事件消息模板" : "人工消息模板",
+    name: template.name,
+    version: template.version,
+    risk: template.risk,
+    nature: template.nature,
+    category: template.category,
+    topic: template.topic,
+    sourceType: template.usageScope === "event" ? "系统事件" : "人工消息",
+    audience: 0,
+    cost: "Web ¥0 · Push ¥0",
+    schedule: "内容审核通过后进入多语言",
+    step:
+      template.risk === "高" || template.risk === "关键"
+        ? "业务 + 风控双审"
+        : "一级审核",
+    submitter: "Gary Ma",
+    submitterId,
+    ...assignment,
+    submittedAt: "刚刚",
+    status: "待审核",
+    templateId: template.id,
+    channels: template.channels,
+    locales: template.locales,
+    content: template.content,
+    expiresAt: "长期",
+    changes: ["默认语言内容与配置已冻结", "内容审核通过后自动进入多语言"],
+  };
+  const approvedHash = templateContentApprovalHash(template);
   update((current) => ({
     ...current,
     approvals: [approval, ...current.approvals],
@@ -3505,22 +3279,10 @@ export const submitTemplateContentForApproval = (templateId: string) => {
         ? {
             ...item,
             status: "审核中",
-            contentApprovalStatus:
-              reviewNode === "variable" ? "未提交" : "待审核",
-            contentApprovalId:
-              reviewNode === "content" ? approval.id : undefined,
-            contentApprovedHash:
-              reviewNode === "content" ? reviewHash : "",
-            variableReviewStatus:
-              reviewNode === "variable" ? "待审核" : "不适用",
-            variableReviewId:
-              reviewNode === "variable" ? approval.id : undefined,
-            variableReviewedAt: undefined,
-            variableReviewedBy: undefined,
-            variableReviewedHash:
-              reviewNode === "variable" ? reviewHash : undefined,
-            workflowStage:
-              reviewNode === "variable" ? "variable_review" : "content_review",
+            contentApprovalStatus: "待审核",
+            contentApprovalId: approval.id,
+            contentApprovedHash: approvedHash,
+            workflowStage: "content_review",
             updatedAt: "刚刚",
           }
         : item,
