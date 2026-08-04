@@ -7,6 +7,7 @@ import type {
   MessageCategoryCode,
   MessageTopicCode,
   RiskLevel,
+  VariableReviewStatus,
 } from "./types";
 
 export interface ContentApprovalSnapshot {
@@ -31,12 +32,15 @@ export const templateMainStatusForStage = (
         ? "草稿"
         : "审核中";
 
-export const shouldStartLocalization = (status: ContentApprovalStatus) =>
-  status === "已通过";
+export const shouldStartLocalization = (
+  contentStatus: ContentApprovalStatus,
+  variableStatus: VariableReviewStatus = "不适用",
+) => contentStatus === "已通过" && ["不适用", "已通过"].includes(variableStatus);
 
 const stageLabels: Record<ContentWorkflowStage, string> = {
   draft: "编辑内容",
   content_review: "内容审核中",
+  variable_review: "变量审核中",
   rejected: "内容已驳回",
   translation_creating: "多语言任务创建中",
   localization_review: "多语言审核中",

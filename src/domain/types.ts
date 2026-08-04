@@ -220,9 +220,19 @@ export type ContentApprovalStatus =
   | "已驳回"
   | "已撤回";
 
+export type VariableReviewStatus =
+  | "不适用"
+  | "待审核"
+  | "已通过"
+  | "已驳回"
+  | "已失效";
+
+export type ApprovalReviewNode = "content" | "variable";
+
 export type ContentWorkflowStage =
   | "draft"
   | "content_review"
+  | "variable_review"
   | "rejected"
   | "translation_creating"
   | "localization_review"
@@ -236,6 +246,11 @@ export interface ContentApprovalState {
   contentApprovedAt?: string;
   contentApprovedBy?: string;
   contentApprovedHash?: string;
+  variableReviewStatus?: VariableReviewStatus;
+  variableReviewId?: string;
+  variableReviewedAt?: string;
+  variableReviewedBy?: string;
+  variableReviewedHash?: string;
   workflowStage?: ContentWorkflowStage;
 }
 
@@ -453,6 +468,7 @@ export interface ApprovalItem {
   assigneeId?: string;
   submittedAt: string;
   status: string;
+  reviewNode?: ApprovalReviewNode;
   emergency?: boolean;
   taskId?: string;
   templateId?: string;
