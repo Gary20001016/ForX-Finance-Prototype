@@ -42,3 +42,8 @@ npm run build
 - 外部机翻、APNs/FCM、系统事件和审批流程均为可替换的前端模拟状态，不会调用真实生产接口。
 - 所有手机号、邮箱和 UID 均为虚构且经过脱敏展示。
 - 页面标记为“演示环境”，不会触发真实生产操作。
+
+## 邮件 HTML 模板
+
+- `html/email/transactional-notification.html`：用于充值、提现、订单和安全通知；不包含营销退订链接。
+- `html/email/marketing-campaign.html`：用于活动、奖励和召回；必须保留 `{{ unsubscribe_url }}`。
