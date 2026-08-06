@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="x-apple-disable-message-reformatting">
+    <title>{{ campaign_name }} | ForX Finance Rewards</title>
+    <style>
+      @media only screen and (max-width: 620px) {
+        .mobile-pad { padding-left: 20px !important; padding-right: 20px !important; }
+        .mobile-title { font-size: 28px !important; line-height: 36px !important; }
+      }
+    </style>
+  </head>
+  <body style="margin:0;padding:0;background:#F5F7FA;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;color:#1D2129;">
+    <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;mso-hide:all;">
+      {{ preheader_text }}
+    </div>
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;border-collapse:collapse;background:#F5F7FA;">
+      <tr>
+        <td align="center" style="padding:32px 16px;">
+          <table role="presentation" width="600" cellspacing="0" cellpadding="0" border="0" style="width:100%;max-width:600px;border-collapse:separate;background:#FFFFFF;border-radius:16px;overflow:hidden;">
+            <tr>
+              <td class="mobile-pad" style="padding:36px 32px;background:#165DFF;color:#FFFFFF;">
+                <p style="margin:0 0 12px;font-size:14px;line-height:20px;font-weight:700;letter-spacing:0.6px;text-transform:uppercase;">ForX Finance Rewards</p>
+                <h1 class="mobile-title" style="margin:0;font-size:34px;line-height:42px;color:#FFFFFF;">{{ campaign_name }}</h1>
+              </td>
+            </tr>
+            <tr>
+              <td class="mobile-pad" style="padding:32px;">
+                <p style="margin:0 0 16px;font-size:16px;line-height:24px;">Hi {{ user_nickname }},</p>
+                <h2 style="margin:0 0 12px;font-size:24px;line-height:32px;color:#1D2129;">{{ benefit }}</h2>
+                <p style="margin:0 0 24px;color:#4E5969;font-size:15px;line-height:24px;">活动截止时间：{{ expires_at }}</p>
+
+                <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="border-collapse:separate;margin:0 0 20px;">
+                  <tr>
+                    <td align="center" bgcolor="#165DFF" style="border-radius:8px;">
+                      <a href="{{ action_url }}" style="display:inline-block;padding:13px 24px;border:1px solid #165DFF;border-radius:8px;background:#165DFF;color:#FFFFFF;font-size:16px;line-height:22px;font-weight:700;text-decoration:none;">立即参与</a>
+                    </td>
+                  </tr>
+                </table>
+                <p style="margin:0 0 28px;font-size:14px;line-height:22px;">
+                  <a href="{{ action_url }}" style="color:#165DFF;text-decoration:underline;">查看活动详情</a>
+                </p>
+
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;border-collapse:collapse;">
+                  <tr>
+                    <td style="padding:20px;background:#F7F8FA;border-radius:8px;">
+                      <h3 style="margin:0 0 10px;font-size:16px;line-height:24px;color:#1D2129;">活动规则</h3>
+                      <div style="color:#4E5969;font-size:14px;line-height:22px;">{{ campaign_rules }}</div>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+            <tr>
+              <td class="mobile-pad" style="padding:24px 32px;background:#F7F8FA;color:#86909C;font-size:12px;line-height:18px;">
+                <p style="margin:0 0 8px;">需要帮助？请联系 <a href="mailto:{{ support_email }}" style="color:#165DFF;text-decoration:underline;">{{ support_email }}</a>。</p>
+                <p style="margin:0 0 8px;">
+                  <a href="{{ preference_url }}" style="color:#4E5969;text-decoration:underline;">管理邮件偏好</a>
+                  &nbsp;·&nbsp;
+                  <a href="{{ unsubscribe_url }}" style="color:#4E5969;text-decoration:underline;">取消订阅营销邮件</a>
+                </p>
+                <p style="margin:0;">© 2026 ForX Finance. All rights reserved.</p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>
