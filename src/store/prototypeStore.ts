@@ -103,6 +103,7 @@ import {
 } from "../domain/contentApprovalWorkflow";
 import {
   ACTIVE_MESSAGE_CHANNELS,
+  createDefaultEmailConfig,
   validateEmailContent,
 } from "../domain/emailChannel";
 
@@ -450,29 +451,43 @@ const listeners = new Set<() => void>();
 const contentFor = (
   title: string,
   category = "消息通知",
-): LocalizedMessageContent => ({
-  sourceLocale: "zh-CN",
-  locales: ["zh-CN", "en-US"],
-  web: {
-    title,
-    summary: `${category}：请查看最新消息详情。`,
-    body: `尊敬的 {{ user_nickname }}，${title}。相关金额、币种、交易对与时间信息请以账户记录为准。`,
-    riskCopy:
-      category.includes("风控") || title.includes("风险")
-        ? "市场波动较大，请立即核对账户与仓位。"
-        : undefined,
-    actionText: "查看详情",
-    targetUrl: "forxfinance://security/devices",
-  },
-  push: {
-    title,
-    body: `${category}：请立即查看。`,
-    deepLink: "forxfinance://security/devices",
-    platform: "全部设备",
-    priority: title.includes("风险") ? "紧急" : "高",
-    collapseKey: `message-${title.slice(0, 8)}`,
-  },
-});
+): LocalizedMessageContent => {
+  const body = `尊敬的 {{ user_nickname }}，${title}。相关金额、币种、交易对与时间信息请以账户记录为准。`;
+  return {
+    sourceLocale: "zh-CN",
+    locales: ["zh-CN", "en-US"],
+    web: {
+      title,
+      summary: `${category}：请查看最新消息详情。`,
+      body,
+      riskCopy:
+        category.includes("风控") || title.includes("风险")
+          ? "市场波动较大，请立即核对账户与仓位。"
+          : undefined,
+      actionText: "查看详情",
+      targetUrl: "forxfinance://security/devices",
+    },
+    push: {
+      title,
+      body: `${category}：请立即查看。`,
+      deepLink: "forxfinance://security/devices",
+      platform: "全部设备",
+      priority: title.includes("风险") ? "紧急" : "高",
+      collapseKey: `message-${title.slice(0, 8)}`,
+    },
+    email: {
+      subject: title,
+      preheader: `${category}：请查看最新消息详情。`,
+      headline: title,
+      body,
+      textBody: `${title}\n\n${body}`,
+      actionText: "查看详情",
+      actionUrl: "https://www.forxfinance.example/messages",
+      footerText: "此邮件由 ForX Finance 消息中心发送。",
+    },
+    emailConfig: createDefaultEmailConfig(),
+  };
+};
 
 const allowlistSeed: LinkAllowlistEntry[] = [
   {

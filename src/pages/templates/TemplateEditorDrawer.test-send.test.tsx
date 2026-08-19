@@ -33,7 +33,9 @@ it("automatically sends the current template to all personal test accounts", asy
   await user.click(screen.getByRole("button", { name: "发送测试消息" }));
 
   expect(
-    await screen.findByText("2 个测试账号 × 2 个渠道，共生成 4 条测试发送"),
+    await screen.findByText(
+      "2 个测试账号，3 个渠道，共生成 6 条测试发送（Email 收件人 2 个）",
+    ),
   ).toBeVisible();
 });
 
