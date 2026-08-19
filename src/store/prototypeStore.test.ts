@@ -45,6 +45,7 @@ import {
 import { translationBatches as legacyTranslationBatches } from "../mocks/data";
 import { createPagePermissions } from "../domain/pagePermissions";
 import { createEmailHtmlAsset } from "../domain/emailChannel";
+import type { LocalizedMessageContent } from "../domain/types";
 
 describe("prototype store workflow transitions", () => {
   beforeEach(() => resetPrototypeStore());
@@ -413,7 +414,7 @@ describe("prototype store workflow transitions", () => {
         declaredVariables: [],
         uploadedBy: "Gary",
       });
-    const content = {
+    const content: LocalizedMessageContent = {
       sourceLocale: "zh-CN",
       locales: ["zh-CN", "en-US"],
       web: { title: "", summary: "", body: "" },
@@ -449,7 +450,7 @@ describe("prototype store workflow transitions", () => {
       }),
     ).toThrow("请上传 en-US 的 HTML 文件");
 
-    content.email.htmlAssets["en-US"] = makeAsset("en-US");
+    content.email!.htmlAssets!["en-US"] = makeAsset("en-US");
     expect(
       sendTemplateTest({
         operatorId: "operator-html-email",
@@ -591,7 +592,7 @@ describe("prototype store workflow transitions", () => {
     };
     const batch = createTranslationBatch({
       subject: {
-        type: "message_template",
+        type: "template_version",
         id: "TPL-HTML-TRANSLATION",
         name: "HTML 邮件翻译边界",
         version: "v1",
