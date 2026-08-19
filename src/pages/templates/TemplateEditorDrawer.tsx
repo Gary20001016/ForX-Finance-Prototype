@@ -702,6 +702,8 @@ export default function TemplateEditorDrawer({
                   content={content.email}
                   config={content.emailConfig}
                   variables={availableTemplateVariables}
+                  sourceLocale={sourceLocale}
+                  locales={[sourceLocale, ...targetLocales]}
                   onContentChange={patchEmail}
                   onConfigChange={patchEmailConfig}
                 />

@@ -1,23 +1,29 @@
-import { Form, Grid, Input, Select, Switch } from "@arco-design/web-react";
+import { Form, Grid, Input, Modal, Radio, Select, Switch } from "@arco-design/web-react";
 import type {
   ControlledTemplateVariable,
+  EmailBodyMode,
   EmailChannelConfig,
   EmailMessageContent,
   EmailType,
 } from "../domain/types";
-import { EMAIL_SENDER_PROFILES } from "../domain/emailChannel";
+import { EMAIL_SENDER_PROFILES, getEmailBodyMode } from "../domain/emailChannel";
 import VariableTextArea from "./VariableTextArea";
+import EmailHtmlUploadPanel from "./EmailHtmlUploadPanel";
 
 export default function EmailContentEditor({
   content,
   config,
   variables,
+  sourceLocale,
+  locales,
   onContentChange,
   onConfigChange,
 }: {
   content: EmailMessageContent;
   config: EmailChannelConfig;
   variables: ControlledTemplateVariable[];
+  sourceLocale: string;
+  locales: string[];
   onContentChange: (changes: Partial<EmailMessageContent>) => void;
   onConfigChange: (changes: Partial<EmailChannelConfig>) => void;
 }) {
@@ -34,6 +40,25 @@ export default function EmailContentEditor({
     if (emailType === "营销邮件" && !content.unsubscribeText) {
       onContentChange({ unsubscribeText: "如果不想继续接收此类邮件，可取消订阅。" });
     }
+  };
+
+  const bodyMode = getEmailBodyMode(content);
+  const changeBodyMode = (nextMode: EmailBodyMode) => {
+    if (nextMode === bodyMode) return;
+    const hasActiveContent =
+      bodyMode === "text"
+        ? Boolean(content.textBody.trim())
+        : Boolean(Object.keys(content.htmlAssets || {}).length);
+    const apply = () => onContentChange({ bodyMode: nextMode });
+    if (!hasActiveContent) {
+      apply();
+      return;
+    }
+    Modal.confirm({
+      title: "切换邮件正文类型？",
+      content: "当前正文和相关审核结果将不再参与预览与发布，草稿内容会保留以便恢复。",
+      onOk: apply,
+    });
   };
 
   return (
@@ -97,57 +122,40 @@ export default function EmailContentEditor({
           </Form.Item>
         </Grid.Col>
       </Grid.Row>
-      <Form.Item label="邮件正文标题">
-        <VariableTextArea
-          ariaLabel="邮件正文标题"
-          value={content.headline}
-          onChange={(headline) => onContentChange({ headline })}
-          variables={variables}
+      <Form.Item label="正文类型">
+        <Radio.Group
+          aria-label="邮件正文类型"
+          type="button"
+          value={bodyMode}
+          onChange={changeBodyMode}
+        >
+          <Radio value="text">纯文本</Radio>
+          <Radio value="html">HTML 文件</Radio>
+        </Radio.Group>
+      </Form.Item>
+      {bodyMode === "text" ? (
+        <Form.Item label="邮件纯文本正文">
+          <VariableTextArea
+            ariaLabel="邮件纯文本正文"
+            value={content.textBody}
+            onChange={(textBody) => onContentChange({ textBody })}
+            variables={variables}
+          />
+        </Form.Item>
+      ) : (
+        <EmailHtmlUploadPanel
+          locales={locales}
+          sourceLocale={sourceLocale}
+          assets={content.htmlAssets || {}}
+          emailType={config.emailType}
+          declaredVariables={variables.filter((item) => item.status === "启用").map((item) => item.name)}
+          onChange={(htmlAssets) => onContentChange({ htmlAssets })}
         />
+      )}
+      <Form.Item label="打开/点击追踪">
+        <Switch checked={config.trackingEnabled} onChange={(trackingEnabled) => onConfigChange({ trackingEnabled })} />
       </Form.Item>
-      <Grid.Row gutter={12}>
-        <Grid.Col span={12}>
-          <Form.Item label="邮件正文（HTML 样式内容）">
-            <VariableTextArea
-              ariaLabel="邮件 HTML 正文"
-              value={content.body}
-              onChange={(body) => onContentChange({ body })}
-              variables={variables}
-            />
-          </Form.Item>
-        </Grid.Col>
-        <Grid.Col span={12}>
-          <Form.Item label="邮件纯文本正文">
-            <VariableTextArea
-              ariaLabel="邮件纯文本正文"
-              value={content.textBody}
-              onChange={(textBody) => onContentChange({ textBody })}
-              variables={variables}
-            />
-          </Form.Item>
-        </Grid.Col>
-      </Grid.Row>
-      <Grid.Row gutter={12}>
-        <Grid.Col span={6}>
-          <Form.Item label="按钮文案">
-            <Input value={content.actionText} onChange={(actionText) => onContentChange({ actionText })} />
-          </Form.Item>
-        </Grid.Col>
-        <Grid.Col span={12}>
-          <Form.Item label="按钮链接">
-            <Input aria-label="邮件按钮链接" value={content.actionUrl} onChange={(actionUrl) => onContentChange({ actionUrl })} />
-          </Form.Item>
-        </Grid.Col>
-        <Grid.Col span={6}>
-          <Form.Item label="打开/点击追踪">
-            <Switch checked={config.trackingEnabled} onChange={(trackingEnabled) => onConfigChange({ trackingEnabled })} />
-          </Form.Item>
-        </Grid.Col>
-      </Grid.Row>
-      <Form.Item label="页脚文案">
-        <Input value={content.footerText} onChange={(footerText) => onContentChange({ footerText })} />
-      </Form.Item>
-      {config.emailType === "营销邮件" && (
+      {bodyMode === "text" && config.emailType === "营销邮件" && (
         <Form.Item label="退订文案" required>
           <Input.TextArea
             aria-label="邮件退订文案"

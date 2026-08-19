@@ -19,6 +19,7 @@ it("authors transactional and marketing Email content inside the shared template
   await user.click(screen.getByRole("checkbox", { name: "Email" }));
 
   expect(screen.getByLabelText("邮件标题")).toBeVisible();
+  expect(screen.getByRole("radiogroup", { name: "邮件正文类型" })).toBeVisible();
   expect(screen.getByLabelText("邮件纯文本正文")).toBeVisible();
   expect(screen.getByLabelText("邮件类型")).toHaveTextContent("事务邮件");
 

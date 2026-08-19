@@ -1170,6 +1170,8 @@ export default function CreateTaskPage() {
                                 content={temporary.email}
                                 config={temporary.emailConfig}
                                 variables={store.templateVariables}
+                                sourceLocale={temporarySourceLocale}
+                                locales={[temporarySourceLocale, ...targetLocales]}
                                 onContentChange={patchEmail}
                                 onConfigChange={patchEmailConfig}
                               />
