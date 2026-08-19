@@ -53,6 +53,7 @@ import { contentWorkflowStageLabel } from "../../domain/contentApprovalWorkflow"
 const channelColors: Record<string, string> = {
   站内信: "arcoblue",
   Push: "purple",
+  邮件: "magenta",
 };
 export const canEditTask = (status: string) =>
   isManualTaskStatus(status) && canEditManualTask(status);
@@ -424,9 +425,9 @@ export default function TaskListPage() {
           allowClear
           style={{ width: 170 }}
         >
-          {["站内信", "Push"].map((item) => (
+          {["站内信", "Push", "邮件"].map((item) => (
             <Select.Option key={item} value={item}>
-              {item}
+              {item === "邮件" ? "Email" : item}
             </Select.Option>
           ))}
         </Select>

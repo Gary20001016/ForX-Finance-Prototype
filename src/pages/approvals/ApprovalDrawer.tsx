@@ -418,7 +418,7 @@ export default function ApprovalDrawer({
             {highRisk && (
               <Form.Item>
                 <Checkbox checked={confirmed} disabled={!canReview} onChange={setConfirmed}>
-                  我已核对目标范围、最终 Web/Push
+                  我已核对目标范围、最终站内信 / Push / Email
                   内容、发送时间、有效期和失败策略
                 </Checkbox>
               </Form.Item>

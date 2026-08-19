@@ -26,6 +26,7 @@ import {
 import { useLocation, useNavigate } from "react-router-dom";
 import PageHeader from "../../components/PageHeader";
 import MessagePreview from "../../components/MessagePreview";
+import EmailContentEditor from "../../components/EmailContentEditor";
 import MarkdownEditor from "../../components/MarkdownEditor";
 import VariableTextArea from "../../components/VariableTextArea";
 import { hasUnsafeMarkdownLinks } from "../../components/MarkdownContent";
@@ -78,6 +79,13 @@ import { segments } from "../../mocks/data";
 import {
   templateCoversChannels,
 } from "./taskChannelPolicy";
+import {
+  ACTIVE_MESSAGE_CHANNELS,
+  channelDisplayName,
+  createDefaultEmailConfig,
+  createDefaultEmailContent,
+  validateEmailContent,
+} from "../../domain/emailChannel";
 
 const FormItem = Form.Item;
 const supportedLocales = [
@@ -109,6 +117,8 @@ const emptyContent: LocalizedMessageContent = {
     platform: "全部设备",
     priority: "普通",
   },
+  email: createDefaultEmailContent(),
+  emailConfig: createDefaultEmailConfig(),
 };
 const audienceMap: Record<
   string,
@@ -212,7 +222,7 @@ export default function CreateTaskPage() {
   );
   const [selectedChannels, setSelectedChannels] = useState<Channel[]>(() => {
     const supportedChannels = copiedTask?.channels.filter(
-      (channel) => channel === "站内信" || channel === "Push",
+      (channel) => ACTIVE_MESSAGE_CHANNELS.includes(channel),
     );
     return supportedChannels?.length
       ? supportedChannels
@@ -250,9 +260,12 @@ export default function CreateTaskPage() {
           )
         : undefined),
   );
-  const [temporary, setTemporary] = useState<LocalizedMessageContent>(
-    copiedTask?.content || emptyContent,
-  );
+  const [temporary, setTemporary] = useState<LocalizedMessageContent>(() => ({
+    ...(copiedTask?.content || emptyContent),
+    email: copiedTask?.content?.email || createDefaultEmailContent(),
+    emailConfig:
+      copiedTask?.content?.emailConfig || createDefaultEmailConfig(),
+  }));
   const [temporarySourceLocale, setTemporarySourceLocale] = useState(
     copiedTask?.content?.sourceLocale || "zh-CN",
   );
@@ -381,9 +394,14 @@ export default function CreateTaskPage() {
   const temporaryPushComplete = Boolean(
     temporary.push.title && temporary.push.body,
   );
+  const temporaryEmailValidation = validateEmailContent(
+    temporary.email,
+    temporary.emailConfig,
+  );
   const temporaryContentComplete =
     (!channels.includes("站内信") || temporaryWebComplete) &&
-    (!channels.includes("Push") || temporaryPushComplete);
+    (!channels.includes("Push") || temporaryPushComplete) &&
+    (!channels.includes("邮件") || temporaryEmailValidation.valid);
   const schedule =
     triggerType === "event"
       ? "事件到达时"
@@ -438,6 +456,23 @@ export default function CreateTaskPage() {
       ...value,
       push: { ...value.push, ...changes },
     }));
+  const patchEmail = (
+    changes: Partial<NonNullable<LocalizedMessageContent["email"]>>,
+  ) =>
+    setTemporary((value) => ({
+      ...value,
+      email: { ...(value.email || createDefaultEmailContent()), ...changes },
+    }));
+  const patchEmailConfig = (
+    changes: Partial<NonNullable<LocalizedMessageContent["emailConfig"]>>,
+  ) =>
+    setTemporary((value) => ({
+      ...value,
+      emailConfig: {
+        ...(value.emailConfig || createDefaultEmailConfig()),
+        ...changes,
+      },
+    }));
   const updateTemporarySourceLocale = (sourceLocale: string) => {
     setTemporarySourceLocale(sourceLocale);
     setTargetLocales((locales) => locales.filter((locale) => locale !== sourceLocale));
@@ -455,6 +490,15 @@ export default function CreateTaskPage() {
   const temporaryVariableText = [
     channels.includes("站内信") ? temporary.web.body : "",
     channels.includes("Push") ? temporary.push.body : "",
+    channels.includes("邮件")
+      ? [
+          temporary.email?.subject,
+          temporary.email?.preheader,
+          temporary.email?.headline,
+          temporary.email?.body,
+          temporary.email?.textBody,
+        ].join("\n")
+      : "",
   ].join("\n");
   const temporaryVariableNames = Array.from(
     new Set(extractVariableNames(temporaryVariableText)),
@@ -492,7 +536,7 @@ export default function CreateTaskPage() {
         return;
       }
       if (!channels.length) {
-        Message.warning("请至少选择站内信或 App Push");
+        Message.warning("请至少选择站内信、App Push 或 Email");
         return;
       }
       if (triggerType === "event" && !eventValidation.valid) {
@@ -614,7 +658,7 @@ export default function CreateTaskPage() {
   };
   const submit = () => {
     if (!channels.length) {
-      Message.warning("请至少选择站内信或 App Push");
+      Message.warning("请至少选择站内信、App Push 或 Email");
       return;
     }
     if (contentMode === "template" && !selectedTemplate) {
@@ -821,7 +865,7 @@ export default function CreateTaskPage() {
               <h3>发送渠道</h3>
               <Alert
                 type="info"
-                content="先确定发送渠道，模板、临时内容、多语言和预览将按渠道筛选。站内信内容由 Web 与 App 共用。"
+                content="先确定发送渠道，模板、临时内容、多语言和预览将按渠道筛选。站内信由 Web 与 App 共用；Email 仅发送给具备有效邮箱且未退订的用户。"
               />
               <FormItem label="正式发送渠道" required>
                 <Checkbox.Group
@@ -830,6 +874,7 @@ export default function CreateTaskPage() {
                 >
                   <Checkbox value="站内信">站内信（Web + App）</Checkbox>
                   <Checkbox value="Push">App Push</Checkbox>
+                  <Checkbox value="邮件">Email</Checkbox>
                 </Checkbox.Group>
               </FormItem>
               {triggerType === "event" ? (
@@ -1116,6 +1161,20 @@ export default function CreateTaskPage() {
                             </Grid.Row>
                           </Grid.Col>
                         )}
+                        {channels.includes("邮件") &&
+                          temporary.email &&
+                          temporary.emailConfig && (
+                            <Grid.Col span={24}>
+                              <h3>Email 内容</h3>
+                              <EmailContentEditor
+                                content={temporary.email}
+                                config={temporary.emailConfig}
+                                variables={store.templateVariables}
+                                onContentChange={patchEmail}
+                                onConfigChange={patchEmailConfig}
+                              />
+                            </Grid.Col>
+                          )}
                       </Grid.Row>
                       <div className="translation-submit-strip">
                         <Select
@@ -1328,9 +1387,17 @@ export default function CreateTaskPage() {
                       {channels.map((channel) => (
                         <Tag
                           key={channel}
-                          color={channel === "Push" ? "purple" : "arcoblue"}
+                          color={
+                            channel === "Push"
+                              ? "purple"
+                              : channel === "邮件"
+                                ? "magenta"
+                                : "arcoblue"
+                          }
                         >
-                          {channel === "Push" ? "App Push" : "站内信（Web + App）"}
+                          {channel === "站内信"
+                            ? "站内信（Web + App）"
+                            : channelDisplayName(channel)}
                         </Tag>
                       ))}
                     </Space>
@@ -1411,6 +1478,13 @@ export default function CreateTaskPage() {
                       ? "提交前校验 APNs/FCM 状态、通知权限、有效设备 Token、Deep Link 白名单、折叠键和优先级；临时失败退避重试，永久失败使 Token 失效。"
                       : "提交前校验 APNs/FCM 状态、通知权限、有效设备 Token 和 Deep Link 白名单；临时失败退避重试，永久失败使 Token 失效。"
                   }
+                />
+              )}
+              {channels.includes("邮件") && (
+                <Alert
+                  type="info"
+                  title="Email 正式发送检查"
+                  content="发送前按用户主邮箱、邮箱验证状态、退订与投诉抑制名单计算可发送人数；事务与营销邮件使用独立发送流，并依赖服务商 Webhook 回传送达、退信、投诉和退订。"
                 />
               )}
               <MessagePreview

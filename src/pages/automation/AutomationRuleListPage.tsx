@@ -399,8 +399,17 @@ export default function AutomationRuleListPage() {
       render: (_, rule) => (
         <Space size="mini">
           {rule.channels.map((channel) => (
-            <Tag key={channel} color={channel === "Push" ? "purple" : "arcoblue"}>
-              {channel}
+            <Tag
+              key={channel}
+              color={
+                channel === "Push"
+                  ? "purple"
+                  : channel === "邮件"
+                    ? "magenta"
+                    : "arcoblue"
+              }
+            >
+              {channel === "邮件" ? "Email" : channel}
             </Tag>
           ))}
         </Space>
@@ -881,7 +890,10 @@ export default function AutomationRuleListPage() {
               <Form.Item label="正式渠道" field="channels" required rules={[{ required: true }]}>
                 <Select
                   mode="multiple"
-                  options={["站内信", "Push"].map((value) => ({ label: value, value }))}
+                  options={["站内信", "Push", "邮件"].map((value) => ({
+                    label: value === "邮件" ? "Email" : value,
+                    value,
+                  }))}
                 />
               </Form.Item>
             </Grid.Col>

@@ -37,7 +37,7 @@ export default function EmailContentEditor({
   };
 
   return (
-    <Form layout="vertical">
+    <div className="email-content-editor">
       <Grid.Row gutter={12}>
         <Grid.Col span={8}>
           <Form.Item label="邮件类型">
@@ -156,6 +156,6 @@ export default function EmailContentEditor({
           />
         </Form.Item>
       )}
-    </Form>
+    </div>
   );
 }

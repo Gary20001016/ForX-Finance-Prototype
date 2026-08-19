@@ -984,7 +984,7 @@ const createSeed = (): PrototypeState => {
       return {
         ...item,
         status: item.status === "待我审核" ? "待审核" : item.status,
-        cost: "Web ¥0 · Push ¥0",
+        cost: "站内信 ¥0 · Push ¥0 · Email 按量计费",
         taskId: task?.id,
         templateId: task?.templateId || template?.id,
         templateVersion: task?.templateVersion || template?.version,
@@ -1015,9 +1015,7 @@ const createSeed = (): PrototypeState => {
       };
     }),
     deliveries: deliveries
-      .filter(
-        (record) => record.channel === "站内信" || record.channel === "Push",
-      )
+      .filter((record) => ACTIVE_MESSAGE_CHANNELS.includes(record.channel))
       .map((record, index) => {
         const display = inferDisplayLocation(record.task);
         return {
@@ -4001,9 +3999,19 @@ export const testSystemEvent = (
       id: `DLV-TEST-${stamp}-${index + 1}`,
       task: `测试 · ${rule.name}`,
       user: "UID TEST-001",
-      destination: channel === "Push" ? "device ***test" : "站内账户",
+      destination:
+        channel === "Push"
+          ? "device ***test"
+          : channel === "邮件"
+            ? "t***@example.com"
+            : "站内账户",
       channel,
-      provider: channel === "Push" ? "FCM Sandbox" : "ForX Finance Inbox",
+      provider:
+        channel === "Push"
+          ? "FCM Sandbox"
+          : channel === "邮件"
+            ? "Postmark Sandbox"
+            : "ForX Finance Inbox",
       status: "已送达",
       submittedAt: "刚刚",
       deliveredAt: "刚刚",
@@ -4015,9 +4023,16 @@ export const testSystemEvent = (
       source: "系统事件",
       risk: rule.risk,
       locale: "zh-CN",
-      devicePlatform: channel === "Push" ? "Android" : "Web",
+      devicePlatform:
+        channel === "Push" ? "Android" : channel === "站内信" ? "Web" : undefined,
       providerMessageId: `PM-TEST-${stamp}-${index + 1}`,
       tokenStatus: channel === "Push" ? "有效" : "不适用",
+      recipientEmailMasked:
+        channel === "邮件" ? "t***@example.com" : undefined,
+      messageStream:
+        channel === "邮件" ? "transactional" : undefined,
+      providerEventId:
+        channel === "邮件" ? `PE-TEST-${stamp}-${index + 1}` : undefined,
       triggerId,
     }),
   );
