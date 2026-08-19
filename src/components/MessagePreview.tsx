@@ -113,7 +113,11 @@ export default function MessagePreview({
       )}
 
       {channels.includes("邮件") && content.email && content.emailConfig && (
-        <EmailPreview content={content.email} config={content.emailConfig} />
+        <EmailPreview
+          content={content.email}
+          config={content.emailConfig}
+          locale={content.sourceLocale}
+        />
       )}
     </div>
   );

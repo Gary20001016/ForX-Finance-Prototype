@@ -51,6 +51,7 @@ import {
   ACTIVE_MESSAGE_CHANNELS,
   createDefaultEmailConfig,
   createDefaultEmailContent,
+  getEmailBodyMode,
   validateEmailContent,
 } from "../../domain/emailChannel";
 
@@ -227,19 +228,23 @@ export default function TemplateEditorDrawer({
     entryScope === "manual"
       ? store.templateVariables
       : getEventTemplateVariables(selectedEvent?.variables || []);
+  const activeEmailBodyText =
+    getEmailBodyMode(content.email) === "html"
+      ? Object.values(content.email?.htmlAssets || {})
+          .map((asset) => asset.sourceHtml)
+          .join("\n")
+      : content.email?.textBody || "";
   const referencedVariableNames = Array.from(
     new Set([
       ...extractVariableNames(content.web.body),
       ...extractVariableNames(content.push.body),
       ...extractVariableNames(content.email?.subject || ""),
       ...extractVariableNames(content.email?.preheader || ""),
-      ...extractVariableNames(content.email?.headline || ""),
-      ...extractVariableNames(content.email?.body || ""),
-      ...extractVariableNames(content.email?.textBody || ""),
+      ...extractVariableNames(activeEmailBodyText),
     ]),
   );
   const templateVariableValidation = validateVariableTokens(
-    `${content.web.body}\n${content.push.body}\n${content.email?.subject || ""}\n${content.email?.preheader || ""}\n${content.email?.headline || ""}\n${content.email?.body || ""}\n${content.email?.textBody || ""}`,
+    `${content.web.body}\n${content.push.body}\n${content.email?.subject || ""}\n${content.email?.preheader || ""}\n${activeEmailBodyText}`,
     availableTemplateVariables,
   );
   const save = async (mode: "draft" | "submit") => {

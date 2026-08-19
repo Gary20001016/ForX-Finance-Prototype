@@ -92,11 +92,18 @@ export function resolveMultilingualPreview(
               emailLayer?.subject || flatLayer?.title || source?.email?.subject || "",
             preheader:
               emailLayer?.preheader || flatLayer?.summary || source?.email?.preheader,
+            bodyMode: source?.email?.bodyMode,
+            htmlAssets: source?.email?.htmlAssets,
             headline:
               emailLayer?.headline || flatLayer?.title || source?.email?.headline || "",
-            body: emailLayer?.body || flatLayer?.body || source?.email?.body || "",
+            body:
+              source?.email?.bodyMode === "html"
+                ? ""
+                : emailLayer?.body || flatLayer?.body || source?.email?.body || "",
             textBody:
-              emailLayer?.textBody || flatLayer?.body || source?.email?.textBody || "",
+              source?.email?.bodyMode === "html"
+                ? ""
+                : emailLayer?.textBody || flatLayer?.body || source?.email?.textBody || "",
             actionText: emailLayer?.actionText ?? source?.email?.actionText,
             actionUrl: emailLayer?.actionUrl ?? source?.email?.actionUrl,
             footerText: emailLayer?.footerText ?? source?.email?.footerText,

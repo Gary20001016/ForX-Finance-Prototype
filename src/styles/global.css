@@ -2098,6 +2098,45 @@ select {
   gap: 16px;
   align-items: start;
 }
+.email-html-preview-grid {
+  display: grid;
+  grid-template-columns: minmax(420px, 1.4fr) minmax(280px, 0.75fr) minmax(260px, 0.7fr);
+  gap: 16px;
+  align-items: start;
+}
+.email-html-preview-frame {
+  width: 100%;
+  min-height: 520px;
+  border: 0;
+  background: #fff;
+}
+.email-html-preview-frame.mobile {
+  min-height: 560px;
+}
+.email-text-preview-active {
+  min-height: 300px;
+}
+.email-text-preview-active header {
+  display: grid;
+  gap: 5px;
+  margin-bottom: 18px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #344054;
+}
+.email-text-preview-active header span,
+.email-text-preview-active header small,
+.email-text-preview small {
+  color: #98a2b3;
+  font-size: 11px;
+}
+.email-html-preview-missing {
+  padding: 28px;
+  border: 1px dashed #c9cdd4;
+  border-radius: 10px;
+  background: #f7f8fa;
+  color: #86909c;
+  text-align: center;
+}
 .email-preview-frame,
 .email-text-preview {
   overflow: hidden;

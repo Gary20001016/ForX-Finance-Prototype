@@ -5,6 +5,7 @@ import type {
   TranslationItem,
 } from "../../domain/types";
 import { resolveMultilingualPreview } from "./resolveMultilingualPreview";
+import { createEmailHtmlAsset } from "../../domain/emailChannel";
 
 const sourceContent: LocalizedMessageContent = {
   sourceLocale: "zh-CN",
@@ -137,6 +138,45 @@ describe("resolveMultilingualPreview", () => {
       "https://www.forx.finance/messages/MSG-001",
     );
     expect(result.content?.emailConfig?.senderProfileId).toBe("transaction");
+  });
+
+  it("reuses a localized HTML asset while translating only subject and preheader", () => {
+    const asset = createEmailHtmlAsset({
+      locale: "en-US",
+      fileName: "notice.en-US.html",
+      fileSize: 640,
+      html: "<!doctype html><html><head><title>Notice</title></head><body><p>English final HTML</p></body></html>",
+      emailType: "事务邮件",
+      declaredVariables: [],
+      uploadedBy: "Gary",
+    });
+    const htmlSource = {
+      ...sourceContent,
+      email: {
+        ...sourceContent.email!,
+        bodyMode: "html" as const,
+        textBody: "",
+        htmlAssets: { "en-US": asset },
+      },
+    };
+    const batch = {
+      ...baseBatch,
+      channels: ["邮件"],
+      sourceChannelContent: htmlSource,
+    } as unknown as TranslationBatch;
+    const item = {
+      ...baseItem,
+      approvedChannelOutput: {
+        email: { subject: "Localized subject", preheader: "Localized preheader" },
+      },
+    } as unknown as TranslationItem;
+
+    const result = resolveMultilingualPreview(batch, item);
+
+    expect(result.content?.email?.bodyMode).toBe("html");
+    expect(result.content?.email?.subject).toBe("Localized subject");
+    expect(result.content?.email?.htmlAssets?.["en-US"]).toEqual(asset);
+    expect(result.content?.email?.textBody).toBe("");
   });
 
   it("previews legacy returned content but leaves a missing result empty", () => {
