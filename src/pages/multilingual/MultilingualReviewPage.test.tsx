@@ -122,3 +122,24 @@ it("identifies the seeded Japanese translation work as Email", () => {
   expect(within(row!).getByText("Email")).toBeVisible();
   expect(within(row!).getByText("ja-JP")).toBeVisible();
 });
+
+it("opens the seeded Japanese HTML Email work order with responsive previews", async () => {
+  const user = userEvent.setup();
+  render(
+    <MemoryRouter>
+      <MultilingualReviewPage />
+    </MemoryRouter>,
+  );
+
+  const row = screen
+    .getByText("夏季 VIP 专属礼遇 Email · 日语 HTML 审核")
+    .closest("tr");
+  expect(row).not.toBeNull();
+  expect(within(row!).getByText("Email")).toBeVisible();
+  await user.click(within(row!).getByRole("button", { name: "审核译文" }));
+
+  expect(screen.getByLabelText("Email HTML 桌面预览")).toBeVisible();
+  expect(screen.getByLabelText("Email HTML 移动预览")).toBeVisible();
+  expect(screen.getByText("vip-summer-ja-JP.html")).toBeVisible();
+  expect(screen.queryByText("正文 Markdown")).not.toBeInTheDocument();
+});

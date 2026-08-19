@@ -66,7 +66,11 @@ describe("prototype store workflow transitions", () => {
       ]),
     );
     expect(state.translationBatches.map((item) => item.id)).toEqual(
-      expect.arrayContaining(["MT-EMAIL-DEMO-HTML", "MT-EMAIL-DEMO-TEXT"]),
+      expect.arrayContaining([
+        "MT-EMAIL-DEMO-HTML",
+        "MT-EMAIL-DEMO-HTML-JA-REVIEW",
+        "MT-EMAIL-DEMO-TEXT",
+      ]),
     );
     expect(state.approvals.map((item) => item.id)).toContain(
       "APR-EMAIL-DEMO-CONTENT",

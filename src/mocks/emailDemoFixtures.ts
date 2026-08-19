@@ -311,6 +311,110 @@ const createHtmlTranslationBatch = (
   ],
 });
 
+const createHtmlReviewBatch = (
+  template: MessageTemplate,
+): TranslationBatch => {
+  const japaneseHtml = htmlDocument({
+    lang: "ja-JP",
+    title: "夏季 VIP 限定特典",
+    greeting: "お客様",
+    introduction: "夏季 VIP 限定特典をご用意しました。期間内にお受け取りください。",
+    amountLabel: "限定特典",
+    cta: "VIP 特典を確認",
+    unsubscribe: "マーケティングメールの配信停止",
+  });
+  const japaneseAsset = createTrustedDemoHtmlAsset({
+    locale: "ja-JP",
+    fileName: "vip-summer-ja-JP.html",
+    fileSize: 6712,
+    html: japaneseHtml,
+    generatedText:
+      "ForX Finance 夏季 VIP 限定特典 お客様 {{ user_nickname }}、夏季 VIP 限定特典をご用意しました。期間内にお受け取りください。限定特典 {{ amount }} {{ currency }} VIP 特典を確認 マーケティングメールの配信停止",
+    uploadedAt: "2026-08-19 16:06:00",
+    sha256: "demohtmljajp0001",
+  });
+
+  return {
+    id: "MT-EMAIL-DEMO-HTML-JA-REVIEW",
+    subjectType: "template_version",
+    subjectId: template.id,
+    subjectName: "夏季 VIP 专属礼遇 Email · 日语 HTML 审核",
+    contentVersion: `${template.version}-ja-review`,
+    returnPath: "/templates?scope=manual",
+    templateId: template.id,
+    templateVersion: template.version,
+    productionMode: "machine_translation",
+    sourceLocale: "zh-CN",
+    targetLocales: ["ja-JP"],
+    status: "翻译返回待审核",
+    createdBy: "林夏",
+    createdAt: "08-19 16:00",
+    updatedAt: "08-19 16:08",
+    channels: ["邮件"],
+    sourceContent: {
+      title: template.content?.email?.subject,
+      summary: template.content?.email?.preheader,
+    },
+    sourceChannelContent: template.content,
+    items: [
+      {
+        id: "MTI-EMAIL-DEMO-HTML-JA-REVIEW",
+        batchId: "MT-EMAIL-DEMO-HTML-JA-REVIEW",
+        templateId: template.id,
+        templateName: template.name,
+        subjectType: "template_version",
+        subjectId: template.id,
+        subjectName: "夏季 VIP 专属礼遇 Email · 日语 HTML 审核",
+        sourceLocale: "zh-CN",
+        targetLocale: "ja-JP",
+        productionMode: "machine_translation",
+        externalTaskId: "EXT-EMAIL-DEMO-HTML-JA",
+        attemptNo: 1,
+        status: "翻译返回待审核",
+        sourceContentHash: "sha256:emaildemohtmlja",
+        machineTitle: "{{ user_nickname }} 様、夏季 VIP 限定特典が始まりました",
+        machineSummary:
+          "{{ amount }} {{ currency }} の限定特典を期間内にお受け取りください。",
+        machineOutput: {
+          title: "{{ user_nickname }} 様、夏季 VIP 限定特典が始まりました",
+          summary:
+            "{{ amount }} {{ currency }} の限定特典を期間内にお受け取りください。",
+        },
+        humanDraft: {
+          title: "{{ user_nickname }} 様、夏季 VIP 限定特典をご用意しました",
+          summary:
+            "{{ amount }} {{ currency }} の限定特典を期間内にお受け取りください。",
+        },
+        machineChannelOutput: {
+          email: {
+            subject: "{{ user_nickname }} 様、夏季 VIP 限定特典が始まりました",
+            preheader:
+              "{{ amount }} {{ currency }} の限定特典を期間内にお受け取りください。",
+          },
+        },
+        humanChannelDraft: {
+          email: {
+            subject: "{{ user_nickname }} 様、夏季 VIP 限定特典をご用意しました",
+            preheader:
+              "{{ amount }} {{ currency }} の限定特典を期間内にお受け取りください。",
+            bodyMode: "html",
+            htmlAssets: { "ja-JP": japaneseAsset },
+          },
+        },
+        submittedAt: "08-19 16:00",
+        translatedAt: "08-19 16:08",
+        submitter: "林夏",
+        variablesValid: true,
+        specialReviewRequired: true,
+        authorizedReviewerIds: ["admin-01", "reviewer-ja-01"],
+        assigneeId: "admin-01",
+        assignee: "Gary Ma",
+        reviewSlaHours: 8,
+      },
+    ],
+  };
+};
+
 const createTextTranslationBatch = (
   template: MessageTemplate,
 ): TranslationBatch => ({
@@ -609,6 +713,7 @@ export function createEmailDemoFixtures(): {
     tasks: [manualTask, eventTask],
     translationBatches: [
       createHtmlTranslationBatch(htmlTemplate),
+      createHtmlReviewBatch(htmlTemplate),
       createPublishedTextTranslationBatch(eventTemplate),
       createTextTranslationBatch(eventTemplate),
     ],

@@ -78,6 +78,21 @@ describe("email demo fixtures", () => {
         }),
       ]),
     );
+    const htmlReviewBatch = fixtures.translationBatches.find(
+      (item) => item.id === "MT-EMAIL-DEMO-HTML-JA-REVIEW",
+    );
+    expect(htmlReviewBatch?.items[0]).toMatchObject({
+      id: "MTI-EMAIL-DEMO-HTML-JA-REVIEW",
+      subjectName: "夏季 VIP 专属礼遇 Email · 日语 HTML 审核",
+      targetLocale: "ja-JP",
+      status: "翻译返回待审核",
+      specialReviewRequired: true,
+      assigneeId: "admin-01",
+    });
+    expect(
+      htmlReviewBatch?.items[0].humanChannelDraft?.email?.htmlAssets?.["ja-JP"]
+        ?.fileName,
+    ).toBe("vip-summer-ja-JP.html");
     expect(fixtures.deliveries).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
