@@ -1,6 +1,7 @@
 import { Button, Space, Tag } from "@arco-design/web-react";
 import type { Channel, LocalizedMessageContent } from "../domain/types";
 import MarkdownContent from "./MarkdownContent";
+import EmailPreview from "./EmailPreview";
 
 export default function MessagePreview({
   content,
@@ -109,6 +110,10 @@ export default function MessagePreview({
             </div>
           </div>
         </section>
+      )}
+
+      {channels.includes("邮件") && content.email && content.emailConfig && (
+        <EmailPreview content={content.email} config={content.emailConfig} />
       )}
     </div>
   );
