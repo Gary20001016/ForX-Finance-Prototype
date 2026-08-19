@@ -93,7 +93,7 @@ export function resolveMultilingualPreview(
             preheader:
               emailLayer?.preheader || flatLayer?.summary || source?.email?.preheader,
             bodyMode: source?.email?.bodyMode,
-            htmlAssets: source?.email?.htmlAssets,
+            htmlAssets: emailLayer?.htmlAssets || source?.email?.htmlAssets,
             headline:
               emailLayer?.headline || flatLayer?.title || source?.email?.headline || "",
             body:

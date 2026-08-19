@@ -179,6 +179,58 @@ describe("resolveMultilingualPreview", () => {
     expect(result.content?.email?.textBody).toBe("");
   });
 
+  it("prefers the uploaded target-locale HTML asset over source-locale assets", () => {
+    const sourceAsset = createEmailHtmlAsset({
+      locale: "zh-CN",
+      fileName: "notice.zh-CN.html",
+      fileSize: 640,
+      html: "<!doctype html><html><head><title>通知</title></head><body><p>中文源文件</p></body></html>",
+      emailType: "事务邮件",
+      declaredVariables: [],
+      uploadedBy: "Gary",
+    });
+    const targetAsset = createEmailHtmlAsset({
+      locale: "ja-JP",
+      fileName: "notice.ja-JP.html",
+      fileSize: 660,
+      html: "<!doctype html><html><head><title>通知</title></head><body><p>日本語完成稿</p></body></html>",
+      emailType: "事务邮件",
+      declaredVariables: [],
+      uploadedBy: "Gary",
+    });
+    const batch = {
+      ...baseBatch,
+      channels: ["邮件"],
+      targetLocales: ["ja-JP"],
+      sourceChannelContent: {
+        ...sourceContent,
+        email: {
+          ...sourceContent.email!,
+          bodyMode: "html",
+          htmlAssets: { "zh-CN": sourceAsset },
+          textBody: "",
+        },
+      },
+    } as unknown as TranslationBatch;
+    const item = {
+      ...baseItem,
+      targetLocale: "ja-JP",
+      humanChannelDraft: {
+        email: {
+          subject: "日本語件名",
+          preheader: "日本語プレビュー",
+          bodyMode: "html",
+          htmlAssets: { "ja-JP": targetAsset },
+        },
+      },
+    } as unknown as TranslationItem;
+
+    const result = resolveMultilingualPreview(batch, item);
+
+    expect(result.content?.email?.htmlAssets).toEqual({ "ja-JP": targetAsset });
+    expect(result.content?.email?.htmlAssets?.["zh-CN"]).toBeUndefined();
+  });
+
   it("previews legacy returned content but leaves a missing result empty", () => {
     const legacyItem: TranslationItem = {
       ...baseItem,

@@ -717,6 +717,31 @@ select {
   border-radius: 8px;
   background: #f8fafc;
 }
+.translation-html-review {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 18px;
+  border: 1px solid var(--mc-border);
+  border-radius: 10px;
+  background: #fff;
+}
+.translation-html-file {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 16px;
+  border: 1px solid #e5e6eb;
+  border-radius: 8px;
+  background: #f7f8fa;
+}
+.translation-html-file > div:last-child {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
 .review-history {
   padding: 16px 18px;
   border: 1px solid var(--mc-border);
@@ -2482,6 +2507,13 @@ select {
   }
   .translation-compare {
     grid-template-columns: 1fr;
+  }
+  .translation-html-file {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .translation-html-file > div:last-child {
+    justify-content: flex-start;
   }
   .markdown-editor-header {
     align-items: flex-start;
