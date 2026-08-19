@@ -16,7 +16,11 @@ const hasChannelContent = (content?: TranslationChannelContent) =>
       content?.web?.summary ||
       content?.web?.body ||
       content?.push?.title ||
-      content?.push?.body,
+      content?.push?.body ||
+      content?.email?.subject ||
+      content?.email?.headline ||
+      content?.email?.body ||
+      content?.email?.textBody,
   );
 
 const reviewedLayer = (item: TranslationItem): TranslationContentLayer => ({
@@ -61,6 +65,7 @@ export function resolveMultilingualPreview(
 
   const webLayer = channelLayer?.web;
   const pushLayer = channelLayer?.push;
+  const emailLayer = channelLayer?.email;
   const content: LocalizedMessageContent = {
     sourceLocale: item.targetLocale,
     locales: [item.targetLocale],
@@ -80,6 +85,33 @@ export function resolveMultilingualPreview(
       platform: pushLayer?.platform || source?.push.platform || "全部设备",
       priority: pushLayer?.priority || source?.push.priority || "高",
     },
+    email:
+      channels.includes("邮件") && (emailLayer || source?.email)
+        ? {
+            subject:
+              emailLayer?.subject || flatLayer?.title || source?.email?.subject || "",
+            preheader:
+              emailLayer?.preheader || flatLayer?.summary || source?.email?.preheader,
+            bodyMode: source?.email?.bodyMode,
+            htmlAssets: emailLayer?.htmlAssets || source?.email?.htmlAssets,
+            headline:
+              emailLayer?.headline || flatLayer?.title || source?.email?.headline || "",
+            body:
+              source?.email?.bodyMode === "html"
+                ? ""
+                : emailLayer?.body || flatLayer?.body || source?.email?.body || "",
+            textBody:
+              source?.email?.bodyMode === "html"
+                ? ""
+                : emailLayer?.textBody || flatLayer?.body || source?.email?.textBody || "",
+            actionText: emailLayer?.actionText ?? source?.email?.actionText,
+            actionUrl: emailLayer?.actionUrl ?? source?.email?.actionUrl,
+            footerText: emailLayer?.footerText ?? source?.email?.footerText,
+            unsubscribeText:
+              emailLayer?.unsubscribeText ?? source?.email?.unsubscribeText,
+          }
+        : undefined,
+    emailConfig: source?.emailConfig,
   };
 
   return { channels, content };

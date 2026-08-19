@@ -18,10 +18,10 @@ it('authors a temporary single-language Web and Push message and previews entere
   expect(screen.getByLabelText('Push 标题')).toBeVisible();
   expect(screen.queryByText('优先级', { selector: 'label' })).not.toBeInTheDocument();
   expect(screen.queryByText('折叠键', { selector: 'label' })).not.toBeInTheDocument();
-  expect(screen.getByText('完成语言准备')).toBeVisible();
+  expect(screen.getByText('提交后：内容审核 → 多语言')).toBeVisible();
 });
 
-it('restores the full translation progress for a temporary multilingual message', () => {
+it('does not expose translation review controls while editing a temporary multilingual message', () => {
   const sourceTemplate = getPrototypeState().templates[0];
   const temporaryTemplate = saveTemplate({
     name: '临时消息 · 翻译进度测试',
@@ -68,9 +68,9 @@ it('restores the full translation progress for a temporary multilingual message'
     </MemoryRouter>,
   );
 
-  expect(screen.getByText('语言审核进度')).toBeVisible();
-  expect(screen.getByText('0/2 个目标语言已通过')).toBeVisible();
-  expect(screen.getByText('逐语言结果')).toBeVisible();
-  expect(screen.getByRole('button', { name: '当场校对并确认' })).toBeVisible();
-  expect(screen.getByRole('button', { name: '前往专项审核' })).toBeVisible();
+  expect(screen.getByText('提交后：内容审核 → 多语言')).toBeVisible();
+  expect(screen.getByText('临时消息先审内容')).toBeVisible();
+  expect(screen.queryByText('语言审核进度')).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: '当场校对并确认' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: '前往专项审核' })).not.toBeInTheDocument();
 });

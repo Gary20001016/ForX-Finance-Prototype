@@ -15,7 +15,7 @@ import TemplateEditorDrawer from "./TemplateEditorDrawer";
 
 beforeEach(() => resetPrototypeStore());
 
-it("submits a Japanese-only template to direct language review", async () => {
+it("submits a Japanese-only template to content review before language review", async () => {
   const user = userEvent.setup();
   const onCreated = vi.fn();
   render(
@@ -36,18 +36,25 @@ it("submits a Japanese-only template to direct language review", async () => {
   await user.type(screen.getByLabelText("Push 标题"), "お知らせ");
   await user.type(screen.getByLabelText("Push 正文"), "本文");
 
-  expect(screen.getByText(/单语言模板，无需机器翻译/)).toBeVisible();
-  await user.click(screen.getByRole("button", { name: "提交语言审核" }));
+  expect(screen.getByText(/先审核默认语言内容/)).toBeVisible();
+  await user.click(
+    screen.getByRole("button", { name: "保存并提交内容审核" }),
+  );
 
   await waitFor(() => expect(onCreated).toHaveBeenCalledTimes(1));
   const template = onCreated.mock.calls[0][0];
   expect(template.sourceLocale).toBe("ja-JP");
   expect(template.locales).toEqual(["ja-JP"]);
   expect(
+    getPrototypeState().approvals.find(
+      (approval) => approval.templateId === template.id,
+    ),
+  ).toMatchObject({ status: "待审核" });
+  expect(
     getPrototypeState().translationBatches.find(
       (batch) => batch.templateId === template.id,
     ),
-  ).toMatchObject({ productionMode: "direct_source_review" });
+  ).toBeUndefined();
 });
 
 it("excludes the source locale from target-language options", async () => {

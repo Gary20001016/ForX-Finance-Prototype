@@ -19,7 +19,7 @@ it("opens a complete template content editor", async () => {
   expect(screen.queryByPlaceholderText(/snake_case/)).not.toBeInTheDocument();
   expect(screen.getByLabelText("站内信标题")).toBeVisible();
   expect(screen.getByLabelText("Push Deep Link")).toBeVisible();
-  expect(screen.getByText("保存并进入业务审核")).toBeVisible();
+  expect(screen.getByText("保存并提交内容审核")).toBeVisible();
 });
 
 it("shows the system template number instead of the internal code", () => {
@@ -48,4 +48,16 @@ it("shows task usage instead of a direct event binding", () => {
   expect(
     screen.getAllByRole("button", { name: /\d+ 个任务/ }).length,
   ).toBeGreaterThan(0);
+});
+
+it("keeps the four-state lifecycle separate from the precise current node", () => {
+  render(
+    <MemoryRouter initialEntries={["/templates?scope=manual"]}>
+      <TemplateListPage />
+    </MemoryRouter>,
+  );
+
+  expect(screen.getAllByText("多语言审核中")).toHaveLength(1);
+  expect(screen.getByText("审核中")).toBeVisible();
+  expect(screen.queryByText("语言审核中")).not.toBeInTheDocument();
 });

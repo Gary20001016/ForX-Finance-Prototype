@@ -56,6 +56,14 @@ export default function ApprovalDrawer({
     item?.objectType === "事件通知规则" &&
       item.replacementRuleIds?.length,
   );
+  const isTemplateContentApproval = Boolean(
+    item &&
+      ["消息模板", "人工消息模板", "事件消息模板"].includes(item.objectType),
+  );
+  const isTemporaryContentApproval = Boolean(
+    item?.objectType === "消息任务" &&
+      item.changes?.some((change) => change.includes("临时消息")),
+  );
   const replacementRules = isRuleReplacement
     ? store.rules.filter((rule) => item?.replacementRuleIds?.includes(rule.id))
     : [];
@@ -117,8 +125,10 @@ export default function ApprovalDrawer({
       next === "approve"
         ? item.objectType === "事件通知规则"
           ? "审核已通过，事件通知规则已启用"
-          : item.objectType === "事件消息模板"
-            ? "审核已通过，事件消息模板已发布"
+          : isTemplateContentApproval
+            ? "内容审核已通过，系统已自动进入多语言流程"
+            : isTemporaryContentApproval
+              ? "临时消息内容审核已通过，系统将自动完成多语言并进入发送"
             : item.triggerType === "event"
           ? "审批已通过，事件任务已启用"
           : item.schedule === "立即"
@@ -126,8 +136,8 @@ export default function ApprovalDrawer({
             : "审核已通过，任务进入待发送状态"
         : item.objectType === "事件通知规则"
           ? "审核已驳回，事件通知规则进入待修改状态"
-          : item.objectType === "事件消息模板"
-            ? "审核已驳回，事件消息模板进入驳回状态"
+          : isTemplateContentApproval
+            ? "内容审核已驳回，模板进入驳回状态"
             : "审核已驳回，任务进入待修改状态",
     );
     onClose();
@@ -178,6 +188,18 @@ export default function ApprovalDrawer({
               showIcon
               title={`工单已指派给 ${item.assignee || item.assigneeId}`}
               content="当前账号可以查看，但只有被指派的审核人可以通过或驳回。"
+            />
+          )}
+          {(isTemplateContentApproval || isTemporaryContentApproval) && (
+            <Alert
+              type="info"
+              showIcon
+              title="当前节点：默认语言内容审核"
+              content={
+                isTemplateContentApproval
+                  ? "通过后系统自动创建机器翻译或小语种审核任务；全部语言通过后模板自动发布。"
+                  : "通过后系统自动创建机器翻译或小语种审核任务；全部语言通过后任务自动进入发送。"
+              }
             />
           )}
           {isRuleReplacement && (
@@ -356,6 +378,7 @@ export default function ApprovalDrawer({
               {item.content ? (
                 <MessagePreview
                   content={item.content}
+                  channels={item.channels || []}
                   showPushPriority={item.triggerType === "event"}
                 />
               ) : (
@@ -396,7 +419,7 @@ export default function ApprovalDrawer({
             {highRisk && (
               <Form.Item>
                 <Checkbox checked={confirmed} disabled={!canReview} onChange={setConfirmed}>
-                  我已核对目标范围、最终 Web/Push
+                  我已核对目标范围、最终站内信 / Push / Email
                   内容、发送时间、有效期和失败策略
                 </Checkbox>
               </Form.Item>

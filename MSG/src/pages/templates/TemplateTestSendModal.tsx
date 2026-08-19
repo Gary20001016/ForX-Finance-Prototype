@@ -20,6 +20,10 @@ import {
   sendTemplateTest,
   usePrototypeStore,
 } from "../../store/prototypeStore";
+import {
+  ACTIVE_MESSAGE_CHANNELS,
+  channelDisplayName,
+} from "../../domain/emailChannel";
 
 const CURRENT_OPERATOR_ID = "admin-01";
 
@@ -55,9 +59,7 @@ export default function TemplateTestSendModal({
   );
   const availableChannels = useMemo(
     () =>
-      channels.filter(
-        (channel) => channel === "站内信" || channel === "Push",
-      ),
+      channels.filter((channel) => ACTIVE_MESSAGE_CHANNELS.includes(channel)),
     [channels],
   );
   const channelKey = availableChannels.join("|");
@@ -117,7 +119,7 @@ export default function TemplateTestSendModal({
           type="info"
           showIcon
           title="自动使用本人全部测试账号"
-          content="接收账号来自系统配置，当前弹窗不能临时输入、取消选择或添加其他 UID。测试发送不会保存模板，也不会计入正式任务和数据统计。"
+          content="接收账号来自系统配置：站内信和 Push 使用测试 UID，Email 使用测试邮箱。当前弹窗不能临时添加收件人，测试发送不会计入正式统计。"
         />
 
         {accounts.length ? (
@@ -130,6 +132,7 @@ export default function TemplateTestSendModal({
               value: (
                 <Space>
                   <span className="mono">{account.uid}</span>
+                  <span>{account.email || "未配置 Email"}</span>
                   <Tag color="green">已校验</Tag>
                 </Space>
               ),
@@ -142,7 +145,7 @@ export default function TemplateTestSendModal({
             title="尚未配置测试账号"
             content={
               <Space>
-                <span>请先在系统配置中维护本人测试 UID。</span>
+                <span>请先在系统配置中维护本人测试 UID 和 Email。</span>
                 <Button
                   type="primary"
                   size="small"
@@ -163,7 +166,10 @@ export default function TemplateTestSendModal({
           <div style={{ marginTop: 10 }}>
             <Checkbox.Group
               value={selectedChannels}
-              options={availableChannels}
+              options={availableChannels.map((value) => ({
+                label: channelDisplayName(value),
+                value,
+              }))}
               onChange={(values) => setSelectedChannels(values as Channel[])}
             />
           </div>
@@ -203,7 +209,11 @@ export default function TemplateTestSendModal({
             type="success"
             showIcon
             title="测试发送已完成"
-            content={`${result.accountCount} 个测试账号 × ${result.channelCount} 个渠道，共生成 ${result.totalDeliveries} 条测试发送`}
+            content={
+              selectedChannels.includes("邮件")
+                ? `${result.accountCount} 个测试账号，${result.channelCount} 个渠道，共生成 ${result.totalDeliveries} 条测试发送（Email 收件人 ${result.recipientEmails?.length || 0} 个）`
+                : `${result.accountCount} 个测试账号 × ${result.channelCount} 个渠道，共生成 ${result.totalDeliveries} 条测试发送`
+            }
           />
         )}
       </Space>

@@ -5,7 +5,6 @@ import {
   Descriptions,
   Message,
   Progress,
-  Select,
   Space,
   Tag,
   Tooltip,
@@ -22,12 +21,11 @@ import {
   reviewOperatorName,
 } from "../../domain/reviewOperators";
 import {
-  createTranslationBatch,
   retryTranslation,
-  submitTemplateForApproval,
 } from "../../store/prototypeStore";
 import TranslationReviewDrawer from "../approvals/TranslationReviewDrawer";
 import { deriveMultilingualProgress } from "../multilingual/multilingualProgress";
+import { contentWorkflowStageLabel } from "../../domain/contentApprovalWorkflow";
 import {
   isPublishedTemplateLocked,
   PUBLISHED_TEMPLATE_LOCK_MESSAGE,
@@ -107,8 +105,6 @@ export default function TranslationWorkflowPanel({
   context?: "template" | "temporary-task";
   readOnly?: boolean;
 }) {
-  const navigate = useNavigate();
-  const [targets, setTargets] = useState<string[]>(["en-US"]);
   const [ordinaryReviewId, setOrdinaryReviewId] = useState<string>();
   const sourceEditingLocked = isPublishedTemplateLocked(template);
   const singleLanguageReady =
@@ -117,39 +113,16 @@ export default function TranslationWorkflowPanel({
     template.locales[0] === template.sourceLocale;
 
   if (!batch) {
+    const stage = template.workflowStage || "draft";
     return (
       <div className="translation-flow">
         {singleLanguageReady ? (
-          <>
-            <Alert
-              type="success"
-              showIcon
-              title="单语言内容已就绪"
-              content={`${template.sourceLocale} 直接编写，无需机器翻译，可以进入业务审核。`}
-            />
-            {!sourceEditingLocked && (
-              <div className="translation-gate ready">
-                <div>
-                  <strong>发布门禁 · 已通过</strong>
-                  <p>单语言内容已完成语言准备，可以提交业务审核。</p>
-                </div>
-                <Space>
-                  <Button disabled={readOnly} onClick={onEdit}>编辑源文案</Button>
-                  <Button
-                    type="primary"
-                    disabled={readOnly || template.status === "已发布"}
-                    onClick={() => {
-                      const approval = submitTemplateForApproval(template.id);
-                      Message.success(`已提交业务审核 ${approval.id}`);
-                      navigate("/approvals");
-                    }}
-                  >
-                    {template.status === "已发布" ? "已发布" : "提交业务审核"}
-                  </Button>
-                </Space>
-              </div>
-            )}
-          </>
+          <Alert
+            type="success"
+            showIcon
+            title="模板已发布"
+            content={`${template.sourceLocale} 单语言内容已通过内容审核，无需机器翻译，系统已自动发布。`}
+          />
         ) : sourceEditingLocked ? (
           <Alert
             type="warning"
@@ -158,45 +131,25 @@ export default function TranslationWorkflowPanel({
             content={`${PUBLISHED_TEMPLATE_LOCK_MESSAGE}，当前模板没有可展示的翻译批次。`}
           />
         ) : (
-          <>
-            <Alert
-              type="warning"
-              showIcon
-              content="该模板尚未创建翻译批次。请选择目标语言并提交外部异步机翻任务。"
-            />
-            <Space direction="vertical" style={{ width: "100%" }}>
-              <Select
-                mode="multiple"
-                value={targets}
-                disabled={readOnly}
-                onChange={setTargets}
-                options={[
-                  "en-US",
-                  "zh-TW",
-                  "ja-JP",
-                  "ko-KR",
-                  "es-ES",
-                  "tr-TR",
-                  "ru-RU",
-                  "fr-FR",
-                ].map((value) => ({ label: value, value }))}
-              />
-              <Button
-                type="primary"
-                disabled={readOnly || !targets.length}
-                onClick={() => {
-                  createTranslationBatch({
-                    templateId: template.id,
-                    targetLocales: targets,
-                    createdBy: "Gary Ma",
-                  });
-                  Message.success("外部机翻批次已创建");
-                }}
-              >
-                创建外部机翻任务
-              </Button>
-            </Space>
-          </>
+          <Alert
+            type={stage === "rejected" ? "error" : "info"}
+            showIcon
+            title={contentWorkflowStageLabel(stage)}
+            content={
+              stage === "content_review"
+                ? "默认语言内容正在审核；审核通过后系统才会自动创建多语言任务。"
+                : stage === "rejected"
+                  ? "内容审核已驳回，请修改源内容后重新提交内容审核。"
+                  : "请先在模板编辑器中完成内容并提交内容审核。"
+            }
+            action={
+              stage === "rejected" && onEdit ? (
+                <Button disabled={readOnly} onClick={onEdit}>
+                  修改内容
+                </Button>
+              ) : undefined
+            }
+          />
         )}
       </div>
     );
@@ -326,11 +279,11 @@ export default function TranslationWorkflowPanel({
           <p>
             {ready
               ? temporaryTask
-                ? `${directSource ? "原文" : "全部目标语言"}已完成人工审核，可以继续提交消息任务业务审核。`
-                : `${directSource ? "原文" : "全部目标语言"}已完成人工审核，可以提交业务审核。`
+                ? `${directSource ? "原文" : "全部目标语言"}已完成人工审核，系统将自动推进任务。`
+                : `${directSource ? "原文" : "全部目标语言"}已完成人工审核，模板已自动发布。`
               : temporaryTask
-                ? `${directSource ? "原文尚未" : "仍有目标语言未"}人工审核通过，临时消息任务不可提交业务审核。`
-                : `${directSource ? "原文尚未" : "仍有目标语言未"}人工审核通过，模板不可发布，也不可用于消息任务。`}
+                ? `${directSource ? "原文尚未" : "仍有目标语言未"}人工审核通过，任务继续等待。`
+                : `${directSource ? "原文尚未" : "仍有目标语言未"}人工审核通过，模板暂不可发布。`}
           </p>
         </div>
         {!temporaryTask && (
@@ -342,16 +295,8 @@ export default function TranslationWorkflowPanel({
             ) : (
               <Button disabled={readOnly} onClick={onEdit}>编辑源文案</Button>
             )}
-            <Button
-              type="primary"
-              disabled={readOnly || !ready || template.status === "已发布"}
-              onClick={() => {
-                const approval = submitTemplateForApproval(template.id);
-                Message.success(`已提交业务审核 ${approval.id}`);
-                navigate("/approvals");
-              }}
-            >
-              {template.status === "已发布" ? "已发布" : "提交业务审核"}
+            <Button type="primary" disabled>
+              {ready ? "已自动发布" : "等待语言审核"}
             </Button>
           </Space>
         )}

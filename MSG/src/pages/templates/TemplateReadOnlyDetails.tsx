@@ -113,14 +113,17 @@ export default function TemplateReadOnlyDetails({
           <>
             <MessagePreview
               content={template.content}
+              channels={template.channels}
               showPushPriority={template.usageScope === "event"}
             />
-            <details className="markdown-source-disclosure">
-              <summary>查看站内信正文 Markdown 源码</summary>
-              <pre className="markdown-source">
-                {template.content.web.body}
-              </pre>
-            </details>
+            {template.channels.includes("站内信") && (
+              <details className="markdown-source-disclosure">
+                <summary>查看站内信正文 Markdown 源码</summary>
+                <pre className="markdown-source">
+                  {template.content.web.body}
+                </pre>
+              </details>
+            )}
           </>
         ) : (
           <Alert type="warning" showIcon content="当前模板没有可预览的内容快照。" />

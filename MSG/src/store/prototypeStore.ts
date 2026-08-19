@@ -44,6 +44,7 @@ import {
   translationBatches,
   userMessages,
 } from "../mocks/data";
+import { createEmailDemoFixtures } from "../mocks/emailDemoFixtures";
 import {
   getManualTaskOperations,
   isManualTaskStatus,
@@ -97,6 +98,16 @@ import {
   normalizeRiskLevel,
 } from "../domain/messageDisplayTaxonomy";
 import { getEventVariableNames } from "../domain/eventVariables";
+import {
+  contentApprovalHash,
+  templateMainStatusForStage,
+} from "../domain/contentApprovalWorkflow";
+import {
+  ACTIVE_MESSAGE_CHANNELS,
+  createDefaultEmailConfig,
+  getEmailBodyMode,
+  validateEmailContent,
+} from "../domain/emailChannel";
 
 export interface PrototypeState {
   messages: UserMessage[];
@@ -373,12 +384,53 @@ const syncTranslationReviewAssignments = (
 export const normalizeTemplateTranslationReadiness = (
   templates: MessageTemplate[],
 ): MessageTemplate[] =>
-  templates.map((template) => ({
-    ...template,
-    translationReadiness: normalizeTranslationStatus(
+  templates.map((template) => {
+    const normalizedTranslationReadiness = normalizeTranslationStatus(
       String(template.translationReadiness),
-    ),
-  }));
+    );
+    const published = template.workflowStage
+      ? template.workflowStage === "published"
+      : template.status === "已发布";
+    const rejected = template.workflowStage
+      ? template.workflowStage === "rejected"
+      : ["驳回", "已驳回"].includes(template.status);
+    const editableBeforeApproval = template.workflowStage
+      ? ["draft", "rejected"].includes(template.workflowStage)
+      : template.status === "草稿" || rejected;
+    const translationReadiness = editableBeforeApproval
+      ? "无结果"
+      : normalizedTranslationReadiness;
+    const translationBatchId = editableBeforeApproval
+      ? ""
+      : template.translationBatchId;
+    const inLocalization =
+      Boolean(translationBatchId) && translationReadiness !== "已通过";
+    const workflowStage =
+      template.workflowStage ||
+      (published
+        ? "published"
+        : rejected
+          ? "rejected"
+          : template.status === "审核中" && inLocalization
+            ? "localization_review"
+            : template.status === "审核中"
+              ? "content_review"
+              : "draft");
+    return {
+      ...template,
+      status: templateMainStatusForStage(workflowStage),
+      translationBatchId,
+      translationReadiness,
+      contentApprovalStatus:
+        template.contentApprovalStatus ||
+        (published || (template.status === "审核中" && inLocalization)
+          ? "已通过"
+          : rejected
+            ? "已驳回"
+            : "未提交"),
+      workflowStage,
+    };
+  });
 
 export const normalizeRuleContentVersions = (
   versions: RuleContentVersion[],
@@ -401,29 +453,43 @@ const listeners = new Set<() => void>();
 const contentFor = (
   title: string,
   category = "消息通知",
-): LocalizedMessageContent => ({
-  sourceLocale: "zh-CN",
-  locales: ["zh-CN", "en-US"],
-  web: {
-    title,
-    summary: `${category}：请查看最新消息详情。`,
-    body: `尊敬的 {{ user_nickname }}，${title}。相关金额、币种、交易对与时间信息请以账户记录为准。`,
-    riskCopy:
-      category.includes("风控") || title.includes("风险")
-        ? "市场波动较大，请立即核对账户与仓位。"
-        : undefined,
-    actionText: "查看详情",
-    targetUrl: "forxfinance://security/devices",
-  },
-  push: {
-    title,
-    body: `${category}：请立即查看。`,
-    deepLink: "forxfinance://security/devices",
-    platform: "全部设备",
-    priority: title.includes("风险") ? "紧急" : "高",
-    collapseKey: `message-${title.slice(0, 8)}`,
-  },
-});
+): LocalizedMessageContent => {
+  const body = `尊敬的 {{ user_nickname }}，${title}。相关金额、币种、交易对与时间信息请以账户记录为准。`;
+  return {
+    sourceLocale: "zh-CN",
+    locales: ["zh-CN", "en-US"],
+    web: {
+      title,
+      summary: `${category}：请查看最新消息详情。`,
+      body,
+      riskCopy:
+        category.includes("风控") || title.includes("风险")
+          ? "市场波动较大，请立即核对账户与仓位。"
+          : undefined,
+      actionText: "查看详情",
+      targetUrl: "forxfinance://security/devices",
+    },
+    push: {
+      title,
+      body: `${category}：请立即查看。`,
+      deepLink: "forxfinance://security/devices",
+      platform: "全部设备",
+      priority: title.includes("风险") ? "紧急" : "高",
+      collapseKey: `message-${title.slice(0, 8)}`,
+    },
+    email: {
+      subject: title,
+      preheader: `${category}：请查看最新消息详情。`,
+      headline: title,
+      body,
+      textBody: `${title}\n\n${body}`,
+      actionText: "查看详情",
+      actionUrl: "https://www.forxfinance.example/messages",
+      footerText: "此邮件由 ForX Finance 消息中心发送。",
+    },
+    emailConfig: createDefaultEmailConfig(),
+  };
+};
 
 const allowlistSeed: LinkAllowlistEntry[] = [
   {
@@ -530,6 +596,18 @@ const createAutomationSeed = (seededTemplates: MessageTemplate[]) => {
       owner: "交易运营",
       count: 1280000,
       successRate: 99.8,
+    },
+    {
+      id: "RULE-EMAIL-DEMO",
+      name: "充值到账 Email 事件任务",
+      eventId: "deposit.credited",
+      templateCode: "deposit_credited_email_demo",
+      conditionExpression: "事件到达即触发",
+      status: "已启用" as const,
+      channels: ["邮件"] as EventNotificationRule["channels"],
+      owner: "资产运营",
+      count: 26480,
+      successRate: 99.98,
     },
   ];
   const rules: EventNotificationRule[] = [];
@@ -640,8 +718,10 @@ const createAutomationSeed = (seededTemplates: MessageTemplate[]) => {
   return { rules, versions, triggerRecords };
 };
 
-const enrichTemplates = (): MessageTemplate[] =>
-  templates.map((template) => {
+const enrichTemplates = (
+  additionalTemplates: MessageTemplate[] = [],
+): MessageTemplate[] =>
+  [...templates, ...additionalTemplates].map((template) => {
     const event = template.eventId
       ? eventSeed.find((item) => item.id === template.eventId)
       : undefined;
@@ -663,8 +743,8 @@ const enrichTemplates = (): MessageTemplate[] =>
       template.nature;
     return {
       ...template,
-      channels: template.channels.filter(
-        (channel) => channel === "站内信" || channel === "Push",
+      channels: template.channels.filter((channel) =>
+        ACTIVE_MESSAGE_CHANNELS.includes(channel),
       ),
       category: event ? display.category : template.category || display.category,
       topic: event ? display.topic : template.topic || display.topic,
@@ -743,8 +823,8 @@ const enrichTasks = (seededTemplates: MessageTemplate[]): MessageTask[] =>
       const display = inferDisplayLocation(task.name, task.category);
       return {
         ...task,
-        channels: task.channels.filter(
-          (channel) => channel === "站内信" || channel === "Push",
+        channels: task.channels.filter((channel) =>
+          ACTIVE_MESSAGE_CHANNELS.includes(channel),
         ),
         category: task.category || display.category,
         topic: task.topic || display.topic,
@@ -791,17 +871,103 @@ const enrichTasks = (seededTemplates: MessageTemplate[]): MessageTask[] =>
     .filter((task) => task.channels.length > 0 && task.type !== "自动化");
 
 const createSeed = (): PrototypeState => {
-  const templateCandidates = enrichTemplates();
-  const seededTasks = enrichTasks(templateCandidates);
+  const emailDemos = createEmailDemoFixtures();
+  const templateCandidates = enrichTemplates(emailDemos.templates);
+  const baseTasks = enrichTasks(templateCandidates);
+  const pendingTemporaryContent = contentFor(
+    "临时提现服务提醒",
+    "资产通知",
+  );
+  pendingTemporaryContent.locales = ["zh-CN", "en-US", "ja-JP"];
+  const pendingTemporaryTask: MessageTask = {
+    id: "MSG-CONTENT-REVIEW-001",
+    name: "临时提现服务提醒",
+    type: "人工群发",
+    category: "asset",
+    topic: "withdrawal",
+    nature: "事务",
+    risk: "中",
+    template: "临时消息",
+    channels: ["站内信", "Push"],
+    audience: "指定 UID 名单",
+    audienceCount: 128,
+    schedule: "立即",
+    status: "待审核",
+    approval: "一级审核",
+    approvalStatus: "审核中",
+    deliveryResult: "未开始",
+    progress: 0,
+    successRate: 0,
+    creator: "林夏",
+    team: "资产运营",
+    contentMode: "temporary",
+    content: pendingTemporaryContent,
+    expiresAt: "发送后 24 小时",
+    retentionDays: 90,
+    audienceType: "uid",
+    sampleUsers: ["UID 82***19 · zh-CN · iOS"],
+    triggerType: "manual",
+    createdAt: "刚刚",
+    contentApprovalStatus: "待审核",
+    contentApprovalId: "APR-CONTENT-001",
+    workflowStage: "content_review",
+    contentApprovedHash: contentApprovalHash({
+      sourceLocale: pendingTemporaryContent.sourceLocale,
+      locales: pendingTemporaryContent.locales,
+      channels: ["站内信", "Push"],
+      category: "asset",
+      topic: "withdrawal",
+      risk: "中",
+      content: pendingTemporaryContent,
+    }),
+  };
+  const seededTasks = [
+    pendingTemporaryTask,
+    ...emailDemos.tasks,
+    ...baseTasks,
+  ];
   const automation = createAutomationSeed(templateCandidates);
-  const seededTemplates = normalizeManualTemplateStatuses(
-    normalizeTemplateUsageScopes(
-      templateCandidates,
-      seededTasks,
-      automation.versions,
+  const seededTemplates = normalizeTemplateTranslationReadiness(
+    normalizeManualTemplateStatuses(
+      normalizeTemplateUsageScopes(
+        templateCandidates,
+        seededTasks,
+        automation.versions,
+      ),
     ),
   );
   const firstPhaseApprovals: ApprovalItem[] = [
+    {
+      id: "APR-CONTENT-001",
+      objectType: "消息任务",
+      name: pendingTemporaryTask.name,
+      version: "v1",
+      risk: pendingTemporaryTask.risk,
+      nature: pendingTemporaryTask.nature,
+      category: pendingTemporaryTask.category,
+      topic: pendingTemporaryTask.topic,
+      sourceType: "人工消息",
+      audience: pendingTemporaryTask.audienceCount,
+      cost: "Web ¥0 · Push ¥0",
+      schedule: "内容审核通过后进入多语言",
+      step: "一级审核",
+      submitter: pendingTemporaryTask.creator,
+      submitterId: "ops-22",
+      assignee: "Gary Ma",
+      assigneeId: "admin-01",
+      submittedAt: "刚刚",
+      status: "待审核",
+      taskId: pendingTemporaryTask.id,
+      triggerType: "manual",
+      channels: pendingTemporaryTask.channels,
+      locales: pendingTemporaryContent.locales,
+      content: pendingTemporaryContent,
+      expiresAt: pendingTemporaryTask.expiresAt,
+      changes: [
+        "临时消息默认语言内容与任务配置已冻结",
+        "内容审核通过后自动进入多语言",
+      ],
+    },
     ...approvals.filter(
       (item) =>
         item.objectType === "消息任务" || item.objectType === "消息模板",
@@ -833,7 +999,7 @@ const createSeed = (): PrototypeState => {
     templates: seededTemplates,
     translationBatches: syncTranslationReviewAssignments(
       normalizeTranslationBatches(
-        translationBatches,
+        [...emailDemos.translationBatches, ...translationBatches],
         languageReviewPolicySeed,
         seededTemplates,
       ),
@@ -841,7 +1007,7 @@ const createSeed = (): PrototypeState => {
       reviewOperators,
     ),
     languageReviewPolicies: JSON.parse(JSON.stringify(languageReviewPolicySeed)),
-    approvals: firstPhaseApprovals.map((item) => {
+    approvals: [...firstPhaseApprovals, ...emailDemos.approvals].map((item) => {
       const task = seededTasks.find(
         (candidate) => candidate.name === item.name,
       );
@@ -854,10 +1020,11 @@ const createSeed = (): PrototypeState => {
       return {
         ...item,
         status: item.status === "待我审核" ? "待审核" : item.status,
-        cost: "Web ¥0 · Push ¥0",
-        taskId: task?.id,
-        templateId: task?.templateId || template?.id,
-        templateVersion: task?.templateVersion || template?.version,
+        cost: "站内信 ¥0 · Push ¥0 · Email 按量计费",
+        taskId: item.taskId || task?.id,
+        templateId: item.templateId || task?.templateId || template?.id,
+        templateVersion:
+          item.templateVersion || task?.templateVersion || template?.version,
         category,
         topic,
         sourceType:
@@ -867,24 +1034,30 @@ const createSeed = (): PrototypeState => {
             : "人工消息",
         triggerType: task?.triggerType,
         eventConfig: task?.eventConfig,
-        channels: task?.channels || template?.channels || ["站内信", "Push"],
-        locales: task?.content?.locales || template?.locales || ["zh-CN"],
+        channels:
+          item.channels || task?.channels || template?.channels || ["站内信", "Push"],
+        locales:
+          item.locales || task?.content?.locales || template?.locales || ["zh-CN"],
         content:
+          item.content ||
           task?.content ||
           template?.content ||
           contentFor(item.name, item.nature),
-        sampleUsers: task?.sampleUsers || [
+        sampleUsers: item.sampleUsers || task?.sampleUsers || [
           "UID 82***19 · zh-CN · iOS",
           "UID 51***02 · en-US · Android",
         ],
-        expiresAt: task?.expiresAt || "2026-07-14 20:00",
-        changes: ["新增 App Push 紧急优先级", "更新 Deep Link 为已备案路径"],
+        expiresAt: item.expiresAt || task?.expiresAt || "2026-07-14 20:00",
+        changes: item.changes || [
+          "新增 App Push 紧急优先级",
+          "更新 Deep Link 为已备案路径",
+        ],
       };
     }),
-    deliveries: deliveries
-      .filter(
-        (record) => record.channel === "站内信" || record.channel === "Push",
-      )
+    deliveries: [
+      ...emailDemos.deliveries,
+      ...deliveries
+      .filter((record) => ACTIVE_MESSAGE_CHANNELS.includes(record.channel))
       .map((record, index) => {
         const display = inferDisplayLocation(record.task);
         return {
@@ -914,8 +1087,36 @@ const createSeed = (): PrototypeState => {
             index < automation.triggerRecords.length
               ? automation.triggerRecords[index].id
               : undefined,
+          recipientEmailMasked:
+            record.channel === "邮件" ? record.destination : undefined,
+          messageStream:
+            record.channel === "邮件" &&
+            (record.task.includes("召回") || record.task.includes("引导"))
+              ? "broadcast"
+              : record.channel === "邮件"
+                ? "transactional"
+                : undefined,
+          openedAt:
+            record.channel === "邮件" && record.status === "已打开"
+              ? record.deliveredAt
+              : undefined,
+          bounceType:
+            record.channel === "邮件" && record.status === "已退信"
+              ? "hard"
+              : undefined,
+          bounceReason:
+            record.channel === "邮件" && record.status === "已退信"
+              ? record.error
+              : undefined,
+          unsubscribedAt:
+            record.channel === "邮件" && record.error?.includes("退订")
+              ? record.submittedAt
+              : undefined,
+          providerEventId:
+            record.channel === "邮件" ? `PE-${90001 + index}` : undefined,
         } satisfies DeliveryRecord;
       }),
+    ],
     allowlist: allowlistSeed,
     testAccounts: JSON.parse(JSON.stringify(operatorTestAccounts)),
     events: eventSeed,
@@ -1083,7 +1284,26 @@ export const migrateSavedState = (saved: PrototypeState): PrototypeState => {
         !savedTranslationBatches.some((item) => item.id === batch.id),
     ),
   ];
-  const mergedTasks = (saved.tasks || fresh.tasks).map((task) => {
+  const mergeMissingById = <T extends { id: string }>(
+    persisted: T[] = [],
+    seed: T[] = [],
+  ) => [
+    ...persisted,
+    ...seed.filter(
+      (seedItem) => !persisted.some((item) => item.id === seedItem.id),
+    ),
+  ];
+  const taskCandidates = mergeMissingById(saved.tasks, fresh.tasks);
+  const emailDemoTaskIds = fresh.tasks
+    .filter((task) => task.id.startsWith("MSG-EMAIL-DEMO-"))
+    .map((task) => task.id);
+  const orderedTaskCandidates = [
+    ...emailDemoTaskIds.flatMap((id) =>
+      taskCandidates.filter((task) => task.id === id),
+    ),
+    ...taskCandidates.filter((task) => !emailDemoTaskIds.includes(task.id)),
+  ];
+  const mergedTasks = orderedTaskCandidates.map((task) => {
     const baseline = fresh.tasks.find((item) => item.id === task.id);
     const triggerType = task.triggerType || baseline?.triggerType || (task.type === "事件触发" ? "event" : "manual");
     return normalizeTaskDisplay({
@@ -1101,7 +1321,7 @@ export const migrateSavedState = (saved: PrototypeState): PrototypeState => {
     (template) => template.code === "order_filled",
   );
   const mergedRuleVersions = normalizeRuleContentVersions(
-    saved.ruleVersions || fresh.ruleVersions,
+    mergeMissingById(saved.ruleVersions, fresh.ruleVersions),
     mergedTemplateCandidates,
   ).map((version) =>
     version.ruleId === "RULE-003" && orderFilledTemplate
@@ -1156,7 +1376,7 @@ export const migrateSavedState = (saved: PrototypeState): PrototypeState => {
       }),
     };
   });
-  const savedRules = saved.rules || fresh.rules;
+  const savedRules = mergeMissingById(saved.rules, fresh.rules);
   const mergedRules = savedRules.map((rule) => {
     const version = mergedRuleVersions.find(
       (item) =>
@@ -1210,7 +1430,10 @@ export const migrateSavedState = (saved: PrototypeState): PrototypeState => {
       source: message.source === "系统事件" ? "系统事件" : "人工消息",
     } satisfies UserMessage;
   });
-  const mergedDeliveries = (saved.deliveries || fresh.deliveries).map(
+  const mergedDeliveries = mergeMissingById(
+    saved.deliveries,
+    fresh.deliveries,
+  ).map(
     (record) => {
       const display = normalizeDisplayLocation(
         record.task,
@@ -1426,20 +1649,27 @@ export const getOperatorTestAccounts = (operatorId: string) =>
 export const addOperatorTestAccount = (input: {
   operatorId: string;
   uid: string;
+  email?: string;
   remark?: string;
 }) => {
   const uid = input.uid.trim();
+  const email = input.email?.trim().toLowerCase();
   if (!uid) throw new Error("请输入测试 UID");
+  if (email && !/^\S+@\S+\.\S+$/.test(email))
+    throw new Error("请输入有效的测试 Email");
   const accounts = getOperatorTestAccounts(input.operatorId);
   if (accounts.length >= 4)
     throw new Error("每名操作者最多配置 4 个测试账号");
   if (accounts.some((account) => account.uid === uid))
     throw new Error("该 UID 已在你的测试账号中");
+  if (email && accounts.some((account) => account.email === email))
+    throw new Error("该 Email 已在你的测试账号中");
 
   const account: OperatorTestAccount = {
     id: `TEST-ACCOUNT-${Date.now().toString().slice(-7)}`,
     operatorId: input.operatorId,
     uid,
+    email,
     remark: input.remark?.trim() || "未备注",
     verified: true,
     createdAt: "刚刚",
@@ -1455,16 +1685,33 @@ export const addOperatorTestAccount = (input: {
 export const updateOperatorTestAccount = (
   id: string,
   operatorId: string,
-  changes: Pick<OperatorTestAccount, "remark">,
+  changes: Partial<Pick<OperatorTestAccount, "remark" | "email">>,
 ) => {
   const account = state.testAccounts.find((item) => item.id === id);
   if (!account) throw new Error("测试账号不存在");
   if (account.operatorId !== operatorId)
     throw new Error("无权修改该测试账号");
+  const email =
+    changes.email === undefined
+      ? account.email
+      : changes.email.trim().toLowerCase() || undefined;
+  if (email && !/^\S+@\S+\.\S+$/.test(email))
+    throw new Error("请输入有效的测试 Email");
+  if (
+    email &&
+    state.testAccounts.some(
+      (item) =>
+        item.id !== id &&
+        item.operatorId === operatorId &&
+        item.email === email,
+    )
+  )
+    throw new Error("该 Email 已在你的测试账号中");
 
   const result = {
     ...account,
-    remark: changes.remark.trim() || "未备注",
+    remark: changes.remark?.trim() || account.remark || "未备注",
+    email,
     updatedAt: "刚刚",
   };
   update((current) => ({
@@ -1500,8 +1747,8 @@ export const sendTemplateTest = (input: {
   if (!accounts.length) throw new Error("请先配置本人测试账号");
   const channels = Array.from(
     new Set(
-      input.channels.filter(
-        (channel) => channel === "站内信" || channel === "Push",
+      input.channels.filter((channel) =>
+        ACTIVE_MESSAGE_CHANNELS.includes(channel),
       ),
     ),
   );
@@ -1518,15 +1765,35 @@ export const sendTemplateTest = (input: {
     (!input.content.push.title || !input.content.push.body)
   )
     throw new Error("请完整填写 Push 标题和正文");
+  if (channels.includes("邮件")) {
+    const emailValidation = validateEmailContent(
+      input.content.email,
+      input.content.emailConfig,
+      input.content.locales,
+    );
+    if (!emailValidation.valid)
+      throw new Error(emailValidation.errors.join("；"));
+    if (!accounts.some((account) => account.email))
+      throw new Error("请先为本人测试账号配置测试 Email");
+  }
   if (Object.values(input.variables).some((value) => !value.trim()))
     throw new Error("请完整填写模板变量测试值");
 
+  const recipientEmails = accounts.flatMap((account) =>
+    account.email ? [account.email] : [],
+  );
+  const uidChannelCount = channels.filter(
+    (channel) => channel !== "邮件",
+  ).length;
   return {
     operatorId: input.operatorId,
     recipientUids: accounts.map((account) => account.uid),
+    recipientEmails,
     accountCount: accounts.length,
     channelCount: channels.length,
-    totalDeliveries: accounts.length * channels.length,
+    totalDeliveries:
+      accounts.length * uidChannelCount +
+      (channels.includes("邮件") ? recipientEmails.length : 0),
   };
 };
 export const resetPrototypeStore = () => {
@@ -1585,6 +1852,8 @@ type SingleLanguagePreparationInput = {
   subject: GeneralTranslationBatchInput["subject"];
   sourceLocale: string;
   sourceContent: TranslationContentLayer;
+  sourceChannelContent?: LocalizedMessageContent;
+  channels?: Channel[];
   createdBy: string;
 };
 
@@ -1643,17 +1912,23 @@ export const prepareSingleLanguageContent = (
                 translationBatchId: "",
                 translationReadiness: "已通过",
                 locales: [input.sourceLocale],
-                content: template.content
-                  ? {
-                      ...template.content,
-                      sourceLocale: input.sourceLocale,
-                      locales: [input.sourceLocale],
-                    }
-                  : template.content,
-                status:
-                  template.usageScope === "event" ? "待业务审核" : "审核中",
-                updatedAt: "刚刚",
-              }
+            content: template.content
+              ? {
+                  ...template.content,
+                  sourceLocale: input.sourceLocale,
+                  locales: [input.sourceLocale],
+                }
+              : template.content,
+            status:
+              template.contentApprovalStatus === "已通过"
+                ? "已发布"
+                : "审核中",
+            workflowStage:
+              template.contentApprovalStatus === "已通过"
+                ? "published"
+                : template.workflowStage,
+            updatedAt: "刚刚",
+          }
             : template,
         ),
       }));
@@ -1694,6 +1969,26 @@ export const prepareSingleLanguageContent = (
     status: "翻译返回待审核",
     sourceContentHash,
     humanDraft: { ...input.sourceContent },
+    humanChannelDraft: input.sourceChannelContent
+      ? {
+          web: input.channels?.includes("站内信")
+            ? { ...input.sourceChannelContent.web }
+            : undefined,
+          push: input.channels?.includes("Push")
+            ? { ...input.sourceChannelContent.push }
+            : undefined,
+          email:
+            input.channels?.includes("邮件") && input.sourceChannelContent.email
+              ? {
+                  subject: input.sourceChannelContent.email.subject,
+                  preheader: input.sourceChannelContent.email.preheader,
+                  ...(getEmailBodyMode(input.sourceChannelContent.email) === "text"
+                    ? { textBody: input.sourceChannelContent.email.textBody }
+                    : {}),
+                }
+              : undefined,
+        }
+      : undefined,
     submittedAt: "刚刚",
     submitter: input.createdBy,
     variablesValid: true,
@@ -1718,6 +2013,10 @@ export const prepareSingleLanguageContent = (
     createdAt: "刚刚",
     updatedAt: "刚刚",
     sourceContent: { ...input.sourceContent },
+    channels: input.channels?.length ? [...input.channels] : undefined,
+    sourceChannelContent: input.sourceChannelContent
+      ? JSON.parse(JSON.stringify(input.sourceChannelContent))
+      : undefined,
     items: [item],
   };
   const batch = syncTranslationReviewAssignments(
@@ -1745,6 +2044,7 @@ export const prepareSingleLanguageContent = (
                 }
               : template.content,
             status: "审核中",
+            workflowStage: "localization_review",
             updatedAt: "刚刚",
           }
         : template,
@@ -1776,9 +2076,18 @@ export const createTranslationBatch = (
   const sourceContent: TranslationContentLayer = generalized
     ? input.sourceContent
     : {
-        title: template!.content?.web.title,
-        summary: template!.content?.web.summary,
-        body: template!.content?.web.body,
+        title: template!.channels.includes("站内信")
+          ? template!.content?.web.title
+          : template!.channels.includes("Push")
+            ? template!.content?.push.title
+            : template!.content?.email?.subject,
+        summary:
+          template!.content?.web.summary || template!.content?.email?.preheader,
+        body: template!.channels.includes("站内信")
+          ? template!.content?.web.body
+          : template!.channels.includes("Push")
+            ? template!.content?.push.body
+            : template!.content?.email?.body,
       };
   const sourceChannelContent = generalized
     ? input.sourceChannelContent
@@ -1833,6 +2142,16 @@ export const createTranslationBatch = (
                     title: `${sourceChannelContent.push.title || subject.name} · ${locale}`,
                   }
                 : undefined,
+              email:
+                channels?.includes("邮件") && sourceChannelContent.email
+                  ? {
+                      subject: `${sourceChannelContent.email.subject || subject.name} · ${locale}`,
+                      preheader: sourceChannelContent.email.preheader,
+                      ...(getEmailBodyMode(sourceChannelContent.email) === "text"
+                        ? { textBody: sourceChannelContent.email.textBody }
+                        : {}),
+                    }
+                  : undefined,
             }
           : undefined;
       return {
@@ -1891,12 +2210,86 @@ export const createTranslationBatch = (
                 }
               : item.content,
             status: "审核中",
+            workflowStage: "localization_review",
             updatedAt: "刚刚",
           }
         : item,
     ),
   }));
   return batch;
+};
+
+const advanceApprovedTemplate = (templateId: string) => {
+  const template = state.templates.find((item) => item.id === templateId);
+  if (!template || template.contentApprovalStatus !== "已通过") return;
+  if (
+    !template.contentApprovedHash ||
+    templateContentApprovalHash(template) !== template.contentApprovedHash
+  ) {
+    throw new Error("模板内容已变化，请重新提交内容审核");
+  }
+
+  const targetLocales = template.locales.filter(
+    (locale) => locale !== template.sourceLocale,
+  );
+  if (targetLocales.length > 0) {
+    createTranslationBatch({
+      templateId: template.id,
+      targetLocales,
+      createdBy: template.contentApprovedBy || "Gary Ma",
+    });
+    return;
+  }
+
+  if (requiresSpecialLanguageReview(template.sourceLocale)) {
+    prepareSingleLanguageContent({
+      subject: {
+        type: "template_version",
+        id: template.id,
+        name: template.name,
+        version: template.version,
+        returnPath:
+          template.usageScope === "event"
+            ? "/templates?scope=event"
+            : "/templates?scope=manual",
+      },
+      sourceLocale: template.sourceLocale,
+      sourceContent: {
+        title: template.channels.includes("站内信")
+          ? template.content?.web.title
+          : template.channels.includes("Push")
+            ? template.content?.push.title
+            : template.content?.email?.subject,
+        summary:
+          template.content?.web.summary || template.content?.email?.preheader || "",
+        body: template.channels.includes("站内信")
+          ? template.content?.web.body
+          : template.channels.includes("Push")
+            ? template.content?.push.body
+            : template.content?.email?.body,
+      },
+      sourceChannelContent: template.content,
+      channels: template.channels,
+      createdBy: template.contentApprovedBy || "Gary Ma",
+    });
+    return;
+  }
+
+  update((current) => ({
+    ...current,
+    templates: current.templates.map((item) =>
+      item.id === templateId
+        ? {
+            ...item,
+            translationBatchId: "",
+            translationReadiness: "已通过",
+            status: "已发布",
+            workflowStage: "published",
+            updatedAt: "刚刚",
+          }
+        : item,
+    ),
+  }));
 };
 
 const recomputeBatch = (batch: TranslationBatch): TranslationBatch => {
@@ -1933,6 +2326,16 @@ const mergeTranslationValuesIntoChannels = (
               ...base.push,
               title: values.title,
               body: values.body,
+            }
+          : undefined,
+        email: base.email
+          ? {
+              ...base.email,
+              subject: values.title,
+              preheader: values.summary,
+              headline: values.title,
+              body: values.body,
+              textBody: values.body,
             }
           : undefined,
       }
@@ -1993,10 +2396,14 @@ const approveTranslationWithMode = (
         ),
       }),
     );
-    const readyIds = new Set(
+    const readyTemplateBatches = new Map(
       batches
-        .filter((batch) => batch.status === "已通过")
-        .map((batch) => batch.templateId),
+        .filter(
+          (batch) =>
+            batch.status === "已通过" &&
+            batch.subjectType === "template_version",
+        )
+        .map((batch) => [batch.subjectId, batch.id]),
     );
     const readyRuleVersionIds = new Set(
       batches
@@ -2007,18 +2414,46 @@ const approveTranslationWithMode = (
         )
         .map((batch) => batch.subjectId),
     );
+    const readyTemporaryTaskBatches = new Map(
+      batches
+        .filter(
+          (batch) =>
+            batch.status === "已通过" &&
+            batch.subjectType === "manual_task_content",
+        )
+        .map((batch) => [batch.subjectId, batch.id]),
+    );
     return {
       ...current,
       translationBatches: batches,
       templates: current.templates.map((candidate) =>
-        readyIds.has(candidate.id)
+        candidate.contentApprovalStatus === "已通过" &&
+        candidate.workflowStage === "localization_review" &&
+        readyTemplateBatches.get(candidate.id) ===
+          candidate.translationBatchId
           ? {
               ...candidate,
               translationReadiness: "已通过",
-              status:
-                candidate.usageScope === "event" ? "待业务审核" : "审核中",
+              status: "已发布",
+              workflowStage: "published",
+              updatedAt: "刚刚",
             }
           : candidate,
+      ),
+      tasks: current.tasks.map((task) =>
+        task.contentApprovalStatus === "已通过" &&
+        task.workflowStage === "localization_review" &&
+        readyTemporaryTaskBatches.get(task.id) === task.translationBatchId
+          ? {
+              ...task,
+              status: task.schedule === "立即" ? "发送中" : "待发送",
+              approval: "已通过",
+              approvalStatus: "通过",
+              deliveryResult:
+                task.schedule === "立即" ? "处理中" : "未开始",
+              workflowStage: "sending_ready",
+            }
+          : task,
       ),
       ruleVersions: current.ruleVersions.map((version) =>
         readyRuleVersionIds.has(version.id)
@@ -2324,6 +2759,12 @@ export const saveTaskDraft = (
     progress: 0,
     successRate: 0,
     createdAt: "刚刚",
+    contentApprovalStatus: "未提交",
+    contentApprovalId: undefined,
+    contentApprovedAt: undefined,
+    contentApprovedBy: undefined,
+    contentApprovedHash: "",
+    workflowStage: "draft",
   };
   update((current) => ({
     ...current,
@@ -2347,6 +2788,19 @@ export const saveTaskDraft = (
   return task;
 };
 
+const taskContentApprovalHash = (task: MessageTask) => {
+  if (!task.content) throw new Error("临时消息内容不存在");
+  return contentApprovalHash({
+    sourceLocale: task.content.sourceLocale,
+    locales: task.content.locales,
+    channels: task.channels,
+    category: task.category,
+    topic: task.topic,
+    risk: task.risk,
+    content: task.content,
+  });
+};
+
 export const submitTask = (input: TaskSubmission, existingTaskId?: string) => {
   const triggerType = input.triggerType || "manual";
   if (triggerType === "event") {
@@ -2359,6 +2813,8 @@ export const submitTask = (input: TaskSubmission, existingTaskId?: string) => {
   }
   const task: MessageTask = {
     ...input,
+    translationBatchId:
+      input.contentMode === "temporary" ? undefined : input.translationBatchId,
     triggerType,
     id: existingTaskId || `MSG-${Date.now().toString().slice(-9)}`,
     type: triggerType === "event" ? "事件触发" : "人工群发",
@@ -2376,6 +2832,10 @@ export const submitTask = (input: TaskSubmission, existingTaskId?: string) => {
       "UID 82***19 · zh-CN · iOS",
       "UID 51***02 · en-US · Android",
     ],
+    contentApprovalStatus:
+      input.contentMode === "temporary" ? "待审核" : undefined,
+    workflowStage:
+      input.contentMode === "temporary" ? "content_review" : undefined,
   };
   const submitterId = CURRENT_REVIEW_OPERATOR_ID;
   const assignment = assignApprovalReviewer(state.operators, submitterId);
@@ -2413,6 +2873,14 @@ export const submitTask = (input: TaskSubmission, existingTaskId?: string) => {
     expiresAt: task.expiresAt,
     changes: ["首次提交审核，内容与配置已冻结"],
   };
+  if (task.contentMode === "temporary") {
+    task.contentApprovalId = approval.id;
+    task.contentApprovedHash = taskContentApprovalHash(task);
+    approval.changes = [
+      "临时消息默认语言内容与任务配置已冻结",
+      "内容审核通过后自动进入多语言",
+    ];
+  }
   update((current) => ({
     ...current,
     tasks: existingTaskId
@@ -2435,6 +2903,139 @@ export const submitTask = (input: TaskSubmission, existingTaskId?: string) => {
     ],
   }));
   return task;
+};
+
+const finalizeApprovedTemporaryTask = (taskId: string) =>
+  update((current) => ({
+    ...current,
+    tasks: current.tasks.map((task) =>
+      task.id === taskId
+        ? {
+            ...task,
+            status: task.schedule === "立即" ? "发送中" : "待发送",
+            approval: "已通过",
+            approvalStatus: "通过",
+            deliveryResult:
+              task.schedule === "立即" ? "处理中" : "未开始",
+            workflowStage: "sending_ready",
+          }
+        : task,
+    ),
+  }));
+
+const advanceApprovedTemporaryTask = (taskId: string) => {
+  const task = state.tasks.find((item) => item.id === taskId);
+  if (
+    !task ||
+    task.contentMode !== "temporary" ||
+    task.contentApprovalStatus !== "已通过" ||
+    !task.content
+  )
+    return;
+  if (
+    !task.contentApprovedHash ||
+    taskContentApprovalHash(task) !== task.contentApprovedHash
+  ) {
+    throw new Error("临时消息内容已变化，请重新提交内容审核");
+  }
+
+  const sourceLocale = task.content.sourceLocale;
+  const targetLocales = task.content.locales.filter(
+    (locale) => locale !== sourceLocale,
+  );
+  const subject = {
+    type: "manual_task_content" as const,
+    id: task.id,
+    name: task.name,
+    version: "v1",
+    returnPath: "/tasks",
+  };
+  const sourceContent = {
+    title:
+      task.channels.length === 1 && task.channels.includes("Push")
+        ? task.content.push.title
+        : task.channels.length === 1 && task.channels.includes("邮件")
+          ? task.content.email?.subject
+        : task.channels.length === 1
+          ? task.content.web.title
+          : [
+              task.channels.includes("站内信")
+                ? `站内信：${task.content.web.title}`
+                : "",
+              task.channels.includes("Push")
+                ? `Push：${task.content.push.title}`
+                : "",
+              task.channels.includes("邮件")
+                ? `Email：${task.content.email?.subject || ""}`
+                : "",
+            ]
+              .filter(Boolean)
+              .join(" / "),
+    summary: task.channels.includes("站内信")
+      ? task.content.web.summary
+      : undefined,
+    body:
+      task.channels.length === 1 && task.channels.includes("Push")
+        ? task.content.push.body
+        : task.channels.length === 1 && task.channels.includes("邮件")
+          ? task.content.email?.body
+        : task.channels.length === 1
+          ? task.content.web.body
+          : [
+              task.channels.includes("站内信")
+                ? `【站内信】\n${task.content.web.body}`
+                : "",
+              task.channels.includes("Push")
+                ? `【App Push】\n${task.content.push.body}`
+                : "",
+              task.channels.includes("邮件")
+                ? `【Email】\n${task.content.email?.body || ""}`
+                : "",
+            ]
+              .filter(Boolean)
+              .join("\n\n"),
+  };
+
+  let batch: TranslationBatch | undefined;
+  if (targetLocales.length > 0) {
+    batch = createTranslationBatch({
+      subject,
+      sourceLocale,
+      sourceContent,
+      sourceChannelContent: task.content,
+      channels: task.channels,
+      targetLocales,
+      createdBy: task.contentApprovedBy || task.creator,
+    });
+  } else if (requiresSpecialLanguageReview(sourceLocale)) {
+    batch = prepareSingleLanguageContent({
+      subject,
+      sourceLocale,
+      sourceContent,
+      sourceChannelContent: task.content,
+      channels: task.channels,
+      createdBy: task.contentApprovedBy || task.creator,
+    }).batch;
+  }
+
+  if (!batch) {
+    finalizeApprovedTemporaryTask(task.id);
+    return;
+  }
+  update((current) => ({
+    ...current,
+    tasks: current.tasks.map((item) =>
+      item.id === task.id
+        ? {
+            ...item,
+            translationBatchId: batch!.id,
+            workflowStage: "localization_review",
+            status: "待审核",
+            deliveryResult: "未开始",
+          }
+        : item,
+    ),
+  }));
 };
 
 export const updateTaskStatus = (taskId: string, status: string) =>
@@ -2517,7 +3118,9 @@ export const reviewApproval = (
     reviewer: string;
     opinion: string;
   },
-) =>
+) => {
+  let approvedTemplateId: string | undefined;
+  let approvedTemporaryTaskId: string | undefined;
   update((current) => {
     const approval = current.approvals.find((item) => item.id === approvalId);
     if (!approval) throw new Error("审核工单不存在");
@@ -2541,6 +3144,31 @@ export const reviewApproval = (
       "人工消息模板",
       "事件消息模板",
     ].includes(approval.objectType);
+    const reviewedTemplate = isTemplateApproval
+      ? current.templates.find(
+          (template) =>
+            template.id === approval.templateId ||
+            (approval.objectType === "消息模板" &&
+              template.name === approval.name),
+        )
+      : undefined;
+    if (isTemplateApproval && !reviewedTemplate)
+      throw new Error("消息模板不存在");
+    if (reviewedTemplate && result.decision === "approve") {
+      approvedTemplateId = reviewedTemplate.id;
+    }
+    const reviewedTask = isTaskApproval
+      ? current.tasks.find(
+          (task) =>
+            task.id === approval.taskId || task.name === approval.name,
+        )
+      : undefined;
+    if (
+      reviewedTask?.contentMode === "temporary" &&
+      result.decision === "approve"
+    ) {
+      approvedTemporaryTaskId = reviewedTask.id;
+    }
     const reviewedRule = approval.ruleId
       ? current.rules.find((rule) => rule.id === approval.ruleId)
       : undefined;
@@ -2582,7 +3210,31 @@ export const reviewApproval = (
                   result.decision === "approve" ? "已启用" : "已驳回",
                 approval: status,
               }
-            : {
+            : task.contentMode === "temporary"
+              ? {
+                  ...task,
+                  status:
+                    result.decision === "approve" ? "待审核" : "待修改",
+                  approval: status,
+                  approvalStatus:
+                    result.decision === "approve" ? "通过" : "驳回",
+                  deliveryResult: "未开始",
+                  contentApprovalStatus:
+                    result.decision === "approve" ? "已通过" : "已驳回",
+                  contentApprovedAt:
+                    result.decision === "approve"
+                      ? "刚刚"
+                      : task.contentApprovedAt,
+                  contentApprovedBy:
+                    result.decision === "approve"
+                      ? reviewer.name
+                      : task.contentApprovedBy,
+                  workflowStage:
+                    result.decision === "approve"
+                      ? "translation_creating"
+                      : "rejected",
+                }
+              : {
                 ...task,
                 status:
                   result.decision === "approve"
@@ -2601,18 +3253,27 @@ export const reviewApproval = (
           : task,
       ),
       templates: current.templates.map((template) =>
-        isTemplateApproval &&
-        (template.id === approval.templateId ||
-          (approval.objectType === "消息模板" &&
-            template.name === approval.name))
+        reviewedTemplate && template.id === reviewedTemplate.id
           ? {
               ...template,
               status:
                 result.decision === "approve"
-                  ? "已发布"
-                  : template.usageScope === "event"
-                    ? "已驳回"
-                    : "驳回",
+                  ? "审核中"
+                  : "驳回",
+              contentApprovalStatus:
+                result.decision === "approve" ? "已通过" : "已驳回",
+              contentApprovedAt:
+                result.decision === "approve"
+                  ? "刚刚"
+                  : template.contentApprovedAt,
+              contentApprovedBy:
+                result.decision === "approve"
+                  ? reviewer.name
+                  : template.contentApprovedBy,
+              workflowStage:
+                result.decision === "approve"
+                  ? "translation_creating"
+                  : "rejected",
               updatedAt: "刚刚",
             }
           : template,
@@ -2644,6 +3305,10 @@ export const reviewApproval = (
       }),
     };
   });
+  if (approvedTemplateId) advanceApprovedTemplate(approvedTemplateId);
+  if (approvedTemporaryTaskId)
+    advanceApprovedTemporaryTask(approvedTemporaryTaskId);
+};
 
 type TemplateCreateInput = Omit<
   MessageTemplate,
@@ -2682,6 +3347,20 @@ const nextTemplateIdentifiers = (usageScope: TemplateUsageScope) => {
   return { id, code: id.toLowerCase().replaceAll("-", "_") };
 };
 
+const templateContentApprovalHash = (template: MessageTemplate) => {
+  if (!template.content) throw new Error("模板内容不存在");
+  return contentApprovalHash({
+    sourceLocale: template.sourceLocale,
+    locales: template.locales,
+    channels: template.channels,
+    category: template.category,
+    topic: template.topic,
+    risk: template.risk,
+    content: template.content,
+    variables: template.variables,
+  });
+};
+
 export const saveTemplate = (input: TemplateCreateInput) => {
   if (input.usageScope === "event") {
     if (!input.eventId || !state.events.some((event) => event.id === input.eventId))
@@ -2696,6 +3375,9 @@ export const saveTemplate = (input: TemplateCreateInput) => {
     translationReadiness: "无结果",
     version: "v1",
     status: "草稿",
+    contentApprovalStatus: "未提交",
+    contentApprovedHash: "",
+    workflowStage: "draft",
     updatedAt: "刚刚",
   };
   const template =
@@ -2750,6 +3432,12 @@ export const updateTemplate = (
         translationReadiness: "无结果",
         translationBatchId: "",
         status: "草稿",
+        contentApprovalStatus: "未提交",
+        contentApprovalId: undefined,
+        contentApprovedAt: undefined,
+        contentApprovedBy: undefined,
+        contentApprovedHash: "",
+        workflowStage: "draft",
         version: `v${Number(item.version.replace(/\D/g, "")) + 1}`,
         updatedAt: "刚刚",
       };
@@ -2759,21 +3447,29 @@ export const updateTemplate = (
           : nextTemplate;
       return result;
     }),
+    approvals: current.approvals.map((approval) =>
+      approval.templateId === id && isPendingApproval(approval)
+        ? {
+            ...approval,
+            status: "已撤回",
+            reviewedAt: "刚刚",
+            opinion: "模板源内容已修改，旧内容审核自动失效",
+          }
+        : approval,
+    ),
   }));
   return result;
 };
 
-export const submitTemplateForApproval = (templateId: string) => {
+export const submitTemplateContentForApproval = (templateId: string) => {
   const template = state.templates.find((item) => item.id === templateId);
   if (!template) throw new Error("模板不存在");
   if (isPublishedTemplateLocked(template))
     throw new Error(PUBLISHED_TEMPLATE_LOCK_MESSAGE);
-  if (template.translationReadiness !== "已通过")
-    throw new Error("多语言人工审核尚未全部通过");
   const existing = state.approvals.find(
     (item) =>
       item.templateId === templateId &&
-      ["待我审核", "待审核"].includes(item.status),
+      isPendingApproval(item),
   );
   if (existing) return existing;
   const submitterId = CURRENT_REVIEW_OPERATOR_ID;
@@ -2781,7 +3477,7 @@ export const submitTemplateForApproval = (templateId: string) => {
   const approval: ApprovalItem = {
     id: `APR-${Date.now().toString().slice(-6)}`,
     objectType:
-      template.usageScope === "event" ? "事件消息模板" : "消息模板",
+      template.usageScope === "event" ? "事件消息模板" : "人工消息模板",
     name: template.name,
     version: template.version,
     risk: template.risk,
@@ -2791,7 +3487,7 @@ export const submitTemplateForApproval = (templateId: string) => {
     sourceType: template.usageScope === "event" ? "系统事件" : "人工消息",
     audience: 0,
     cost: "Web ¥0 · Push ¥0",
-    schedule: "审核通过后发布",
+    schedule: "内容审核通过后进入多语言",
     step:
       template.risk === "高" || template.risk === "关键"
         ? "业务 + 风控双审"
@@ -2806,8 +3502,9 @@ export const submitTemplateForApproval = (templateId: string) => {
     locales: template.locales,
     content: template.content,
     expiresAt: "长期",
-    changes: ["全部目标语言已完成人工审核", "提交模板发布"],
+    changes: ["默认语言内容与配置已冻结", "内容审核通过后自动进入多语言"],
   };
+  const approvedHash = templateContentApprovalHash(template);
   update((current) => ({
     ...current,
     approvals: [approval, ...current.approvals],
@@ -2815,7 +3512,11 @@ export const submitTemplateForApproval = (templateId: string) => {
       item.id === templateId
         ? {
             ...item,
-            status: item.usageScope === "event" ? "待业务审核" : "审核中",
+            status: "审核中",
+            contentApprovalStatus: "待审核",
+            contentApprovalId: approval.id,
+            contentApprovedHash: approvedHash,
+            workflowStage: "content_review",
             updatedAt: "刚刚",
           }
         : item,
@@ -2823,6 +3524,8 @@ export const submitTemplateForApproval = (templateId: string) => {
   }));
   return approval;
 };
+
+export const submitTemplateForApproval = submitTemplateContentForApproval;
 
 export const addAllowlistEntry = (input: Omit<LinkAllowlistEntry, "id">) =>
   update((current) => ({
@@ -3273,6 +3976,15 @@ export const createRuleTranslationBatch = (versionId: string) => {
           title: version.title,
           body: version.body,
         },
+        email: template.content.email
+          ? {
+              ...template.content.email,
+              subject: version.title,
+              headline: version.title,
+              body: version.body,
+              textBody: version.body,
+            }
+          : undefined,
       }
     : undefined;
   const batch = createTranslationBatch({
@@ -3388,9 +4100,19 @@ export const testSystemEvent = (
       id: `DLV-TEST-${stamp}-${index + 1}`,
       task: `测试 · ${rule.name}`,
       user: "UID TEST-001",
-      destination: channel === "Push" ? "device ***test" : "站内账户",
+      destination:
+        channel === "Push"
+          ? "device ***test"
+          : channel === "邮件"
+            ? "t***@example.com"
+            : "站内账户",
       channel,
-      provider: channel === "Push" ? "FCM Sandbox" : "ForX Finance Inbox",
+      provider:
+        channel === "Push"
+          ? "FCM Sandbox"
+          : channel === "邮件"
+            ? "Postmark Sandbox"
+            : "ForX Finance Inbox",
       status: "已送达",
       submittedAt: "刚刚",
       deliveredAt: "刚刚",
@@ -3402,9 +4124,16 @@ export const testSystemEvent = (
       source: "系统事件",
       risk: rule.risk,
       locale: "zh-CN",
-      devicePlatform: channel === "Push" ? "Android" : "Web",
+      devicePlatform:
+        channel === "Push" ? "Android" : channel === "站内信" ? "Web" : undefined,
       providerMessageId: `PM-TEST-${stamp}-${index + 1}`,
       tokenStatus: channel === "Push" ? "有效" : "不适用",
+      recipientEmailMasked:
+        channel === "邮件" ? "t***@example.com" : undefined,
+      messageStream:
+        channel === "邮件" ? "transactional" : undefined,
+      providerEventId:
+        channel === "邮件" ? `PE-TEST-${stamp}-${index + 1}` : undefined,
       triggerId,
     }),
   );

@@ -28,10 +28,12 @@ export default function TestAccountPanel({ canWrite = true }: { canWrite?: boole
   );
   const [editing, setEditing] = useState<OperatorTestAccount | "new">();
   const [uid, setUid] = useState("");
+  const [email, setEmail] = useState("");
   const [remark, setRemark] = useState("");
 
   useEffect(() => {
     setUid(editing && editing !== "new" ? editing.uid : "");
+    setEmail(editing && editing !== "new" ? editing.email || "" : "");
     setRemark(editing && editing !== "new" ? editing.remark : "");
   }, [editing]);
 
@@ -42,12 +44,16 @@ export default function TestAccountPanel({ canWrite = true }: { canWrite?: boole
     }
     try {
       if (editing && editing !== "new") {
-        updateOperatorTestAccount(editing.id, CURRENT_OPERATOR_ID, { remark });
-        Message.success("测试账号备注已更新");
+        updateOperatorTestAccount(editing.id, CURRENT_OPERATOR_ID, {
+          remark,
+          email,
+        });
+        Message.success("测试账号已更新");
       } else {
         addOperatorTestAccount({
           operatorId: CURRENT_OPERATOR_ID,
           uid,
+          email,
           remark,
         });
         Message.success("测试账号已新增");
@@ -93,13 +99,14 @@ export default function TestAccountPanel({ canWrite = true }: { canWrite?: boole
             <div key={account.id}>
               <div>
                 <strong className="mono">{account.uid}</strong>
+                <div>{account.email || "未配置测试 Email"}</div>
                 <div className="muted">{account.remark}</div>
               </div>
               <span>创建于 {account.createdAt}</span>
               <span>更新于 {account.updatedAt}</span>
               <Space>
                 <WritePermissionButton type="text" allowed={canWrite} onClick={() => setEditing(account)}>
-                  编辑备注
+                  编辑账号
                 </WritePermissionButton>
                 <WritePermissionButton
                   type="text"
@@ -120,7 +127,7 @@ export default function TestAccountPanel({ canWrite = true }: { canWrite?: boole
 
       <Modal
         visible={Boolean(editing)}
-        title={editing === "new" ? "新增测试账号" : "编辑测试账号备注"}
+        title={editing === "new" ? "新增测试账号" : "编辑测试账号"}
         onCancel={() => setEditing(undefined)}
         footer={
           <Space>
@@ -140,6 +147,15 @@ export default function TestAccountPanel({ canWrite = true }: { canWrite?: boole
               disabled={editing !== "new"}
               onChange={setUid}
               placeholder="输入用户 UID"
+            />
+          </label>
+          <label>
+            测试 Email（Email 渠道使用）
+            <Input
+              aria-label="测试 Email"
+              value={email}
+              onChange={setEmail}
+              placeholder="name@example.com"
             />
           </label>
           <label>

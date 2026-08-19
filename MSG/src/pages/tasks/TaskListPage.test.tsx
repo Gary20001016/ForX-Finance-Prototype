@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { getPrototypeState } from "../../store/prototypeStore";
@@ -71,6 +71,45 @@ it("shows multilingual production separately from send progress", () => {
   expect(screen.getByRole("columnheader", { name: "多语言流程" })).toBeVisible();
   expect(screen.getByRole("columnheader", { name: "发送进度" })).toBeVisible();
   expect(screen.getAllByText(/已通过/).length).toBeGreaterThan(0);
+});
+
+it("opens the seeded manual Email task with its HTML preview", async () => {
+  const user = userEvent.setup();
+  render(
+    <MemoryRouter>
+      <TaskListPage />
+    </MemoryRouter>,
+  );
+
+  const row = screen.getByText("VIP 礼遇 Email 群发").closest("tr");
+  expect(row).not.toBeNull();
+  expect(within(row!).getByText("邮件")).toBeVisible();
+  await user.click(
+    within(row!).getByRole("button", { name: "操作 VIP 礼遇 Email 群发" }),
+  );
+  fireEvent.click(await screen.findByRole("menuitem", { name: "查看详情" }));
+
+  expect(screen.getByText("任务详情 · VIP 礼遇 Email 群发")).toBeVisible();
+  expect(screen.getByLabelText("Email HTML 桌面预览")).toBeVisible();
+});
+
+it("opens multilingual progress from the task row", async () => {
+  const user = userEvent.setup();
+  render(
+    <MemoryRouter>
+      <TaskListPage />
+    </MemoryRouter>,
+  );
+
+  const row = screen.getByText("夏季交易赛召回").closest("tr");
+  expect(row).not.toBeNull();
+  await user.click(
+    within(row!).getByRole("button", { name: "查看多语言进度" }),
+  );
+
+  expect(
+    await screen.findByText("夏季交易赛 · 多语言流程"),
+  ).toBeVisible();
 });
 
 it("uses the nine standardized artificial states in the status filter", async () => {

@@ -31,6 +31,19 @@ it("shows event notification rules separately from artificial tasks", () => {
   expect(screen.queryByText("夏季交易赛召回")).not.toBeInTheDocument();
 });
 
+it("shows the seeded Email event notification rule", () => {
+  render(
+    <MemoryRouter>
+      <AutomationRuleListPage />
+    </MemoryRouter>,
+  );
+
+  const row = screen.getByText("充值到账 Email 事件任务").closest("tr");
+  expect(row).not.toBeNull();
+  expect(within(row!).getByText("Email")).toBeVisible();
+  expect(within(row!).getByText("deposit.credited")).toBeVisible();
+});
+
 it("does not expose rule content versions", () => {
   render(
     <MemoryRouter>

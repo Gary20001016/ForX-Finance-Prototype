@@ -14,6 +14,7 @@ import MarkdownContent, {
   hasUnsafeMarkdownLinks,
 } from "../../components/MarkdownContent";
 import MarkdownEditor from "../../components/MarkdownEditor";
+import EmailPreview from "../../components/EmailPreview";
 import { haveSameVariableOccurrences } from "../../domain/manualMessageVariables";
 import { CURRENT_REVIEW_OPERATOR_ID } from "../../domain/reviewOperators";
 import type { TranslationItem } from "../../domain/types";
@@ -26,6 +27,7 @@ import {
   saveTranslationDraft,
   usePrototypeStore,
 } from "../../store/prototypeStore";
+import { resolveMultilingualPreview } from "../multilingual/resolveMultilingualPreview";
 
 export default function TranslationReviewDrawer({
   item,
@@ -58,14 +60,49 @@ export default function TranslationReviewDrawer({
   const directSource =
     current?.productionMode === "direct_source_review" ||
     batch?.productionMode === "direct_source_review";
+  const resolvedPreview =
+    batch && current
+      ? resolveMultilingualPreview(
+          batch,
+          current,
+          template?.content,
+          batch.channels || template?.channels,
+        )
+      : undefined;
+  const resolvedEmail = resolvedPreview?.content?.email;
+  const isHtmlEmail = resolvedEmail?.bodyMode === "html";
+  const targetHtmlAsset = current
+    ? resolvedEmail?.htmlAssets?.[current.targetLocale]
+    : undefined;
+  const unsubscribeValid = Boolean(
+    !isHtmlEmail ||
+      resolvedPreview?.content?.emailConfig?.emailType !== "营销邮件" ||
+      targetHtmlAsset?.sourceHtml.includes("{{ unsubscribe_url }}"),
+  );
+  const htmlReviewBlocked = Boolean(
+    isHtmlEmail &&
+      (!targetHtmlAsset ||
+        targetHtmlAsset.validationStatus !== "passed" ||
+        !unsubscribeValid),
+  );
   const [title, setTitle] = useState("");
   const [summary, setSummary] = useState("");
   const [body, setBody] = useState("");
   const [reason, setReason] = useState("");
 
   useEffect(() => {
-    setTitle(current?.humanDraft?.title || current?.machineTitle || "");
-    setSummary(current?.humanDraft?.summary || current?.machineSummary || "");
+    setTitle(
+      current?.humanChannelDraft?.email?.subject ||
+        current?.humanDraft?.title ||
+        current?.machineTitle ||
+        "",
+    );
+    setSummary(
+      current?.humanChannelDraft?.email?.preheader ||
+        current?.humanDraft?.summary ||
+        current?.machineSummary ||
+        "",
+    );
     setBody(current?.humanDraft?.body || current?.machineBody || "");
     setReason("");
   }, [current?.id]);
@@ -106,6 +143,10 @@ export default function TranslationReviewDrawer({
     }
     if (!current.variablesValid) {
       Message.error("模板变量校验失败，禁止通过");
+      return;
+    }
+    if (htmlReviewBlocked) {
+      Message.error("目标语言 HTML 缺失、校验失败或缺少退订链接，禁止通过");
       return;
     }
     if (
@@ -171,7 +212,7 @@ export default function TranslationReviewDrawer({
                 </Button>
                 <Button
                   type="primary"
-                  disabled={!current.variablesValid}
+                  disabled={!current.variablesValid || htmlReviewBlocked}
                   onClick={approve}
                 >
                   {directSource
@@ -272,16 +313,27 @@ export default function TranslationReviewDrawer({
                     template?.content?.web.summary}
                 </div>
               </label>
-              <label>
-                正文 Markdown 源码
-                <pre className="markdown-source">{sourceBody}</pre>
-              </label>
-              <label>
-                正文渲染效果
-                <div className="source-copy body">
-                  <MarkdownContent value={sourceBody} />
-                </div>
-              </label>
+              {isHtmlEmail ? (
+                <Alert
+                  type="info"
+                  showIcon
+                  title="源正文为 HTML 文件"
+                  content="HTML 按语言直接上传，不进入外部机翻；外部任务仅生产邮件标题和预览文字。"
+                />
+              ) : (
+                <>
+                  <label>
+                    正文 Markdown 源码
+                    <pre className="markdown-source">{sourceBody}</pre>
+                  </label>
+                  <label>
+                    正文渲染效果
+                    <div className="source-copy body">
+                      <MarkdownContent value={sourceBody} />
+                    </div>
+                  </label>
+                </>
+              )}
             </section>
             <section>
               <div className="compare-heading">
@@ -297,17 +349,61 @@ export default function TranslationReviewDrawer({
                 <Form.Item label="摘要">
                   <Input.TextArea disabled={!canOperate} value={summary} onChange={setSummary} />
                 </Form.Item>
-                <Form.Item label="正文 Markdown">
-                  <MarkdownEditor
-                    value={body}
-                    onChange={setBody}
-                    minRows={6}
-                    readOnly={!canOperate}
-                  />
-                </Form.Item>
+                {!isHtmlEmail && (
+                  <Form.Item label="正文 Markdown">
+                    <MarkdownEditor
+                      value={body}
+                      onChange={setBody}
+                      minRows={6}
+                      readOnly={!canOperate}
+                    />
+                  </Form.Item>
+                )}
               </Form>
             </section>
           </div>
+          {isHtmlEmail && resolvedEmail && resolvedPreview?.content?.emailConfig && (
+            <section className="translation-html-review">
+              <Alert
+                type={htmlReviewBlocked ? "error" : "info"}
+                showIcon
+                title="目标语言 HTML 正文只读"
+                content="审核页不直接修改 HTML；需要调整正文时请填写驳回原因，由上传人重新上传对应语言文件。"
+              />
+              <div className="translation-html-file">
+                <div>
+                  <strong>{targetHtmlAsset?.fileName || `${current.targetLocale} HTML 未上传`}</strong>
+                  <div className="muted mono">
+                    {targetHtmlAsset
+                      ? `${targetHtmlAsset.locale} · ${targetHtmlAsset.fileSize} bytes · ${targetHtmlAsset.sha256}`
+                      : current.targetLocale}
+                  </div>
+                </div>
+                <div>
+                  <Tag color={targetHtmlAsset?.validationStatus === "passed" ? "green" : "red"}>
+                    {targetHtmlAsset?.validationStatus === "passed"
+                      ? "HTML 校验通过"
+                      : "HTML 校验未通过"}
+                  </Tag>
+                  <Tag color={current.variablesValid ? "green" : "red"}>
+                    {current.variablesValid ? "变量检查通过" : "变量检查失败"}
+                  </Tag>
+                  <Tag color={unsubscribeValid ? "green" : "red"}>
+                    {unsubscribeValid ? "退订链接检查通过" : "缺少退订链接"}
+                  </Tag>
+                </div>
+              </div>
+              <EmailPreview
+                content={{
+                  ...resolvedEmail,
+                  subject: title || resolvedEmail.subject,
+                  preheader: summary || resolvedEmail.preheader,
+                }}
+                config={resolvedPreview.content.emailConfig}
+                locale={current.targetLocale}
+              />
+            </section>
+          )}
           <div className="translation-checks">
             <Tag color={current.variablesValid ? "green" : "red"}>
               变量检查 · {current.variablesValid ? "通过" : "失败"}

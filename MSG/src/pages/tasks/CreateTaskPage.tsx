@@ -26,6 +26,7 @@ import {
 import { useLocation, useNavigate } from "react-router-dom";
 import PageHeader from "../../components/PageHeader";
 import MessagePreview from "../../components/MessagePreview";
+import EmailContentEditor from "../../components/EmailContentEditor";
 import MarkdownEditor from "../../components/MarkdownEditor";
 import VariableTextArea from "../../components/VariableTextArea";
 import { hasUnsafeMarkdownLinks } from "../../components/MarkdownContent";
@@ -33,7 +34,6 @@ import {
   extractVariableNames,
   validateVariableTokens,
 } from "../../domain/manualMessageVariables";
-import TranslationWorkflowPanel from "../templates/TranslationWorkflowPanel";
 import type {
   Channel,
   EventTriggerConfig,
@@ -46,10 +46,6 @@ import type {
 } from "../../domain/types";
 import { canEditManualTask, isManualTaskStatus } from "./taskLifecycle";
 import {
-  createTranslationBatch,
-  prepareSingleLanguageContent,
-  requiresSpecialLanguageReview,
-  saveTemplate,
   saveTaskDraft,
   submitTask,
   usePrototypeStore,
@@ -81,9 +77,16 @@ import {
 } from "../../domain/messageDisplayTaxonomy";
 import { segments } from "../../mocks/data";
 import {
-  sameChannels,
   templateCoversChannels,
 } from "./taskChannelPolicy";
+import {
+  ACTIVE_MESSAGE_CHANNELS,
+  channelDisplayName,
+  createDefaultEmailConfig,
+  createDefaultEmailContent,
+  getEmailVariableSourceText,
+  validateEmailContent,
+} from "../../domain/emailChannel";
 
 const FormItem = Form.Item;
 const supportedLocales = [
@@ -98,8 +101,6 @@ const supportedLocales = [
   "fr-FR",
   "de-DE",
 ];
-const sameLocales = (left: string[], right: string[]) =>
-  left.length === right.length && left.every((locale) => right.includes(locale));
 const emptyContent: LocalizedMessageContent = {
   sourceLocale: "zh-CN",
   locales: ["zh-CN"],
@@ -117,6 +118,8 @@ const emptyContent: LocalizedMessageContent = {
     platform: "全部设备",
     priority: "普通",
   },
+  email: createDefaultEmailContent(),
+  emailConfig: createDefaultEmailConfig(),
 };
 const audienceMap: Record<
   string,
@@ -220,7 +223,7 @@ export default function CreateTaskPage() {
   );
   const [selectedChannels, setSelectedChannels] = useState<Channel[]>(() => {
     const supportedChannels = copiedTask?.channels.filter(
-      (channel) => channel === "站内信" || channel === "Push",
+      (channel) => ACTIVE_MESSAGE_CHANNELS.includes(channel),
     );
     return supportedChannels?.length
       ? supportedChannels
@@ -258,9 +261,12 @@ export default function CreateTaskPage() {
           )
         : undefined),
   );
-  const [temporary, setTemporary] = useState<LocalizedMessageContent>(
-    copiedTask?.content || emptyContent,
-  );
+  const [temporary, setTemporary] = useState<LocalizedMessageContent>(() => ({
+    ...(copiedTask?.content || emptyContent),
+    email: copiedTask?.content?.email || createDefaultEmailContent(),
+    emailConfig:
+      copiedTask?.content?.emailConfig || createDefaultEmailConfig(),
+  }));
   const [temporarySourceLocale, setTemporarySourceLocale] = useState(
     copiedTask?.content?.sourceLocale || "zh-CN",
   );
@@ -269,12 +275,6 @@ export default function CreateTaskPage() {
       (locale) => locale !== (copiedTask.content?.sourceLocale || "zh-CN"),
     ) || [],
   );
-  const [temporaryBatchId, setTemporaryBatchId] = useState<string | undefined>(
-    copiedTask?.translationBatchId,
-  );
-  const [temporaryBatchChannels, setTemporaryBatchChannels] = useState<
-    Channel[]
-  >(copiedTask?.translationBatchId ? [...selectedChannels] : []);
   const [audienceType, setAudienceType] = useState(
     copiedTask?.audienceType || "all",
   );
@@ -304,14 +304,6 @@ export default function CreateTaskPage() {
       ? eventTemplates.find((template) => template.id === templateId)
       : approvedTemplates.find((template) => template.id === templateId)) ||
     (triggerType === "event" ? eventTemplates[0] : approvedTemplates[0]);
-  const currentBatch = temporaryBatchId
-    ? store.translationBatches.find((batch) => batch.id === temporaryBatchId)
-    : undefined;
-  const temporaryTranslationTemplate = currentBatch
-    ? store.templates.find(
-        (template) => template.id === currentBatch.templateId,
-      )
-    : undefined;
   const content =
     contentMode === "template"
       ? selectedTemplate?.content || emptyContent
@@ -368,30 +360,10 @@ export default function CreateTaskPage() {
               }
             : audienceMap.segment
           : audienceMap[audienceType];
-  const translationScopeCurrent =
-    !temporaryBatchId ||
-    (sameChannels(temporaryBatchChannels, selectedChannels) &&
-      currentBatch?.sourceLocale === temporarySourceLocale &&
-      sameLocales(currentBatch.targetLocales, targetLocales));
-  const directReviewRequired =
-    targetLocales.length === 0 &&
-    requiresSpecialLanguageReview(temporarySourceLocale);
   const translationReady =
     contentMode === "template"
       ? selectedTemplate?.translationReadiness === "已通过"
-      : directReviewRequired
-        ? currentBatch?.productionMode === "direct_source_review" &&
-          currentBatch.status === "已通过" &&
-          translationScopeCurrent
-        : targetLocales.length === 0 ||
-          (currentBatch?.status === "已通过" && translationScopeCurrent);
-  const temporaryLanguageAction = targetLocales.length
-    ? temporaryBatchId && !translationScopeCurrent
-      ? "按当前配置重新创建机翻任务"
-      : "创建外部机翻任务"
-    : directReviewRequired
-      ? "提交语言审核"
-      : "完成语言准备";
+      : false;
   const values = { ...snapshot, ...form.getFieldsValue() };
   const formCategory = (values.category ||
     copiedTask?.category ||
@@ -423,9 +395,15 @@ export default function CreateTaskPage() {
   const temporaryPushComplete = Boolean(
     temporary.push.title && temporary.push.body,
   );
+  const temporaryEmailValidation = validateEmailContent(
+    temporary.email,
+    temporary.emailConfig,
+    [temporarySourceLocale, ...targetLocales],
+  );
   const temporaryContentComplete =
     (!channels.includes("站内信") || temporaryWebComplete) &&
-    (!channels.includes("Push") || temporaryPushComplete);
+    (!channels.includes("Push") || temporaryPushComplete) &&
+    (!channels.includes("邮件") || temporaryEmailValidation.valid);
   const schedule =
     triggerType === "event"
       ? "事件到达时"
@@ -480,6 +458,23 @@ export default function CreateTaskPage() {
       ...value,
       push: { ...value.push, ...changes },
     }));
+  const patchEmail = (
+    changes: Partial<NonNullable<LocalizedMessageContent["email"]>>,
+  ) =>
+    setTemporary((value) => ({
+      ...value,
+      email: { ...(value.email || createDefaultEmailContent()), ...changes },
+    }));
+  const patchEmailConfig = (
+    changes: Partial<NonNullable<LocalizedMessageContent["emailConfig"]>>,
+  ) =>
+    setTemporary((value) => ({
+      ...value,
+      emailConfig: {
+        ...(value.emailConfig || createDefaultEmailConfig()),
+        ...changes,
+      },
+    }));
   const updateTemporarySourceLocale = (sourceLocale: string) => {
     setTemporarySourceLocale(sourceLocale);
     setTargetLocales((locales) => locales.filter((locale) => locale !== sourceLocale));
@@ -497,6 +492,7 @@ export default function CreateTaskPage() {
   const temporaryVariableText = [
     channels.includes("站内信") ? temporary.web.body : "",
     channels.includes("Push") ? temporary.push.body : "",
+    channels.includes("邮件") ? getEmailVariableSourceText(temporary.email) : "",
   ].join("\n");
   const temporaryVariableNames = Array.from(
     new Set(extractVariableNames(temporaryVariableText)),
@@ -534,7 +530,7 @@ export default function CreateTaskPage() {
         return;
       }
       if (!channels.length) {
-        Message.warning("请至少选择站内信或 App Push");
+        Message.warning("请至少选择站内信、App Push 或 Email");
         return;
       }
       if (triggerType === "event" && !eventValidation.valid) {
@@ -634,7 +630,7 @@ export default function CreateTaskPage() {
     translationBatchId:
       contentMode === "template"
         ? selectedTemplate?.translationBatchId
-        : temporaryBatchId,
+        : undefined,
   });
   const saveDraft = () => {
     try {
@@ -656,7 +652,7 @@ export default function CreateTaskPage() {
   };
   const submit = () => {
     if (!channels.length) {
-      Message.warning("请至少选择站内信或 App Push");
+      Message.warning("请至少选择站内信、App Push 或 Email");
       return;
     }
     if (contentMode === "template" && !selectedTemplate) {
@@ -688,10 +684,6 @@ export default function CreateTaskPage() {
       (!form.getFieldValue("scheduledAt") || !form.getFieldValue("timezone"))
     ) {
       Message.warning("请选择计划发送时间和任务时区");
-      return;
-    }
-    if (!translationReady) {
-      Message.warning("仍有目标语言未完成人工审核，不能提交业务审核");
       return;
     }
     if (
@@ -726,111 +718,16 @@ export default function CreateTaskPage() {
       );
       Modal.success({
         title: "已提交审核",
-        content: `任务 ${task.id} 已冻结最新内容、受众、渠道、时间、有效期${triggerType === "event" ? "和事件策略" : ""}，并进入审核中心；旧审批已自动失效。`,
+        content:
+          contentMode === "temporary"
+            ? `任务 ${task.id} 已冻结内容与配置并进入内容审核；通过后系统自动创建多语言任务，全部语言审核通过后自动进入发送。`
+            : `任务 ${task.id} 已冻结最新受众、渠道、时间、有效期${triggerType === "event" ? "和事件策略" : ""}，并进入任务配置审核；旧审批已自动失效。`,
         onOk: () => navigate("/tasks"),
       });
     } catch (error) {
       Message.error(error instanceof Error ? error.message : "任务提交失败");
     }
   };
-  const prepareTemporaryLanguageContent = () => {
-    if (!channels.length) {
-      Message.warning("请至少选择站内信或 App Push");
-      return;
-    }
-    if (!temporaryContentComplete) {
-      Message.warning("请先完整填写所选发送渠道的默认语言文案");
-      return;
-    }
-    if (!validateTemporaryVariables()) return;
-    const currentContent = {
-      ...temporary,
-      sourceLocale: temporarySourceLocale,
-      locales: [temporarySourceLocale, ...targetLocales],
-    };
-    const sourceContent = {
-      title:
-        channels.length === 1 && channels.includes("Push")
-          ? temporary.push.title
-          : channels.length === 1
-            ? temporary.web.title
-            : `站内信：${temporary.web.title} / Push：${temporary.push.title}`,
-      summary: channels.includes("站内信")
-        ? temporary.web.summary
-        : undefined,
-      body:
-        channels.length === 1 && channels.includes("Push")
-          ? temporary.push.body
-          : channels.length === 1
-            ? temporary.web.body
-            : `【站内信】\n${temporary.web.body}\n\n【App Push】\n${temporary.push.body}`,
-    };
-    const requiresBatch =
-      targetLocales.length > 0 ||
-      requiresSpecialLanguageReview(temporarySourceLocale);
-    const draft = requiresBatch
-      ? saveTemplate({
-          name: `临时消息 · ${form.getFieldValue("name") || "未命名"}`,
-          category: effectiveCategory,
-          topic: effectiveTopic,
-          nature: resolvedNature,
-          risk: effectiveRisk,
-          channels,
-          locales: currentContent.locales,
-          sourceLocale: temporarySourceLocale,
-          content: currentContent,
-          variables: temporaryVariableNames,
-          owner: "临时任务",
-          usageScope: "manual",
-        })
-      : undefined;
-    const subject = draft
-      ? {
-          type: "manual_task_content" as const,
-          id: draft.id,
-          name: draft.name,
-          version: draft.version,
-          returnPath: "/tasks/create",
-        }
-      : undefined;
-    const batch =
-      targetLocales.length > 0 && subject
-        ? createTranslationBatch({
-            subject,
-            sourceLocale: temporarySourceLocale,
-            sourceContent,
-            sourceChannelContent: currentContent,
-            channels,
-            targetLocales,
-            createdBy: "Gary Ma",
-          })
-        : subject
-          ? prepareSingleLanguageContent({
-              subject,
-              sourceLocale: temporarySourceLocale,
-              sourceContent,
-              createdBy: "Gary Ma",
-            }).batch
-          : undefined;
-    setTemporaryBatchId(batch?.id);
-    setTemporaryBatchChannels([...channels]);
-    saveTaskDraft(
-      {
-        ...submission(),
-        translationBatchId: batch?.id,
-        content: currentContent,
-      },
-      editingTask ? copiedTask?.id : undefined,
-    );
-    Message.success(
-      targetLocales.length
-        ? `已创建机翻批次 ${batch?.id}，并保存可继续编辑的任务草稿`
-        : batch
-          ? `已提交语言审核 ${batch.id}，并保存可继续编辑的任务草稿`
-          : "单语言内容准备完成，并已保存可继续编辑的任务草稿",
-    );
-  };
-
   const summary = useMemo(
     () => ({
       name: String(values.name || "未命名任务"),
@@ -848,6 +745,7 @@ export default function CreateTaskPage() {
       schedule,
       expiresAt,
       translationReady: Boolean(translationReady),
+      contentMode,
       triggerType,
       eventConfig,
       templateVersion: selectedTemplate?.version,
@@ -961,7 +859,7 @@ export default function CreateTaskPage() {
               <h3>发送渠道</h3>
               <Alert
                 type="info"
-                content="先确定发送渠道，模板、临时内容、多语言和预览将按渠道筛选。站内信内容由 Web 与 App 共用。"
+                content="先确定发送渠道，模板、临时内容、多语言和预览将按渠道筛选。站内信由 Web 与 App 共用；Email 仅发送给具备有效邮箱且未退订的用户。"
               />
               <FormItem label="正式发送渠道" required>
                 <Checkbox.Group
@@ -970,6 +868,7 @@ export default function CreateTaskPage() {
                 >
                   <Checkbox value="站内信">站内信（Web + App）</Checkbox>
                   <Checkbox value="Push">App Push</Checkbox>
+                  <Checkbox value="邮件">Email</Checkbox>
                 </Checkbox.Group>
               </FormItem>
               {triggerType === "event" ? (
@@ -1136,10 +1035,8 @@ export default function CreateTaskPage() {
                         type={targetLocales.length ? "warning" : "info"}
                         content={
                           targetLocales.length
-                            ? "多语言临时消息将提交外部机器翻译，返回后逐语言人工审核；内容仅冻结在当前任务版本中。"
-                            : directReviewRequired
-                              ? "单语言临时消息，无需机器翻译；当前语言需要专项人工审核，内容仅冻结在当前任务版本中。"
-                              : "单语言临时消息，无需机器翻译；语言准备可直接完成，内容仅冻结在当前任务版本中。"
+                            ? "多语言临时消息先审核默认语言内容；通过后系统自动创建外部机器翻译，返回后逐语言人工审核。"
+                            : "单语言临时消息先审核当前内容；普通语言通过后直接进入发送，小语种按配置继续专项审核。"
                         }
                       />
                       <Grid.Row gutter={20}>
@@ -1258,6 +1155,22 @@ export default function CreateTaskPage() {
                             </Grid.Row>
                           </Grid.Col>
                         )}
+                        {channels.includes("邮件") &&
+                          temporary.email &&
+                          temporary.emailConfig && (
+                            <Grid.Col span={24}>
+                              <h3>Email 内容</h3>
+                              <EmailContentEditor
+                                content={temporary.email}
+                                config={temporary.emailConfig}
+                                variables={store.templateVariables}
+                                sourceLocale={temporarySourceLocale}
+                                locales={[temporarySourceLocale, ...targetLocales]}
+                                onContentChange={patchEmail}
+                                onConfigChange={patchEmailConfig}
+                              />
+                            </Grid.Col>
+                          )}
                       </Grid.Row>
                       <div className="translation-submit-strip">
                         <Select
@@ -1282,32 +1195,16 @@ export default function CreateTaskPage() {
                               value,
                             }))}
                         />
-                        <Button
-                          type="primary"
-                          onClick={prepareTemporaryLanguageContent}
-                        >
-                          {temporaryLanguageAction}
-                        </Button>
-                        {temporaryBatchId && (
-                          <Tag color={translationReady ? "green" : "orange"}>
-                            {temporaryBatchId} · {currentBatch?.status}
-                          </Tag>
-                        )}
+                        <Tag color="arcoblue">
+                          提交后：内容审核 → 多语言
+                        </Tag>
                       </div>
-                      {temporaryBatchId && !translationScopeCurrent && (
-                        <Alert
-                          type="warning"
-                          title="语言配置或发送渠道已变更"
-                          content="现有语言批次的内容范围与当前配置不一致，请按当前配置重新创建语言任务后再提交审核。"
-                        />
-                      )}
-                      {currentBatch && temporaryTranslationTemplate && (
-                        <TranslationWorkflowPanel
-                          template={temporaryTranslationTemplate}
-                          batch={currentBatch}
-                          context="temporary-task"
-                        />
-                      )}
+                      <Alert
+                        type="info"
+                        showIcon
+                        title="临时消息先审内容"
+                        content="提交后先审核默认语言内容；审核通过后系统自动创建机器翻译或小语种审核任务，全部语言通过后自动进入发送。"
+                      />
                       <MessagePreview
                         content={content}
                         channels={channels}
@@ -1486,9 +1383,17 @@ export default function CreateTaskPage() {
                       {channels.map((channel) => (
                         <Tag
                           key={channel}
-                          color={channel === "Push" ? "purple" : "arcoblue"}
+                          color={
+                            channel === "Push"
+                              ? "purple"
+                              : channel === "邮件"
+                                ? "magenta"
+                                : "arcoblue"
+                          }
                         >
-                          {channel === "Push" ? "App Push" : "站内信（Web + App）"}
+                          {channel === "站内信"
+                            ? "站内信（Web + App）"
+                            : channelDisplayName(channel)}
                         </Tag>
                       ))}
                     </Space>
@@ -1569,6 +1474,13 @@ export default function CreateTaskPage() {
                       ? "提交前校验 APNs/FCM 状态、通知权限、有效设备 Token、Deep Link 白名单、折叠键和优先级；临时失败退避重试，永久失败使 Token 失效。"
                       : "提交前校验 APNs/FCM 状态、通知权限、有效设备 Token 和 Deep Link 白名单；临时失败退避重试，永久失败使 Token 失效。"
                   }
+                />
+              )}
+              {channels.includes("邮件") && (
+                <Alert
+                  type="info"
+                  title="Email 正式发送检查"
+                  content="发送前按用户主邮箱、邮箱验证状态、退订与投诉抑制名单计算可发送人数；事务与营销邮件使用独立发送流，并依赖服务商 Webhook 回传送达、退信、投诉和退订。"
                 />
               )}
               <MessagePreview

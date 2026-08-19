@@ -33,6 +33,7 @@ export interface TaskSummaryData {
   schedule: string;
   expiresAt: string;
   translationReady: boolean;
+  contentMode: "template" | "temporary";
   triggerType?: TaskTriggerType;
   eventConfig?: EventTriggerConfig;
   templateVersion?: string;
@@ -61,8 +62,20 @@ export default function TaskSummary({ data }: { data: TaskSummaryData }) {
           extra={
             <Space>
               <Tag>{data.content.sourceLocale}</Tag>
-              <Tag color={data.translationReady ? "green" : "orange"}>
-                {data.translationReady ? "多语言已审核" : "仅源语言可用"}
+              <Tag
+                color={
+                  data.contentMode === "temporary"
+                    ? "arcoblue"
+                    : data.translationReady
+                      ? "green"
+                      : "orange"
+                }
+              >
+                {data.contentMode === "temporary"
+                  ? "提交后先审内容"
+                  : data.translationReady
+                    ? "多语言已审核"
+                    : "模板语言未就绪"}
               </Tag>
             </Space>
           }
@@ -139,12 +152,21 @@ export default function TaskSummary({ data }: { data: TaskSummaryData }) {
         </Card>
         <Card title="审批链" bordered={false} className="inner-card">
           <Timeline>
-            <Timeline.Item
-              dotColor={data.translationReady ? "green" : "orange"}
-            >
-              多语言人工审核 · {data.translationReady ? "已通过" : "按语言门禁"}
-            </Timeline.Item>
-            <Timeline.Item>业务内容审核 · 独立审核人</Timeline.Item>
+            {data.contentMode === "temporary" ? (
+              <>
+                <Timeline.Item dotColor="orange">
+                  默认语言内容审核 · 独立审核人
+                </Timeline.Item>
+                <Timeline.Item>机器翻译与逐语言人工审核 · 自动创建</Timeline.Item>
+              </>
+            ) : (
+              <>
+                <Timeline.Item dotColor="green">
+                  模板内容与多语言 · 已发布
+                </Timeline.Item>
+                <Timeline.Item>任务配置审核 · 独立审核人</Timeline.Item>
+              </>
+            )}
             {(data.risk === "高" || data.risk === "关键") && (
               <Timeline.Item>风险与合规审核</Timeline.Item>
             )}
@@ -155,7 +177,13 @@ export default function TaskSummary({ data }: { data: TaskSummaryData }) {
             </Timeline.Item>
           </Timeline>
           <Progress
-            percent={data.translationReady ? 50 : 25}
+            percent={
+              data.contentMode === "temporary"
+                ? 25
+                : data.translationReady
+                  ? 50
+                  : 25
+            }
             status="warning"
           />
         </Card>

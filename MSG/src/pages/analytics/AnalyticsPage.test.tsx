@@ -14,6 +14,10 @@ it('展示 V2 阅读点击与风险消息指标', () => {
   expect(screen.getByText('全部客户端')).toBeVisible();
   expect(screen.getByText('站内信（Web + App）')).toBeVisible();
   expect(screen.getAllByText('App Push').length).toBeGreaterThan(0);
+  expect(screen.getAllByText('Email').length).toBeGreaterThan(0);
+  expect(screen.getByText('退信率')).toBeVisible();
+  expect(screen.getByText('投诉数')).toBeVisible();
+  expect(screen.getByText('退订数')).toBeVisible();
   expect(screen.getByText('渠道与访问客户端分开统计')).toBeVisible();
   expect(screen.queryByText('Web 站内信')).not.toBeInTheDocument();
   expect(screen.queryByText('App · 未接入')).not.toBeInTheDocument();

@@ -18,6 +18,7 @@ import {
   MESSAGE_RISK_LEVELS,
 } from "../../domain/messageDisplayTaxonomy";
 import type {
+  Channel,
   MessageCategoryCode,
   MessageTopicCode,
   RiskLevel,
@@ -43,7 +44,7 @@ export default function AnalyticsPage() {
   const [source, setSource] = useState<"人工消息" | "系统事件">();
   const [risk, setRisk] = useState<RiskLevel>();
   const [locale, setLocale] = useState<string>();
-  const [channel, setChannel] = useState<"all" | "站内信" | "Push">("all");
+  const [channel, setChannel] = useState<"all" | "站内信" | "Push" | "邮件">("all");
   const [client, setClient] = useState<"all" | "Web" | "App">("all");
 
   const records = useMemo(
@@ -65,7 +66,7 @@ export default function AnalyticsPage() {
     [store.deliveries, channel, client, category, topic, source, risk, locale],
   );
 
-  const metrics = (selectedChannel: "站内信" | "Push") => {
+  const metrics = (selectedChannel: Channel) => {
     const rows = records.filter((item) => item.channel === selectedChannel);
     const sent = rows.length;
     const delivered = rows.filter((item) =>
@@ -83,12 +84,17 @@ export default function AnalyticsPage() {
       clickRate: sent ? (clicked / sent) * 100 : 0,
       retries,
       cost:
-        selectedChannel === "Push" ? "¥0（APNs/FCM）" : "¥0（内部服务）",
+        selectedChannel === "Push"
+          ? "¥0（APNs/FCM）"
+          : selectedChannel === "邮件"
+            ? "$0.0008 / 封（样例）"
+            : "¥0（内部服务）",
     };
   };
 
   const inbox = metrics("站内信");
   const push = metrics("Push");
+  const email = metrics("邮件");
   const visibleCategories = MESSAGE_DISPLAY_CATEGORIES.filter(
     (item) => !category || item.code === category,
   );
@@ -187,6 +193,7 @@ export default function AnalyticsPage() {
             { label: "全部渠道", value: "all" },
             { label: "站内信", value: "站内信" },
             { label: "App Push", value: "Push" },
+            { label: "Email", value: "邮件" },
           ]}
         />
         <Select
@@ -230,7 +237,7 @@ export default function AnalyticsPage() {
       </div>
 
       <Grid.Row gutter={[16, 16]}>
-        <Grid.Col span={12}>
+        <Grid.Col xs={24} lg={8}>
           <Card
             bordered={false}
             className="surface channel-metric-card"
@@ -255,7 +262,7 @@ export default function AnalyticsPage() {
             </div>
           </Card>
         </Grid.Col>
-        <Grid.Col span={12}>
+        <Grid.Col xs={24} lg={8}>
           <Card
             bordered={false}
             className="surface channel-metric-card"
@@ -275,6 +282,41 @@ export default function AnalyticsPage() {
                     .length,
                 ],
                 ["渠道成本", push.cost],
+              ].map(([label, value]) => (
+                <div key={label as string}>
+                  <span>{label}</span>
+                  <strong>{value}</strong>
+                </div>
+              ))}
+            </div>
+          </Card>
+        </Grid.Col>
+        <Grid.Col xs={24} lg={8}>
+          <Card
+            bordered={false}
+            className="surface channel-metric-card"
+            title="Email"
+            extra={<Tag color="magenta">事务 / 营销发送流</Tag>}
+          >
+            <div className="channel-metric-grid">
+              {[
+                ["发送数", email.sent],
+                ["送达率", `${email.deliveryRate.toFixed(1)}%`],
+                [
+                  "退信率",
+                  `${email.sent ? ((records.filter((item) => item.channel === "邮件" && (item.status === "已退信" || item.bounceType)).length / email.sent) * 100).toFixed(1) : "0.0"}%`,
+                ],
+                [
+                  "投诉数",
+                  records.filter((item) => item.channel === "邮件" && item.complainedAt).length,
+                ],
+                [
+                  "退订数",
+                  records.filter((item) => item.channel === "邮件" && item.unsubscribedAt).length,
+                ],
+                ["点击率", `${email.clickRate.toFixed(1)}%`],
+                ["重试次数", email.retries],
+                ["渠道成本", email.cost],
               ].map(([label, value]) => (
                 <div key={label as string}>
                   <span>{label}</span>

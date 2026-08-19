@@ -31,14 +31,18 @@ npm run build
 - `/segments`：用户分群
 - `/events`：业务事件管理
 - `/approvals`：风险分级审核中心
-- `/deliveries`：站内信（Web + App）和 App Push 发送记录
 - `/analytics`：消息数据分析
-- `/settings`：消息分类、保留期、跳转白名单、权限和审计日志
+- `/settings`：站内信/App Push/Email 渠道配置、消息分类、测试账号、跳转白名单、权限和审计日志
 - `/inbox`：用户侧消息中心
 
 ## 原型边界
 
 - 页面数据来自 `src/mocks/data.ts`，交互状态由 `src/store/prototypeStore.ts` 管理并保存到浏览器本地存储。
-- 外部机翻、APNs/FCM、系统事件和审批流程均为可替换的前端模拟状态，不会调用真实生产接口。
+- 外部机翻、APNs/FCM、Email 服务商、系统事件和审批流程均为可替换的前端模拟状态，不会调用真实生产接口。
 - 所有手机号、邮箱和 UID 均为虚构且经过脱敏展示。
 - 页面标记为“演示环境”，不会触发真实生产操作。
+
+## 邮件 HTML 模板
+
+- `html/email/transactional-notification.html`：用于充值、提现、订单和安全通知；不包含营销退订链接。
+- `html/email/marketing-campaign.html`：用于活动、奖励和召回；必须保留 `{{ unsubscribe_url }}`。

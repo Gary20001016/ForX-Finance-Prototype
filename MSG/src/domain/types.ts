@@ -20,16 +20,68 @@ export interface PushMessageContent {
   collapseKey?: string;
 }
 
+export type EmailType = "事务邮件" | "营销邮件";
+
+export type EmailBodyMode = "text" | "html";
+
+export interface EmailHtmlValidationIssue {
+  level: "阻断" | "警告";
+  message: string;
+}
+
+export interface EmailHtmlAsset {
+  locale: string;
+  fileName: string;
+  fileSize: number;
+  sourceHtml: string;
+  sanitizedHtml: string;
+  generatedText: string;
+  sha256: string;
+  uploadedBy: string;
+  uploadedAt: string;
+  validationStatus: "passed" | "blocked";
+  contentReviewStatus: "pending" | "approved" | "rejected";
+  validationIssues: EmailHtmlValidationIssue[];
+}
+
+export interface EmailMessageContent {
+  subject: string;
+  preheader?: string;
+  bodyMode?: EmailBodyMode;
+  htmlAssets?: Record<string, EmailHtmlAsset>;
+  /** Legacy structured-HTML field retained for persisted prototype data. */
+  headline: string;
+  /** Legacy structured-HTML field retained for persisted prototype data. */
+  body: string;
+  textBody: string;
+  actionText?: string;
+  actionUrl?: string;
+  footerText?: string;
+  unsubscribeText?: string;
+}
+
+export interface EmailChannelConfig {
+  emailType: EmailType;
+  senderProfileId: string;
+  fromName: string;
+  replyTo?: string;
+  trackingEnabled: boolean;
+  unsubscribeRequired: boolean;
+}
+
 export interface LocalizedMessageContent {
   sourceLocale: string;
   locales: string[];
   web: WebMessageContent;
   push: PushMessageContent;
+  email?: EmailMessageContent;
+  emailConfig?: EmailChannelConfig;
 }
 
 export interface TranslationChannelContent {
   web?: Partial<WebMessageContent>;
   push?: Partial<PushMessageContent>;
+  email?: Partial<EmailMessageContent>;
 }
 
 export type TaskTriggerType = "manual" | "event";
@@ -213,7 +265,33 @@ export type ManualTaskSystemAction =
   | "系统终止发送"
   | "系统标记过期";
 
-export interface MessageTask {
+export type ContentApprovalStatus =
+  | "未提交"
+  | "待审核"
+  | "已通过"
+  | "已驳回"
+  | "已撤回";
+
+export type ContentWorkflowStage =
+  | "draft"
+  | "content_review"
+  | "rejected"
+  | "translation_creating"
+  | "localization_review"
+  | "ready"
+  | "published"
+  | "sending_ready";
+
+export interface ContentApprovalState {
+  contentApprovalStatus?: ContentApprovalStatus;
+  contentApprovalId?: string;
+  contentApprovedAt?: string;
+  contentApprovedBy?: string;
+  contentApprovedHash?: string;
+  workflowStage?: ContentWorkflowStage;
+}
+
+export interface MessageTask extends ContentApprovalState {
   id: string;
   name: string;
   type: string;
@@ -258,7 +336,7 @@ export interface MessageTask {
 export type TemplateUsageScope = "manual" | "event" | "shared";
 export type ManualTemplateStatus = "草稿" | "审核中" | "驳回" | "已发布";
 
-export interface MessageTemplate {
+export interface MessageTemplate extends ContentApprovalState {
   id: string;
   code: string;
   eventId?: string;
@@ -473,6 +551,14 @@ export interface DeliveryRecord {
   retryable?: boolean;
   tokenStatus?: "有效" | "已失效" | "不适用";
   triggerId?: string;
+  recipientEmailMasked?: string;
+  messageStream?: "transactional" | "broadcast";
+  openedAt?: string;
+  bounceType?: "soft" | "hard";
+  bounceReason?: string;
+  complainedAt?: string;
+  unsubscribedAt?: string;
+  providerEventId?: string;
 }
 
 export interface LinkAllowlistEntry {
@@ -492,6 +578,7 @@ export interface OperatorTestAccount {
   id: string;
   operatorId: string;
   uid: string;
+  email?: string;
   remark: string;
   verified: boolean;
   createdAt: string;
@@ -501,6 +588,7 @@ export interface OperatorTestAccount {
 export interface TemplateTestSendResult {
   operatorId: string;
   recipientUids: string[];
+  recipientEmails?: string[];
   accountCount: number;
   channelCount: number;
   totalDeliveries: number;

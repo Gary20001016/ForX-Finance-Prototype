@@ -44,9 +44,109 @@ import {
 } from "./prototypeStore";
 import { translationBatches as legacyTranslationBatches } from "../mocks/data";
 import { createPagePermissions } from "../domain/pagePermissions";
+import { createEmailHtmlAsset } from "../domain/emailChannel";
+import type { LocalizedMessageContent } from "../domain/types";
 
 describe("prototype store workflow transitions", () => {
   beforeEach(() => resetPrototypeStore());
+
+  it("seeds one linked Email demo for every workflow surface", () => {
+    const state = getPrototypeState();
+
+    expect(state.templates.map((item) => item.id)).toEqual(
+      expect.arrayContaining([
+        "TPL-EMAIL-DEMO-HTML",
+        "TPL-EMAIL-DEMO-EVENT",
+      ]),
+    );
+    expect(state.tasks.map((item) => item.id)).toEqual(
+      expect.arrayContaining([
+        "MSG-EMAIL-DEMO-MANUAL",
+        "MSG-EMAIL-DEMO-EVENT",
+      ]),
+    );
+    expect(state.translationBatches.map((item) => item.id)).toEqual(
+      expect.arrayContaining([
+        "MT-EMAIL-DEMO-HTML",
+        "MT-EMAIL-DEMO-HTML-JA-REVIEW",
+        "MT-EMAIL-DEMO-TEXT",
+      ]),
+    );
+    expect(state.approvals.map((item) => item.id)).toContain(
+      "APR-EMAIL-DEMO-CONTENT",
+    );
+    expect(state.deliveries.map((item) => item.id)).toEqual(
+      expect.arrayContaining([
+        "DEL-EMAIL-DEMO-OPENED",
+        "DEL-EMAIL-DEMO-BOUNCED",
+      ]),
+    );
+  });
+
+  it("backfills missing Email demos into persisted prototype data once", () => {
+    const saved = JSON.parse(
+      JSON.stringify(getPrototypeState()),
+    ) as ReturnType<typeof getPrototypeState>;
+    saved.templates = saved.templates.filter(
+      (item) => !item.id.startsWith("TPL-EMAIL-DEMO-"),
+    );
+    saved.tasks = saved.tasks.filter(
+      (item) => !item.id.startsWith("MSG-EMAIL-DEMO-"),
+    );
+    saved.translationBatches = saved.translationBatches.filter(
+      (item) => !item.id.startsWith("MT-EMAIL-DEMO-"),
+    );
+    saved.approvals = saved.approvals.filter(
+      (item) => item.id !== "APR-EMAIL-DEMO-CONTENT",
+    );
+    saved.deliveries = saved.deliveries.filter(
+      (item) => !item.id.startsWith("DEL-EMAIL-DEMO-"),
+    );
+    saved.rules = saved.rules.filter(
+      (item) => item.id !== "RULE-EMAIL-DEMO",
+    );
+    saved.ruleVersions = saved.ruleVersions.filter(
+      (item) => item.ruleId !== "RULE-EMAIL-DEMO",
+    );
+
+    const migratedOnce = migrateSavedState(saved);
+    const migratedTwice = migrateSavedState(migratedOnce);
+
+    expect(
+      migratedTwice.templates.filter(
+        (item) => item.id === "TPL-EMAIL-DEMO-HTML",
+      ),
+    ).toHaveLength(1);
+    expect(
+      migratedTwice.tasks.filter(
+        (item) => item.id === "MSG-EMAIL-DEMO-MANUAL",
+      ),
+    ).toHaveLength(1);
+    expect(migratedTwice.tasks[0].id).toBe("MSG-EMAIL-DEMO-MANUAL");
+    expect(
+      migratedTwice.translationBatches.filter(
+        (item) => item.id === "MT-EMAIL-DEMO-TEXT",
+      ),
+    ).toHaveLength(1);
+    expect(
+      migratedTwice.approvals.filter(
+        (item) => item.id === "APR-EMAIL-DEMO-CONTENT",
+      ),
+    ).toHaveLength(1);
+    expect(
+      migratedTwice.deliveries.filter(
+        (item) => item.id === "DEL-EMAIL-DEMO-OPENED",
+      ),
+    ).toHaveLength(1);
+    expect(
+      migratedTwice.rules.filter((item) => item.id === "RULE-EMAIL-DEMO"),
+    ).toHaveLength(1);
+    expect(
+      migratedTwice.ruleVersions.filter(
+        (item) => item.ruleId === "RULE-EMAIL-DEMO",
+      ),
+    ).toHaveLength(1);
+  });
 
   it("binds seeded event templates to the event directory", () => {
     const state = getPrototypeState();
@@ -351,6 +451,114 @@ describe("prototype store workflow transitions", () => {
     });
   });
 
+  it("uses configured test email addresses for Email test sends", () => {
+    addOperatorTestAccount({
+      operatorId: "operator-email",
+      uid: "UID-EMAIL-1",
+      email: "email-one@example.com",
+      remark: "Email account",
+    });
+
+    const result = sendTemplateTest({
+      operatorId: "operator-email",
+      channels: ["邮件"],
+      variables: {},
+      content: {
+        sourceLocale: "zh-CN",
+        locales: ["zh-CN"],
+        web: { title: "", summary: "", body: "" },
+        push: {
+          title: "",
+          body: "",
+          platform: "全部设备",
+          priority: "普通",
+        },
+        email: {
+          subject: "测试邮件",
+          headline: "测试邮件",
+          body: "HTML 正文",
+          textBody: "纯文本正文",
+        },
+        emailConfig: {
+          emailType: "事务邮件",
+          senderProfileId: "transaction",
+          fromName: "ForX Finance 通知",
+          trackingEnabled: true,
+          unsubscribeRequired: false,
+        },
+      },
+    });
+
+    expect(result).toMatchObject({
+      recipientEmails: ["email-one@example.com"],
+      totalDeliveries: 1,
+    });
+  });
+
+  it("requires every enabled locale for an HTML Email test send", () => {
+    addOperatorTestAccount({
+      operatorId: "operator-html-email",
+      uid: "UID-HTML-EMAIL",
+      email: "html@example.com",
+      remark: "HTML Email account",
+    });
+    const makeAsset = (locale: string) =>
+      createEmailHtmlAsset({
+        locale,
+        fileName: `notice.${locale}.html`,
+        fileSize: 512,
+        html: `<!doctype html><html><head><title>Notice</title></head><body><p>${locale}</p></body></html>`,
+        emailType: "事务邮件",
+        declaredVariables: [],
+        uploadedBy: "Gary",
+      });
+    const content: LocalizedMessageContent = {
+      sourceLocale: "zh-CN",
+      locales: ["zh-CN", "en-US"],
+      web: { title: "", summary: "", body: "" },
+      push: {
+        title: "",
+        body: "",
+        platform: "全部设备" as const,
+        priority: "普通" as const,
+      },
+      email: {
+        subject: "HTML 测试邮件",
+        bodyMode: "html" as const,
+        htmlAssets: { "zh-CN": makeAsset("zh-CN") },
+        headline: "",
+        body: "",
+        textBody: "",
+      },
+      emailConfig: {
+        emailType: "事务邮件" as const,
+        senderProfileId: "transaction",
+        fromName: "ForX Finance 通知",
+        trackingEnabled: true,
+        unsubscribeRequired: false,
+      },
+    };
+
+    expect(() =>
+      sendTemplateTest({
+        operatorId: "operator-html-email",
+        channels: ["邮件"],
+        variables: {},
+        content,
+      }),
+    ).toThrow("请上传 en-US 的 HTML 文件");
+
+    content.email!.htmlAssets!["en-US"] = makeAsset("en-US");
+    expect(
+      sendTemplateTest({
+        operatorId: "operator-html-email",
+        channels: ["邮件"],
+        variables: {},
+        content,
+      }).totalDeliveries,
+    ).toBe(1);
+  });
+
   it("creates an external translation batch and opens human review", () => {
     const batch = createTranslationBatch({
       templateId: "TPL-1004",
@@ -441,6 +649,65 @@ describe("prototype store workflow transitions", () => {
     expect(batch.items[0].machineChannelOutput?.push?.deepLink).toBe(
       "forxfinance://security/devices",
     );
+  });
+
+  it("keeps localized HTML assets outside machine translation output", () => {
+    const htmlAsset = createEmailHtmlAsset({
+      locale: "en-US",
+      fileName: "notice.en-US.html",
+      fileSize: 512,
+      html: "<!doctype html><html><head><title>Notice</title></head><body><p>Final English HTML</p></body></html>",
+      emailType: "事务邮件",
+      declaredVariables: [],
+      uploadedBy: "Gary",
+    });
+    const sourceChannelContent = {
+      sourceLocale: "zh-CN",
+      locales: ["zh-CN", "en-US"],
+      web: { title: "", summary: "", body: "" },
+      push: {
+        title: "",
+        body: "",
+        platform: "全部设备" as const,
+        priority: "普通" as const,
+      },
+      email: {
+        subject: "邮件标题",
+        preheader: "邮件预览文字",
+        bodyMode: "html" as const,
+        htmlAssets: { "en-US": htmlAsset },
+        headline: "",
+        body: "",
+        textBody: "",
+      },
+      emailConfig: {
+        emailType: "事务邮件" as const,
+        senderProfileId: "transaction",
+        fromName: "ForX Finance 通知",
+        trackingEnabled: true,
+        unsubscribeRequired: false,
+      },
+    };
+    const batch = createTranslationBatch({
+      subject: {
+        type: "template_version",
+        id: "TPL-HTML-TRANSLATION",
+        name: "HTML 邮件翻译边界",
+        version: "v1",
+        returnPath: "/templates?scope=manual",
+      },
+      sourceLocale: "zh-CN",
+      sourceContent: { title: "邮件标题", summary: "邮件预览文字", body: "" },
+      sourceChannelContent,
+      channels: ["邮件"],
+      targetLocales: ["en-US"],
+      createdBy: "Gary",
+    });
+
+    expect(batch.items[0].machineChannelOutput?.email).toEqual({
+      subject: "邮件标题 · en-US",
+      preheader: "邮件预览文字",
+    });
   });
 
   it("creates a direct source review batch for a special-review source locale", () => {
@@ -538,6 +805,27 @@ describe("prototype store workflow transitions", () => {
       getPrototypeState().templates.find((item) => item.id === "TPL-1004")
         ?.status,
     ).toBe("驳回");
+  });
+
+  it("reconciles a persisted template lifecycle status with its workflow stage", () => {
+    const published = getPrototypeState().templates.find(
+      (item) => item.id === "TPL-1002",
+    )!;
+
+    const normalized = normalizeTemplateTranslationReadiness([
+      {
+        ...published,
+        status: "审核中",
+        workflowStage: "published",
+        contentApprovalStatus: "已通过",
+        translationReadiness: "已通过",
+      },
+    ]);
+
+    expect(normalized[0]).toMatchObject({
+      status: "已发布",
+      workflowStage: "published",
+    });
   });
 
   it("uses the configured language policy for direct source review", () => {
@@ -1095,29 +1383,13 @@ describe("prototype store workflow transitions", () => {
     });
   });
 
-  it("publishes a template only after business approval", () => {
-    prepareSingleLanguageContent({
-      subject: {
-        type: "template_version",
-        id: "TPL-1005",
-        name: "强平风险预警",
-        version: "v21",
-        returnPath: "/templates?scope=event",
-      },
-      sourceLocale: "zh-CN",
-      sourceContent: {
-        title: "强平风险预警",
-        summary: "请及时调整仓位",
-        body: "您的合约持仓存在强平风险。",
-      },
-      createdBy: "Gary Ma",
-    });
+  it("starts event-template localization only after content approval", () => {
     const approval = submitTemplateForApproval("TPL-1005");
     expect(approval.objectType).toBe("事件消息模板");
     expect(
       getPrototypeState().templates.find((item) => item.id === "TPL-1005")
         ?.status,
-    ).toBe("待业务审核");
+    ).toBe("审核中");
     reviewApproval(approval.id, {
       decision: "approve",
       reviewerId: approval.assigneeId!,
@@ -1126,8 +1398,12 @@ describe("prototype store workflow transitions", () => {
     });
     expect(
       getPrototypeState().templates.find((item) => item.id === "TPL-1005")
+        ?.workflowStage,
+    ).toBe("localization_review");
+    expect(
+      getPrototypeState().templates.find((item) => item.id === "TPL-1005")
         ?.status,
-    ).toBe("已发布");
+    ).toBe("审核中");
   });
 
   it("withdraws the old approval when an existing task is edited back to draft", () => {

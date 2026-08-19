@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Button, Input, Select, Tabs, Tag, Typography } from "@arco-design/web-react";
+import { Button, Input, Select, Space, Tabs, Tag, Typography } from "@arco-design/web-react";
 import type { TableColumnProps } from "@arco-design/web-react";
 import PageHeader from "../../components/PageHeader";
 import FilterBar from "../../components/FilterBar";
@@ -93,6 +93,24 @@ export default function MultilingualReviewPage() {
           <div className="mono muted">{item.targetLocale}</div>
         </div>
       ),
+    },
+    {
+      title: "渠道",
+      width: 110,
+      render: (_, item) => {
+        const batch = store.translationBatches.find(
+          (candidate) => candidate.id === item.batchId,
+        );
+        return (
+          <Space wrap size="mini">
+            {(batch?.channels || []).map((channel) => (
+              <Tag key={channel} color={channel === "邮件" ? "magenta" : undefined}>
+                {channel === "邮件" ? "Email" : channel}
+              </Tag>
+            ))}
+          </Space>
+        );
+      },
     },
     {
       title: "指派审核人",
