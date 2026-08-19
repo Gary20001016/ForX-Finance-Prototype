@@ -1007,7 +1007,7 @@ const createSeed = (): PrototypeState => {
       reviewOperators,
     ),
     languageReviewPolicies: JSON.parse(JSON.stringify(languageReviewPolicySeed)),
-    approvals: [...emailDemos.approvals, ...firstPhaseApprovals].map((item) => {
+    approvals: [...firstPhaseApprovals, ...emailDemos.approvals].map((item) => {
       const task = seededTasks.find(
         (candidate) => candidate.name === item.name,
       );

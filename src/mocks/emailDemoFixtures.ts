@@ -1,10 +1,8 @@
-import {
-  createDefaultEmailConfig,
-  createEmailHtmlAsset,
-} from "../domain/emailChannel";
+import { createDefaultEmailConfig } from "../domain/emailChannel";
 import type {
   ApprovalItem,
   DeliveryRecord,
+  EmailHtmlAsset,
   LocalizedMessageContent,
   MessageTask,
   MessageTemplate,
@@ -13,6 +11,37 @@ import type {
 
 const manualTemplateId = "TPL-EMAIL-DEMO-HTML";
 const eventTemplateId = "TPL-EMAIL-DEMO-EVENT";
+
+const createTrustedDemoHtmlAsset = ({
+  locale,
+  fileName,
+  fileSize,
+  html,
+  generatedText,
+  uploadedAt,
+  sha256,
+}: {
+  locale: string;
+  fileName: string;
+  fileSize: number;
+  html: string;
+  generatedText: string;
+  uploadedAt: string;
+  sha256: string;
+}): EmailHtmlAsset => ({
+  locale,
+  fileName,
+  fileSize,
+  sourceHtml: html,
+  sanitizedHtml: html,
+  generatedText,
+  sha256,
+  uploadedBy: "林夏",
+  uploadedAt,
+  validationStatus: "passed",
+  contentReviewStatus: "approved",
+  validationIssues: [],
+});
 
 const htmlDocument = ({
   lang,
@@ -63,44 +92,44 @@ const htmlDocument = ({
 
 const createHtmlTemplate = (): MessageTemplate => {
   const declaredVariables = ["user_nickname", "amount", "currency"];
-  const zhAsset = createEmailHtmlAsset({
+  const zhHtml = htmlDocument({
+    lang: "zh-CN",
+    title: "夏季 VIP 专属礼遇",
+    greeting: "尊敬的",
+    introduction: "您的夏季 VIP 专属礼遇已开启，限时奖励已经为您准备好。",
+    amountLabel: "专属奖励额度",
+    cta: "查看我的礼遇",
+    unsubscribe: "取消订阅营销邮件",
+  });
+  const zhAsset = createTrustedDemoHtmlAsset({
     locale: "zh-CN",
     fileName: "vip-summer-zh-CN.html",
     fileSize: 6842,
-    html: htmlDocument({
-      lang: "zh-CN",
-      title: "夏季 VIP 专属礼遇",
-      greeting: "尊敬的",
-      introduction: "您的夏季 VIP 专属礼遇已开启，限时奖励已经为您准备好。",
-      amountLabel: "专属奖励额度",
-      cta: "查看我的礼遇",
-      unsubscribe: "取消订阅营销邮件",
-    }),
-    emailType: "营销邮件",
-    declaredVariables,
-    uploadedBy: "林夏",
+    html: zhHtml,
+    generatedText:
+      "ForX Finance 夏季 VIP 专属礼遇 尊敬的 {{ user_nickname }}，您的夏季 VIP 专属礼遇已开启，限时奖励已经为您准备好。专属奖励额度 {{ amount }} {{ currency }} 查看我的礼遇 取消订阅营销邮件",
     uploadedAt: "2026-08-19 14:20:00",
+    sha256: "demohtmlzhcn0001",
   });
-  const enAsset = createEmailHtmlAsset({
+  const enHtml = htmlDocument({
+    lang: "en-US",
+    title: "Your Summer VIP Exclusive Reward",
+    greeting: "Dear",
+    introduction: "Your exclusive Summer VIP reward is ready for a limited time.",
+    amountLabel: "Exclusive reward",
+    cta: "View my VIP reward",
+    unsubscribe: "Unsubscribe from marketing emails",
+  });
+  const enAsset = createTrustedDemoHtmlAsset({
     locale: "en-US",
     fileName: "vip-summer-en-US.html",
     fileSize: 6590,
-    html: htmlDocument({
-      lang: "en-US",
-      title: "Your Summer VIP Exclusive Reward",
-      greeting: "Dear",
-      introduction: "Your exclusive Summer VIP reward is ready for a limited time.",
-      amountLabel: "Exclusive reward",
-      cta: "View my VIP reward",
-      unsubscribe: "Unsubscribe from marketing emails",
-    }),
-    emailType: "营销邮件",
-    declaredVariables,
-    uploadedBy: "林夏",
+    html: enHtml,
+    generatedText:
+      "ForX Finance Your Summer VIP Exclusive Reward Dear {{ user_nickname }}, Your exclusive Summer VIP reward is ready for a limited time. Exclusive reward {{ amount }} {{ currency }} View my VIP reward Unsubscribe from marketing emails",
     uploadedAt: "2026-08-19 14:26:00",
+    sha256: "demohtmlenus0001",
   });
-  zhAsset.contentReviewStatus = "approved";
-  enAsset.contentReviewStatus = "approved";
 
   const content: LocalizedMessageContent = {
     sourceLocale: "zh-CN",
