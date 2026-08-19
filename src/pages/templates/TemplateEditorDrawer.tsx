@@ -46,6 +46,13 @@ import { isPublishedTemplateLocked } from "../../domain/templatePolicy";
 import { getEventTemplateVariables } from "../../domain/eventVariables";
 import TemplateReadOnlyDetails from "./TemplateReadOnlyDetails";
 import TemplateTestSendModal from "./TemplateTestSendModal";
+import EmailContentEditor from "../../components/EmailContentEditor";
+import {
+  ACTIVE_MESSAGE_CHANNELS,
+  createDefaultEmailConfig,
+  createDefaultEmailContent,
+  validateEmailContent,
+} from "../../domain/emailChannel";
 
 const supportedLocales = [
   "zh-CN",
@@ -86,6 +93,8 @@ const emptyContent: LocalizedMessageContent = {
     platform: "全部设备",
     priority: "高",
   },
+  email: createDefaultEmailContent(),
+  emailConfig: createDefaultEmailConfig(),
 };
 
 export default function TemplateEditorDrawer({
@@ -123,7 +132,11 @@ export default function TemplateEditorDrawer({
     const nextCategory = template?.category || "announcement";
     const nextTopic =
       template?.topic || getDefaultTopicCode(nextCategory) || "maintenance";
-    setContent(JSON.parse(JSON.stringify(next)));
+    setContent({
+      ...JSON.parse(JSON.stringify(next)),
+      email: next.email || createDefaultEmailContent(),
+      emailConfig: next.emailConfig || createDefaultEmailConfig(),
+    });
     setSourceLocale(nextSourceLocale);
     setTargetLocales(
       (template?.locales || []).filter((item) => item !== nextSourceLocale),
@@ -160,6 +173,23 @@ export default function TemplateEditorDrawer({
     setContent((current) => ({
       ...current,
       push: { ...current.push, ...changes },
+    }));
+  const patchEmail = (
+    changes: Partial<NonNullable<LocalizedMessageContent["email"]>>,
+  ) =>
+    setContent((current) => ({
+      ...current,
+      email: { ...(current.email || createDefaultEmailContent()), ...changes },
+    }));
+  const patchEmailConfig = (
+    changes: Partial<NonNullable<LocalizedMessageContent["emailConfig"]>>,
+  ) =>
+    setContent((current) => ({
+      ...current,
+      emailConfig: {
+        ...(current.emailConfig || createDefaultEmailConfig()),
+        ...changes,
+      },
     }));
   const updateChannels = (values: Channel[]) => {
     if (!values.length) {
@@ -201,10 +231,15 @@ export default function TemplateEditorDrawer({
     new Set([
       ...extractVariableNames(content.web.body),
       ...extractVariableNames(content.push.body),
+      ...extractVariableNames(content.email?.subject || ""),
+      ...extractVariableNames(content.email?.preheader || ""),
+      ...extractVariableNames(content.email?.headline || ""),
+      ...extractVariableNames(content.email?.body || ""),
+      ...extractVariableNames(content.email?.textBody || ""),
     ]),
   );
   const templateVariableValidation = validateVariableTokens(
-    `${content.web.body}\n${content.push.body}`,
+    `${content.web.body}\n${content.push.body}\n${content.email?.subject || ""}\n${content.email?.preheader || ""}\n${content.email?.headline || ""}\n${content.email?.body || ""}\n${content.email?.textBody || ""}`,
     availableTemplateVariables,
   );
   const save = async (mode: "draft" | "submit") => {
@@ -218,7 +253,17 @@ export default function TemplateEditorDrawer({
       const pushIncomplete =
         channels.includes("Push") &&
         (!content.push.title || !content.push.body);
-      if (stationIncomplete || pushIncomplete) {
+      const emailValidation = validateEmailContent(
+        content.email,
+        content.emailConfig,
+      );
+      const emailIncomplete =
+        channels.includes("邮件") && !emailValidation.valid;
+      if (stationIncomplete || pushIncomplete || emailIncomplete) {
+        if (emailIncomplete) {
+          Message.warning(emailValidation.errors.join("；"));
+          return;
+        }
         Message.warning("请完整填写已选正式渠道的内容");
         return;
       }
@@ -498,7 +543,10 @@ export default function TemplateEditorDrawer({
             <Form.Item label="正式渠道" required>
               <Checkbox.Group
                 value={channels}
-                options={["站内信", "Push"]}
+                options={ACTIVE_MESSAGE_CHANNELS.map((value) => ({
+                  label: value === "邮件" ? "Email" : value,
+                  value,
+                }))}
                 onChange={(values) => updateChannels(values as Channel[])}
               />
             </Form.Item>
@@ -645,6 +693,18 @@ export default function TemplateEditorDrawer({
                   )}
                 </Grid.Row>
               </Form>
+              </Grid.Col>
+            )}
+            {channels.includes("邮件") && content.email && content.emailConfig && (
+              <Grid.Col span={24}>
+                <h3>Email</h3>
+                <EmailContentEditor
+                  content={content.email}
+                  config={content.emailConfig}
+                  variables={availableTemplateVariables}
+                  onContentChange={patchEmail}
+                  onConfigChange={patchEmailConfig}
+                />
               </Grid.Col>
             )}
           </Grid.Row>

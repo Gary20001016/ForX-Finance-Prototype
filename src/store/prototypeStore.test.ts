@@ -351,6 +351,50 @@ describe("prototype store workflow transitions", () => {
     });
   });
 
+  it("uses configured test email addresses for Email test sends", () => {
+    addOperatorTestAccount({
+      operatorId: "operator-email",
+      uid: "UID-EMAIL-1",
+      email: "email-one@example.com",
+      remark: "Email account",
+    });
+
+    const result = sendTemplateTest({
+      operatorId: "operator-email",
+      channels: ["邮件"],
+      variables: {},
+      content: {
+        sourceLocale: "zh-CN",
+        locales: ["zh-CN"],
+        web: { title: "", summary: "", body: "" },
+        push: {
+          title: "",
+          body: "",
+          platform: "全部设备",
+          priority: "普通",
+        },
+        email: {
+          subject: "测试邮件",
+          headline: "测试邮件",
+          body: "HTML 正文",
+          textBody: "纯文本正文",
+        },
+        emailConfig: {
+          emailType: "事务邮件",
+          senderProfileId: "transaction",
+          fromName: "ForX Finance 通知",
+          trackingEnabled: true,
+          unsubscribeRequired: false,
+        },
+      },
+    });
+
+    expect(result).toMatchObject({
+      recipientEmails: ["email-one@example.com"],
+      totalDeliveries: 1,
+    });
+  });
+
   it("creates an external translation batch and opens human review", () => {
     const batch = createTranslationBatch({
       templateId: "TPL-1004",

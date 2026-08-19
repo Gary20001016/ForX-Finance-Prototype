@@ -101,6 +101,10 @@ import {
   contentApprovalHash,
   templateMainStatusForStage,
 } from "../domain/contentApprovalWorkflow";
+import {
+  ACTIVE_MESSAGE_CHANNELS,
+  validateEmailContent,
+} from "../domain/emailChannel";
 
 export interface PrototypeState {
   messages: UserMessage[];
@@ -1555,20 +1559,27 @@ export const getOperatorTestAccounts = (operatorId: string) =>
 export const addOperatorTestAccount = (input: {
   operatorId: string;
   uid: string;
+  email?: string;
   remark?: string;
 }) => {
   const uid = input.uid.trim();
+  const email = input.email?.trim().toLowerCase();
   if (!uid) throw new Error("请输入测试 UID");
+  if (email && !/^\S+@\S+\.\S+$/.test(email))
+    throw new Error("请输入有效的测试 Email");
   const accounts = getOperatorTestAccounts(input.operatorId);
   if (accounts.length >= 4)
     throw new Error("每名操作者最多配置 4 个测试账号");
   if (accounts.some((account) => account.uid === uid))
     throw new Error("该 UID 已在你的测试账号中");
+  if (email && accounts.some((account) => account.email === email))
+    throw new Error("该 Email 已在你的测试账号中");
 
   const account: OperatorTestAccount = {
     id: `TEST-ACCOUNT-${Date.now().toString().slice(-7)}`,
     operatorId: input.operatorId,
     uid,
+    email,
     remark: input.remark?.trim() || "未备注",
     verified: true,
     createdAt: "刚刚",
@@ -1584,16 +1595,33 @@ export const addOperatorTestAccount = (input: {
 export const updateOperatorTestAccount = (
   id: string,
   operatorId: string,
-  changes: Pick<OperatorTestAccount, "remark">,
+  changes: Partial<Pick<OperatorTestAccount, "remark" | "email">>,
 ) => {
   const account = state.testAccounts.find((item) => item.id === id);
   if (!account) throw new Error("测试账号不存在");
   if (account.operatorId !== operatorId)
     throw new Error("无权修改该测试账号");
+  const email =
+    changes.email === undefined
+      ? account.email
+      : changes.email.trim().toLowerCase() || undefined;
+  if (email && !/^\S+@\S+\.\S+$/.test(email))
+    throw new Error("请输入有效的测试 Email");
+  if (
+    email &&
+    state.testAccounts.some(
+      (item) =>
+        item.id !== id &&
+        item.operatorId === operatorId &&
+        item.email === email,
+    )
+  )
+    throw new Error("该 Email 已在你的测试账号中");
 
   const result = {
     ...account,
-    remark: changes.remark.trim() || "未备注",
+    remark: changes.remark?.trim() || account.remark || "未备注",
+    email,
     updatedAt: "刚刚",
   };
   update((current) => ({
@@ -1629,8 +1657,8 @@ export const sendTemplateTest = (input: {
   if (!accounts.length) throw new Error("请先配置本人测试账号");
   const channels = Array.from(
     new Set(
-      input.channels.filter(
-        (channel) => channel === "站内信" || channel === "Push",
+      input.channels.filter((channel) =>
+        ACTIVE_MESSAGE_CHANNELS.includes(channel),
       ),
     ),
   );
@@ -1647,15 +1675,34 @@ export const sendTemplateTest = (input: {
     (!input.content.push.title || !input.content.push.body)
   )
     throw new Error("请完整填写 Push 标题和正文");
+  if (channels.includes("邮件")) {
+    const emailValidation = validateEmailContent(
+      input.content.email,
+      input.content.emailConfig,
+    );
+    if (!emailValidation.valid)
+      throw new Error(emailValidation.errors.join("；"));
+    if (!accounts.some((account) => account.email))
+      throw new Error("请先为本人测试账号配置测试 Email");
+  }
   if (Object.values(input.variables).some((value) => !value.trim()))
     throw new Error("请完整填写模板变量测试值");
 
+  const recipientEmails = accounts.flatMap((account) =>
+    account.email ? [account.email] : [],
+  );
+  const uidChannelCount = channels.filter(
+    (channel) => channel !== "邮件",
+  ).length;
   return {
     operatorId: input.operatorId,
     recipientUids: accounts.map((account) => account.uid),
+    recipientEmails,
     accountCount: accounts.length,
     channelCount: channels.length,
-    totalDeliveries: accounts.length * channels.length,
+    totalDeliveries:
+      accounts.length * uidChannelCount +
+      (channels.includes("邮件") ? recipientEmails.length : 0),
   };
 };
 export const resetPrototypeStore = () => {
