@@ -24,6 +24,22 @@ const sourceContent: LocalizedMessageContent = {
     platform: "全部设备",
     priority: "高",
   },
+  email: {
+    subject: "源 Email 标题",
+    preheader: "源预览文字",
+    headline: "源正文标题",
+    body: "源 Email 正文",
+    textBody: "源纯文本正文",
+    actionText: "查看邮件详情",
+    actionUrl: "https://www.forx.finance/messages/MSG-001",
+  },
+  emailConfig: {
+    emailType: "事务邮件",
+    senderProfileId: "transaction",
+    fromName: "ForX Finance 通知",
+    trackingEnabled: true,
+    unsubscribeRequired: false,
+  },
 };
 
 const baseItem: TranslationItem = {
@@ -94,6 +110,33 @@ describe("resolveMultilingualPreview", () => {
     expect(result.content?.push.deepLink).toBe(
       "forxfinance://security/devices",
     );
+  });
+
+  it("resolves localized Email text and preserves links and sender config", () => {
+    const batch = {
+      ...baseBatch,
+      channels: ["邮件"],
+      sourceChannelContent: sourceContent,
+    } as unknown as TranslationBatch;
+    const item = {
+      ...baseItem,
+      machineChannelOutput: {
+        email: {
+          subject: "Withdrawal succeeded · en-US",
+          headline: "Withdrawal completed",
+          body: "Your withdrawal was completed.",
+          textBody: "Your withdrawal was completed.",
+        },
+      },
+    } as unknown as TranslationItem;
+
+    const result = resolveMultilingualPreview(batch, item);
+
+    expect(result.content?.email?.subject).toContain("en-US");
+    expect(result.content?.email?.actionUrl).toBe(
+      "https://www.forx.finance/messages/MSG-001",
+    );
+    expect(result.content?.emailConfig?.senderProfileId).toBe("transaction");
   });
 
   it("previews legacy returned content but leaves a missing result empty", () => {

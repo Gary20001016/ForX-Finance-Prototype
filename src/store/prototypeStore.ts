@@ -712,8 +712,8 @@ const enrichTemplates = (): MessageTemplate[] =>
       template.nature;
     return {
       ...template,
-      channels: template.channels.filter(
-        (channel) => channel === "站内信" || channel === "Push",
+      channels: template.channels.filter((channel) =>
+        ACTIVE_MESSAGE_CHANNELS.includes(channel),
       ),
       category: event ? display.category : template.category || display.category,
       topic: event ? display.topic : template.topic || display.topic,
@@ -792,8 +792,8 @@ const enrichTasks = (seededTemplates: MessageTemplate[]): MessageTask[] =>
       const display = inferDisplayLocation(task.name, task.category);
       return {
         ...task,
-        channels: task.channels.filter(
-          (channel) => channel === "站内信" || channel === "Push",
+        channels: task.channels.filter((channel) =>
+          ACTIVE_MESSAGE_CHANNELS.includes(channel),
         ),
         category: task.category || display.category,
         topic: task.topic || display.topic,
@@ -1761,6 +1761,8 @@ type SingleLanguagePreparationInput = {
   subject: GeneralTranslationBatchInput["subject"];
   sourceLocale: string;
   sourceContent: TranslationContentLayer;
+  sourceChannelContent?: LocalizedMessageContent;
+  channels?: Channel[];
   createdBy: string;
 };
 
@@ -1876,6 +1878,20 @@ export const prepareSingleLanguageContent = (
     status: "翻译返回待审核",
     sourceContentHash,
     humanDraft: { ...input.sourceContent },
+    humanChannelDraft: input.sourceChannelContent
+      ? {
+          web: input.channels?.includes("站内信")
+            ? { ...input.sourceChannelContent.web }
+            : undefined,
+          push: input.channels?.includes("Push")
+            ? { ...input.sourceChannelContent.push }
+            : undefined,
+          email:
+            input.channels?.includes("邮件") && input.sourceChannelContent.email
+              ? { ...input.sourceChannelContent.email }
+              : undefined,
+        }
+      : undefined,
     submittedAt: "刚刚",
     submitter: input.createdBy,
     variablesValid: true,
@@ -1900,6 +1916,10 @@ export const prepareSingleLanguageContent = (
     createdAt: "刚刚",
     updatedAt: "刚刚",
     sourceContent: { ...input.sourceContent },
+    channels: input.channels?.length ? [...input.channels] : undefined,
+    sourceChannelContent: input.sourceChannelContent
+      ? JSON.parse(JSON.stringify(input.sourceChannelContent))
+      : undefined,
     items: [item],
   };
   const batch = syncTranslationReviewAssignments(
@@ -1959,9 +1979,18 @@ export const createTranslationBatch = (
   const sourceContent: TranslationContentLayer = generalized
     ? input.sourceContent
     : {
-        title: template!.content?.web.title,
-        summary: template!.content?.web.summary,
-        body: template!.content?.web.body,
+        title: template!.channels.includes("站内信")
+          ? template!.content?.web.title
+          : template!.channels.includes("Push")
+            ? template!.content?.push.title
+            : template!.content?.email?.subject,
+        summary:
+          template!.content?.web.summary || template!.content?.email?.preheader,
+        body: template!.channels.includes("站内信")
+          ? template!.content?.web.body
+          : template!.channels.includes("Push")
+            ? template!.content?.push.body
+            : template!.content?.email?.body,
       };
   const sourceChannelContent = generalized
     ? input.sourceChannelContent
@@ -2016,6 +2045,14 @@ export const createTranslationBatch = (
                     title: `${sourceChannelContent.push.title || subject.name} · ${locale}`,
                   }
                 : undefined,
+              email:
+                channels?.includes("邮件") && sourceChannelContent.email
+                  ? {
+                      ...sourceChannelContent.email,
+                      subject: `${sourceChannelContent.email.subject || subject.name} · ${locale}`,
+                      headline: `${sourceChannelContent.email.headline || subject.name} · ${locale}`,
+                    }
+                  : undefined,
             }
           : undefined;
       return {
@@ -2119,10 +2156,21 @@ const advanceApprovedTemplate = (templateId: string) => {
       },
       sourceLocale: template.sourceLocale,
       sourceContent: {
-        title: template.content?.web.title || template.content?.push.title,
-        summary: template.content?.web.summary || "",
-        body: template.content?.web.body || template.content?.push.body,
+        title: template.channels.includes("站内信")
+          ? template.content?.web.title
+          : template.channels.includes("Push")
+            ? template.content?.push.title
+            : template.content?.email?.subject,
+        summary:
+          template.content?.web.summary || template.content?.email?.preheader || "",
+        body: template.channels.includes("站内信")
+          ? template.content?.web.body
+          : template.channels.includes("Push")
+            ? template.content?.push.body
+            : template.content?.email?.body,
       },
+      sourceChannelContent: template.content,
+      channels: template.channels,
       createdBy: template.contentApprovedBy || "Gary Ma",
     });
     return;
@@ -2179,6 +2227,16 @@ const mergeTranslationValuesIntoChannels = (
               ...base.push,
               title: values.title,
               body: values.body,
+            }
+          : undefined,
+        email: base.email
+          ? {
+              ...base.email,
+              subject: values.title,
+              preheader: values.summary,
+              headline: values.title,
+              body: values.body,
+              textBody: values.body,
             }
           : undefined,
       }
@@ -2797,18 +2855,46 @@ const advanceApprovedTemporaryTask = (taskId: string) => {
     title:
       task.channels.length === 1 && task.channels.includes("Push")
         ? task.content.push.title
+        : task.channels.length === 1 && task.channels.includes("邮件")
+          ? task.content.email?.subject
         : task.channels.length === 1
           ? task.content.web.title
-          : `站内信：${task.content.web.title} / Push：${task.content.push.title}`,
+          : [
+              task.channels.includes("站内信")
+                ? `站内信：${task.content.web.title}`
+                : "",
+              task.channels.includes("Push")
+                ? `Push：${task.content.push.title}`
+                : "",
+              task.channels.includes("邮件")
+                ? `Email：${task.content.email?.subject || ""}`
+                : "",
+            ]
+              .filter(Boolean)
+              .join(" / "),
     summary: task.channels.includes("站内信")
       ? task.content.web.summary
       : undefined,
     body:
       task.channels.length === 1 && task.channels.includes("Push")
         ? task.content.push.body
+        : task.channels.length === 1 && task.channels.includes("邮件")
+          ? task.content.email?.body
         : task.channels.length === 1
           ? task.content.web.body
-          : `【站内信】\n${task.content.web.body}\n\n【App Push】\n${task.content.push.body}`,
+          : [
+              task.channels.includes("站内信")
+                ? `【站内信】\n${task.content.web.body}`
+                : "",
+              task.channels.includes("Push")
+                ? `【App Push】\n${task.content.push.body}`
+                : "",
+              task.channels.includes("邮件")
+                ? `【Email】\n${task.content.email?.body || ""}`
+                : "",
+            ]
+              .filter(Boolean)
+              .join("\n\n"),
   };
 
   let batch: TranslationBatch | undefined;
@@ -2827,6 +2913,8 @@ const advanceApprovedTemporaryTask = (taskId: string) => {
       subject,
       sourceLocale,
       sourceContent,
+      sourceChannelContent: task.content,
+      channels: task.channels,
       createdBy: task.contentApprovedBy || task.creator,
     }).batch;
   }
@@ -3789,6 +3877,15 @@ export const createRuleTranslationBatch = (versionId: string) => {
           title: version.title,
           body: version.body,
         },
+        email: template.content.email
+          ? {
+              ...template.content.email,
+              subject: version.title,
+              headline: version.title,
+              body: version.body,
+              textBody: version.body,
+            }
+          : undefined,
       }
     : undefined;
   const batch = createTranslationBatch({
