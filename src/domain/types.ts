@@ -22,10 +22,36 @@ export interface PushMessageContent {
 
 export type EmailType = "事务邮件" | "营销邮件";
 
+export type EmailBodyMode = "text" | "html";
+
+export interface EmailHtmlValidationIssue {
+  level: "阻断" | "警告";
+  message: string;
+}
+
+export interface EmailHtmlAsset {
+  locale: string;
+  fileName: string;
+  fileSize: number;
+  sourceHtml: string;
+  sanitizedHtml: string;
+  generatedText: string;
+  sha256: string;
+  uploadedBy: string;
+  uploadedAt: string;
+  validationStatus: "passed" | "blocked";
+  contentReviewStatus: "pending" | "approved" | "rejected";
+  validationIssues: EmailHtmlValidationIssue[];
+}
+
 export interface EmailMessageContent {
   subject: string;
   preheader?: string;
+  bodyMode?: EmailBodyMode;
+  htmlAssets?: Record<string, EmailHtmlAsset>;
+  /** Legacy structured-HTML field retained for persisted prototype data. */
   headline: string;
+  /** Legacy structured-HTML field retained for persisted prototype data. */
   body: string;
   textBody: string;
   actionText?: string;
