@@ -62,8 +62,8 @@ const settingsTabs: Array<{
   label: string;
   permissionKey: PagePermissionKey;
 }> = [
-  { key: "channels", label: "渠道配置", permissionKey: "settings.channels" },
   { key: "categories", label: "前台展示分类", permissionKey: "settings.categories" },
+  { key: "channels", label: "渠道配置", permissionKey: "settings.channels" },
   { key: "links", label: "跳转白名单", permissionKey: "settings.links" },
   {
     key: "language-review",
