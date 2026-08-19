@@ -146,7 +146,7 @@ git commit -m "feat: seed email demos across message workflows"
 
 - [ ] **Step 1: 添加页面级失败断言**
 
-分别渲染页面并断言以下名称可见：`夏季 VIP 专属礼遇邮件`、`充值到账 Email 通知`、`VIP 礼遇 Email 群发`、`充值到账 Email 事件任务`、`Email 营销内容审核`、`充值到账 Email 英文审核`；打开详情后断言出现 `Email` 与对应邮件标题。
+分别渲染页面并断言以下名称可见：`夏季 VIP 专属礼遇邮件`、`充值到账 Email 通知`、`VIP 礼遇 Email 群发`、`充值到账 Email 事件任务`、`Email 营销内容审核`、`充值到账 Email 日语审核`；打开详情后断言出现 `Email` 与对应邮件标题。
 
 - [ ] **Step 2: 运行页面测试并确认失败原因是 fixture 尚未展示**
 
