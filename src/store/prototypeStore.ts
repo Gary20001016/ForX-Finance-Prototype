@@ -104,6 +104,7 @@ import {
 import {
   ACTIVE_MESSAGE_CHANNELS,
   createDefaultEmailConfig,
+  getEmailBodyMode,
   validateEmailContent,
 } from "../domain/emailChannel";
 
@@ -1719,6 +1720,7 @@ export const sendTemplateTest = (input: {
     const emailValidation = validateEmailContent(
       input.content.email,
       input.content.emailConfig,
+      input.content.locales,
     );
     if (!emailValidation.valid)
       throw new Error(emailValidation.errors.join("；"));
@@ -1928,7 +1930,13 @@ export const prepareSingleLanguageContent = (
             : undefined,
           email:
             input.channels?.includes("邮件") && input.sourceChannelContent.email
-              ? { ...input.sourceChannelContent.email }
+              ? {
+                  subject: input.sourceChannelContent.email.subject,
+                  preheader: input.sourceChannelContent.email.preheader,
+                  ...(getEmailBodyMode(input.sourceChannelContent.email) === "text"
+                    ? { textBody: input.sourceChannelContent.email.textBody }
+                    : {}),
+                }
               : undefined,
         }
       : undefined,
@@ -2088,9 +2096,11 @@ export const createTranslationBatch = (
               email:
                 channels?.includes("邮件") && sourceChannelContent.email
                   ? {
-                      ...sourceChannelContent.email,
                       subject: `${sourceChannelContent.email.subject || subject.name} · ${locale}`,
-                      headline: `${sourceChannelContent.email.headline || subject.name} · ${locale}`,
+                      preheader: sourceChannelContent.email.preheader,
+                      ...(getEmailBodyMode(sourceChannelContent.email) === "text"
+                        ? { textBody: sourceChannelContent.email.textBody }
+                        : {}),
                     }
                   : undefined,
             }

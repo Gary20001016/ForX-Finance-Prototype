@@ -51,7 +51,7 @@ import {
   ACTIVE_MESSAGE_CHANNELS,
   createDefaultEmailConfig,
   createDefaultEmailContent,
-  getEmailBodyMode,
+  getEmailVariableSourceText,
   validateEmailContent,
 } from "../../domain/emailChannel";
 
@@ -228,23 +228,16 @@ export default function TemplateEditorDrawer({
     entryScope === "manual"
       ? store.templateVariables
       : getEventTemplateVariables(selectedEvent?.variables || []);
-  const activeEmailBodyText =
-    getEmailBodyMode(content.email) === "html"
-      ? Object.values(content.email?.htmlAssets || {})
-          .map((asset) => asset.sourceHtml)
-          .join("\n")
-      : content.email?.textBody || "";
+  const activeEmailVariableText = getEmailVariableSourceText(content.email);
   const referencedVariableNames = Array.from(
     new Set([
       ...extractVariableNames(content.web.body),
       ...extractVariableNames(content.push.body),
-      ...extractVariableNames(content.email?.subject || ""),
-      ...extractVariableNames(content.email?.preheader || ""),
-      ...extractVariableNames(activeEmailBodyText),
+      ...extractVariableNames(activeEmailVariableText),
     ]),
   );
   const templateVariableValidation = validateVariableTokens(
-    `${content.web.body}\n${content.push.body}\n${content.email?.subject || ""}\n${content.email?.preheader || ""}\n${activeEmailBodyText}`,
+    `${content.web.body}\n${content.push.body}\n${activeEmailVariableText}`,
     availableTemplateVariables,
   );
   const save = async (mode: "draft" | "submit") => {
@@ -261,6 +254,7 @@ export default function TemplateEditorDrawer({
       const emailValidation = validateEmailContent(
         content.email,
         content.emailConfig,
+        [sourceLocale, ...targetLocales],
       );
       const emailIncomplete =
         channels.includes("邮件") && !emailValidation.valid;

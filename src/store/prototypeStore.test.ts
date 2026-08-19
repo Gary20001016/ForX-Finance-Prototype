@@ -44,6 +44,7 @@ import {
 } from "./prototypeStore";
 import { translationBatches as legacyTranslationBatches } from "../mocks/data";
 import { createPagePermissions } from "../domain/pagePermissions";
+import { createEmailHtmlAsset } from "../domain/emailChannel";
 
 describe("prototype store workflow transitions", () => {
   beforeEach(() => resetPrototypeStore());
@@ -395,6 +396,70 @@ describe("prototype store workflow transitions", () => {
     });
   });
 
+  it("requires every enabled locale for an HTML Email test send", () => {
+    addOperatorTestAccount({
+      operatorId: "operator-html-email",
+      uid: "UID-HTML-EMAIL",
+      email: "html@example.com",
+      remark: "HTML Email account",
+    });
+    const makeAsset = (locale: string) =>
+      createEmailHtmlAsset({
+        locale,
+        fileName: `notice.${locale}.html`,
+        fileSize: 512,
+        html: `<!doctype html><html><head><title>Notice</title></head><body><p>${locale}</p></body></html>`,
+        emailType: "事务邮件",
+        declaredVariables: [],
+        uploadedBy: "Gary",
+      });
+    const content = {
+      sourceLocale: "zh-CN",
+      locales: ["zh-CN", "en-US"],
+      web: { title: "", summary: "", body: "" },
+      push: {
+        title: "",
+        body: "",
+        platform: "全部设备" as const,
+        priority: "普通" as const,
+      },
+      email: {
+        subject: "HTML 测试邮件",
+        bodyMode: "html" as const,
+        htmlAssets: { "zh-CN": makeAsset("zh-CN") },
+        headline: "",
+        body: "",
+        textBody: "",
+      },
+      emailConfig: {
+        emailType: "事务邮件" as const,
+        senderProfileId: "transaction",
+        fromName: "ForX Finance 通知",
+        trackingEnabled: true,
+        unsubscribeRequired: false,
+      },
+    };
+
+    expect(() =>
+      sendTemplateTest({
+        operatorId: "operator-html-email",
+        channels: ["邮件"],
+        variables: {},
+        content,
+      }),
+    ).toThrow("请上传 en-US 的 HTML 文件");
+
+    content.email.htmlAssets["en-US"] = makeAsset("en-US");
+    expect(
+      sendTemplateTest({
+        operatorId: "operator-html-email",
+        channels: ["邮件"],
+        variables: {},
+        content,
+      }).totalDeliveries,
+    ).toBe(1);
+  });
+
   it("creates an external translation batch and opens human review", () => {
     const batch = createTranslationBatch({
       templateId: "TPL-1004",
@@ -485,6 +550,65 @@ describe("prototype store workflow transitions", () => {
     expect(batch.items[0].machineChannelOutput?.push?.deepLink).toBe(
       "forxfinance://security/devices",
     );
+  });
+
+  it("keeps localized HTML assets outside machine translation output", () => {
+    const htmlAsset = createEmailHtmlAsset({
+      locale: "en-US",
+      fileName: "notice.en-US.html",
+      fileSize: 512,
+      html: "<!doctype html><html><head><title>Notice</title></head><body><p>Final English HTML</p></body></html>",
+      emailType: "事务邮件",
+      declaredVariables: [],
+      uploadedBy: "Gary",
+    });
+    const sourceChannelContent = {
+      sourceLocale: "zh-CN",
+      locales: ["zh-CN", "en-US"],
+      web: { title: "", summary: "", body: "" },
+      push: {
+        title: "",
+        body: "",
+        platform: "全部设备" as const,
+        priority: "普通" as const,
+      },
+      email: {
+        subject: "邮件标题",
+        preheader: "邮件预览文字",
+        bodyMode: "html" as const,
+        htmlAssets: { "en-US": htmlAsset },
+        headline: "",
+        body: "",
+        textBody: "",
+      },
+      emailConfig: {
+        emailType: "事务邮件" as const,
+        senderProfileId: "transaction",
+        fromName: "ForX Finance 通知",
+        trackingEnabled: true,
+        unsubscribeRequired: false,
+      },
+    };
+    const batch = createTranslationBatch({
+      subject: {
+        type: "message_template",
+        id: "TPL-HTML-TRANSLATION",
+        name: "HTML 邮件翻译边界",
+        version: "v1",
+        returnPath: "/templates?scope=manual",
+      },
+      sourceLocale: "zh-CN",
+      sourceContent: { title: "邮件标题", summary: "邮件预览文字", body: "" },
+      sourceChannelContent,
+      channels: ["邮件"],
+      targetLocales: ["en-US"],
+      createdBy: "Gary",
+    });
+
+    expect(batch.items[0].machineChannelOutput?.email).toEqual({
+      subject: "邮件标题 · en-US",
+      preheader: "邮件预览文字",
+    });
   });
 
   it("creates a direct source review batch for a special-review source locale", () => {

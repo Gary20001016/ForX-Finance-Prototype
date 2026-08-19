@@ -38,6 +38,17 @@ export function getEmailBodyMode(content?: EmailMessageContent): EmailBodyMode {
   return content?.bodyMode === "html" ? "html" : "text";
 }
 
+export function getEmailVariableSourceText(content?: EmailMessageContent) {
+  if (!content) return "";
+  const activeBody =
+    getEmailBodyMode(content) === "html"
+      ? Object.values(content.htmlAssets || {})
+          .map((asset) => asset.sourceHtml)
+          .join("\n")
+      : [content.textBody, content.unsubscribeText].filter(Boolean).join("\n");
+  return [content.subject, content.preheader, activeBody].filter(Boolean).join("\n");
+}
+
 const TEMPLATE_VARIABLE_PATTERN = /{{\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*}}/g;
 
 function extractVariables(value: string) {

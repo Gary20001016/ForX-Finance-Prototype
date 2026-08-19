@@ -84,6 +84,7 @@ import {
   channelDisplayName,
   createDefaultEmailConfig,
   createDefaultEmailContent,
+  getEmailVariableSourceText,
   validateEmailContent,
 } from "../../domain/emailChannel";
 
@@ -397,6 +398,7 @@ export default function CreateTaskPage() {
   const temporaryEmailValidation = validateEmailContent(
     temporary.email,
     temporary.emailConfig,
+    [temporarySourceLocale, ...targetLocales],
   );
   const temporaryContentComplete =
     (!channels.includes("站内信") || temporaryWebComplete) &&
@@ -490,15 +492,7 @@ export default function CreateTaskPage() {
   const temporaryVariableText = [
     channels.includes("站内信") ? temporary.web.body : "",
     channels.includes("Push") ? temporary.push.body : "",
-    channels.includes("邮件")
-      ? [
-          temporary.email?.subject,
-          temporary.email?.preheader,
-          temporary.email?.headline,
-          temporary.email?.body,
-          temporary.email?.textBody,
-        ].join("\n")
-      : "",
+    channels.includes("邮件") ? getEmailVariableSourceText(temporary.email) : "",
   ].join("\n");
   const temporaryVariableNames = Array.from(
     new Set(extractVariableNames(temporaryVariableText)),

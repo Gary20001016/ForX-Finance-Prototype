@@ -4,6 +4,7 @@ import {
   createEmailHtmlAsset,
   createDefaultEmailConfig,
   createDefaultEmailContent,
+  getEmailVariableSourceText,
   getEmailBodyMode,
   validateEmailHtml,
   validateEmailContent,
@@ -117,5 +118,30 @@ describe("Email channel policy", () => {
     expect(result.valid).toBe(false);
     expect(result.errors).toContain("请上传 en-US 的 HTML 文件");
     expect(result.errors).not.toContain("请填写邮件纯文本正文");
+  });
+
+  it("extracts variables only from the active email body mode", () => {
+    const content = createDefaultEmailContent();
+    content.subject = "{{ user_nickname }} 的通知";
+    content.textBody = "金额 {{ amount }}";
+    content.body = "停用内容 {{ legacy_variable }}";
+    expect(getEmailVariableSourceText(content)).toContain("{{ amount }}");
+    expect(getEmailVariableSourceText(content)).not.toContain("legacy_variable");
+
+    content.bodyMode = "html";
+    content.htmlAssets = {
+      "zh-CN": createEmailHtmlAsset({
+        locale: "zh-CN",
+        fileName: "notice.html",
+        fileSize: 512,
+        html: localizedHtml("金额 {{ currency }}"),
+        emailType: "事务邮件",
+        declaredVariables: ["user_nickname", "currency"],
+        uploadedBy: "Gary",
+      }),
+    };
+    const htmlText = getEmailVariableSourceText(content);
+    expect(htmlText).toContain("{{ currency }}");
+    expect(htmlText).not.toContain("{{ amount }}");
   });
 });
