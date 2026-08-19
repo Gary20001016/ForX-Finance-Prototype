@@ -65,23 +65,37 @@ const htmlDocument = ({
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>${title}</title>
+    <style>
+      * { box-sizing: border-box; }
+      .email-value { overflow-wrap: anywhere; word-break: break-word; }
+      @media only screen and (max-width: 600px) {
+        .email-shell { padding: 12px 8px !important; }
+        .email-card { border-radius: 12px !important; }
+        .email-brand { padding: 22px 20px !important; font-size: 20px !important; }
+        .email-content { padding: 24px 20px !important; }
+        .email-title { font-size: 24px !important; }
+        .email-value { font-size: 22px !important; }
+        .email-cta { display: block !important; width: 100% !important; text-align: center !important; }
+        .email-footer { padding: 18px 20px !important; }
+      }
+    </style>
   </head>
   <body style="margin:0;background:#f2f3f5;font-family:Arial,sans-serif;color:#1d2129;">
-    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f2f3f5;padding:32px 12px;">
+    <table class="email-shell" role="presentation" width="100%" cellspacing="0" cellpadding="0" style="width:100%;background:#f2f3f5;padding:32px 12px;">
       <tr><td align="center">
-        <table role="presentation" width="600" cellspacing="0" cellpadding="0" style="max-width:600px;background:#ffffff;border-radius:16px;overflow:hidden;">
-          <tr><td style="padding:28px 36px;background:#165dff;color:#ffffff;font-size:22px;font-weight:700;">ForX Finance</td></tr>
-          <tr><td style="padding:36px;">
-            <h1 style="margin:0 0 20px;font-size:28px;line-height:1.35;">${title}</h1>
+        <table class="email-card" role="presentation" width="100%" cellspacing="0" cellpadding="0" style="width:100%;max-width:600px;background:#ffffff;border-radius:16px;overflow:hidden;">
+          <tr><td class="email-brand" style="padding:28px 36px;background:#165dff;color:#ffffff;font-size:22px;font-weight:700;">ForX Finance</td></tr>
+          <tr><td class="email-content" style="padding:36px;">
+            <h1 class="email-title" style="margin:0 0 20px;font-size:28px;line-height:1.35;">${title}</h1>
             <p style="margin:0 0 12px;font-size:16px;line-height:1.7;">${greeting} {{ user_nickname }}，</p>
             <p style="margin:0 0 24px;font-size:16px;line-height:1.7;">${introduction}</p>
             <div style="margin:0 0 28px;padding:20px;background:#f7f8fa;border-radius:12px;">
               <div style="font-size:13px;color:#86909c;">${amountLabel}</div>
-              <div style="margin-top:6px;font-size:26px;font-weight:700;color:#165dff;">{{ amount }} {{ currency }}</div>
+              <div class="email-value" style="margin-top:6px;font-size:26px;font-weight:700;color:#165dff;overflow-wrap:anywhere;word-break:break-word;">{{ amount }} {{ currency }}</div>
             </div>
-            <a href="https://www.forx.finance/vip/summer" style="display:inline-block;padding:12px 24px;background:#165dff;color:#ffffff;text-decoration:none;border-radius:8px;font-weight:700;">${cta}</a>
+            <a class="email-cta" href="https://www.forx.finance/vip/summer" style="display:inline-block;padding:12px 24px;background:#165dff;color:#ffffff;text-decoration:none;border-radius:8px;font-weight:700;">${cta}</a>
           </td></tr>
-          <tr><td style="padding:20px 36px;border-top:1px solid #e5e6eb;color:#86909c;font-size:12px;line-height:1.6;">
+          <tr><td class="email-footer" style="padding:20px 36px;border-top:1px solid #e5e6eb;color:#86909c;font-size:12px;line-height:1.6;">
             ForX Finance · <a href="{{ unsubscribe_url }}" style="color:#4e5969;">${unsubscribe}</a>
           </td></tr>
         </table>

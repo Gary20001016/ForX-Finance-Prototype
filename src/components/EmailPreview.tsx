@@ -51,6 +51,7 @@ export default function EmailPreview({
             </header>
             <iframe
               className="email-html-preview-frame"
+              data-viewport="desktop"
               title={`${locale} HTML 邮件预览`}
               sandbox=""
               srcDoc={htmlAsset.sanitizedHtml}
@@ -63,16 +64,20 @@ export default function EmailPreview({
             </header>
             <iframe
               className="email-html-preview-frame mobile"
+              data-viewport="mobile"
               title={`${locale} HTML 移动预览`}
               sandbox=""
               srcDoc={htmlAsset.sanitizedHtml}
             />
           </article>
-          <article className="email-text-preview" aria-label="Email HTML 兼容性纯文本">
-            <strong>兼容性纯文本</strong>
+          <details
+            className="email-compatibility-text"
+            aria-label="Email HTML 兼容性纯文本"
+          >
+            <summary>纯文本兼容内容</summary>
             <pre>{htmlAsset.generatedText || "HTML 中未提取到可见文字"}</pre>
             <small>由系统自动提取，不作为第二套可编辑正文。</small>
-          </article>
+          </details>
         </div>
       ) : (
         <div className="email-html-preview-missing">

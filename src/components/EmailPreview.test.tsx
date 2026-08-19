@@ -77,6 +77,13 @@ it("previews the localized HTML asset in a sandboxed frame", () => {
   const frame = screen.getByTitle("zh-CN HTML 邮件预览");
   expect(frame).toHaveAttribute("sandbox", "");
   expect(frame).toHaveAttribute("srcdoc", expect.stringContaining("提现已完成"));
-  expect(screen.getByText("兼容性纯文本")).toBeVisible();
+  expect(frame).toHaveAttribute("data-viewport", "desktop");
+  expect(screen.getByTitle("zh-CN HTML 移动预览")).toHaveAttribute(
+    "data-viewport",
+    "mobile",
+  );
+  expect(screen.getByText("纯文本兼容内容").closest("details")).not.toHaveAttribute(
+    "open",
+  );
   expect(screen.queryByText("多语言审核")).not.toBeInTheDocument();
 });
