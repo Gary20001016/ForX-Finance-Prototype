@@ -26,3 +26,19 @@ it('supports an explicitly selected reviewer identity in demo mode', async () =>
   expect(row).not.toBeNull();
   expect(within(row!).getByRole('button', { name: '审核' })).toBeVisible();
 });
+
+it('opens the seeded Email content approval with the HTML preview', async () => {
+  const user = userEvent.setup();
+  render(
+    <MemoryRouter>
+      <ApprovalCenterPage currentAdminId="admin-01" />
+    </MemoryRouter>,
+  );
+
+  const row = screen.getByText('Email 营销内容审核').closest('tr');
+  expect(row).not.toBeNull();
+  await user.click(within(row!).getByRole('button', { name: '审核' }));
+
+  expect(screen.getByLabelText('Email 渠道预览')).toBeVisible();
+  expect(screen.getByLabelText('Email HTML 移动预览')).toBeVisible();
+});

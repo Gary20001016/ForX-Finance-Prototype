@@ -378,6 +378,7 @@ export default function ApprovalDrawer({
               {item.content ? (
                 <MessagePreview
                   content={item.content}
+                  channels={item.channels || []}
                   showPushPriority={item.triggerType === "event"}
                 />
               ) : (

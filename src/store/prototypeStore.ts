@@ -597,6 +597,18 @@ const createAutomationSeed = (seededTemplates: MessageTemplate[]) => {
       count: 1280000,
       successRate: 99.8,
     },
+    {
+      id: "RULE-EMAIL-DEMO",
+      name: "充值到账 Email 事件任务",
+      eventId: "deposit.credited",
+      templateCode: "deposit_credited_email_demo",
+      conditionExpression: "事件到达即触发",
+      status: "已启用" as const,
+      channels: ["邮件"] as EventNotificationRule["channels"],
+      owner: "资产运营",
+      count: 26480,
+      successRate: 99.98,
+    },
   ];
   const rules: EventNotificationRule[] = [];
   const versions: RuleContentVersion[] = [];

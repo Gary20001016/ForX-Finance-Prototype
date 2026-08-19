@@ -182,17 +182,17 @@ const createEventTemplate = (): MessageTemplate => {
     channels: ["邮件"],
     locales: ["zh-CN", "ja-JP"],
     sourceLocale: "zh-CN",
-    translationBatchId: "MT-EMAIL-DEMO-TEXT",
-    translationReadiness: "翻译返回待审核",
+    translationBatchId: "MT-EMAIL-DEMO-TEXT-PUBLISHED",
+    translationReadiness: "已通过",
     version: "v1",
-    status: "审核中",
+    status: "已发布",
     updatedAt: "08-19 15:10",
     content,
     variables: ["user_nickname", "amount", "currency", "occurred_at"],
     owner: "资产运营",
     usageScope: "event",
     contentApprovalStatus: "已通过",
-    workflowStage: "localization_review",
+    workflowStage: "published",
   };
 };
 
@@ -351,6 +351,34 @@ const createTextTranslationBatch = (
   ],
 });
 
+const createPublishedTextTranslationBatch = (
+  template: MessageTemplate,
+): TranslationBatch => {
+  const reviewBatch = createTextTranslationBatch(template);
+  return {
+    ...reviewBatch,
+    id: "MT-EMAIL-DEMO-TEXT-PUBLISHED",
+    subjectName: template.name,
+    contentVersion: template.version,
+    status: "已通过",
+    createdAt: "08-18 11:02",
+    updatedAt: "08-18 11:28",
+    items: reviewBatch.items.map((item) => ({
+      ...item,
+      id: "MTI-EMAIL-DEMO-TEXT-JA-PUBLISHED",
+      batchId: "MT-EMAIL-DEMO-TEXT-PUBLISHED",
+      subjectName: template.name,
+      status: "已通过",
+      approvedOutput: item.humanDraft,
+      approvedChannelOutput: item.humanChannelDraft,
+      reviewedAt: "08-18 11:28",
+      reviewer: "松本遥",
+      assigneeId: "reviewer-ja-01",
+      assignee: "松本遥",
+    })),
+  };
+};
+
 export function createEmailDemoFixtures(): {
   templates: MessageTemplate[];
   tasks: MessageTask[];
@@ -409,8 +437,8 @@ export function createEmailDemoFixtures(): {
     audience: "事件主体用户",
     audienceCount: 1,
     schedule: "事件到达时",
-    status: "已停用",
-    approval: "内容已通过，等待日语审核",
+    status: "已启用",
+    approval: "内容与多语言已通过",
     progress: 0,
     successRate: 99.98,
     creator: "系统事件",
@@ -442,7 +470,7 @@ export function createEmailDemoFixtures(): {
       retryBackoffSeconds: 30,
     },
     contentApprovalStatus: "已通过",
-    workflowStage: "localization_review",
+    workflowStage: "published",
   };
   const approval: ApprovalItem = {
     id: "APR-EMAIL-DEMO-CONTENT",
@@ -538,6 +566,7 @@ export function createEmailDemoFixtures(): {
     tasks: [manualTask, eventTask],
     translationBatches: [
       createHtmlTranslationBatch(htmlTemplate),
+      createPublishedTextTranslationBatch(eventTemplate),
       createTextTranslationBatch(eventTemplate),
     ],
     approvals: [approval],

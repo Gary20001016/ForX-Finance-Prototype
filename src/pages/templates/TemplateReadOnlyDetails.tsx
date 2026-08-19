@@ -113,6 +113,7 @@ export default function TemplateReadOnlyDetails({
           <>
             <MessagePreview
               content={template.content}
+              channels={template.channels}
               showPushPriority={template.usageScope === "event"}
             />
             <details className="markdown-source-disclosure">

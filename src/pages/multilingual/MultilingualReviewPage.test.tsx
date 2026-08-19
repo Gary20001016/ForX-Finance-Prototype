@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, expect, it } from "vitest";
@@ -108,4 +108,17 @@ it("shows other reviewers' work only in the all-work-orders tab", async () => {
   await user.click(screen.getByRole("tab", { name: /^全部工单/ }));
   expect(screen.getByText("其他审核人的日语工单")).toBeVisible();
   expect(screen.getAllByRole("button", { name: "查看详情" }).length).toBeGreaterThan(0);
+});
+
+it("identifies the seeded Japanese translation work as Email", () => {
+  render(
+    <MemoryRouter>
+      <MultilingualReviewPage />
+    </MemoryRouter>,
+  );
+
+  const row = screen.getByText("充值到账 Email 日语审核").closest("tr");
+  expect(row).not.toBeNull();
+  expect(within(row!).getByText("Email")).toBeVisible();
+  expect(within(row!).getByText("ja-JP")).toBeVisible();
 });

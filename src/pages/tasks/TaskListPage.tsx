@@ -557,6 +557,7 @@ export default function TaskListPage() {
             {selected.content && (
               <MessagePreview
                 content={selected.content}
+                channels={selected.channels}
                 showPushPriority={false}
               />
             )}

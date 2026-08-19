@@ -132,3 +132,34 @@ it('offers Email in the template channel filter', async () => {
   await user.click(screen.getByRole('combobox', { name: '模板渠道筛选' }));
   expect(await screen.findByText('Email')).toBeVisible();
 });
+
+it('opens the seeded HTML Email preview from the manual template list', async () => {
+  const user = userEvent.setup();
+  render(
+    <MemoryRouter initialEntries={['/templates?scope=manual']}>
+      <TemplateListPage />
+    </MemoryRouter>,
+  );
+
+  const row = screen.getByText('夏季 VIP 专属礼遇邮件').closest('tr');
+  expect(row).not.toBeNull();
+  expect(within(row!).getByText('邮件')).toBeVisible();
+  await user.click(within(row!).getByRole('button', { name: '查看详情' }));
+
+  expect(screen.getByLabelText('Email 渠道预览')).toBeVisible();
+  expect(screen.getByLabelText('Email HTML 桌面预览')).toBeVisible();
+  expect(screen.getByTitle('zh-CN HTML 邮件预览')).toBeVisible();
+});
+
+it('shows the seeded text Email template in the event template list', () => {
+  render(
+    <MemoryRouter initialEntries={['/templates?scope=event']}>
+      <TemplateListPage />
+    </MemoryRouter>,
+  );
+
+  const row = screen.getByText('充值到账 Email 通知').closest('tr');
+  expect(row).not.toBeNull();
+  expect(within(row!).getByText('邮件')).toBeVisible();
+  expect(within(row!).getByText('deposit.credited')).toBeVisible();
+});
