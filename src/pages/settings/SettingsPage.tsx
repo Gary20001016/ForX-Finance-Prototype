@@ -45,6 +45,7 @@ import {
 import LanguageReviewPolicyPanel from "./LanguageReviewPolicyPanel";
 import OperatorPermissionPanel from "./OperatorPermissionPanel";
 import TestAccountPanel from "./TestAccountPanel";
+import ChannelManagementPage from "../channels/ChannelManagementPage";
 
 type CategoryConfig = {
   code: MessageCategory["code"];
@@ -61,6 +62,7 @@ const settingsTabs: Array<{
   label: string;
   permissionKey: PagePermissionKey;
 }> = [
+  { key: "channels", label: "渠道配置", permissionKey: "settings.channels" },
   { key: "categories", label: "前台展示分类", permissionKey: "settings.categories" },
   { key: "links", label: "跳转白名单", permissionKey: "settings.links" },
   {
@@ -251,13 +253,18 @@ export default function SettingsPage() {
     <section className="page-stack">
       <PageHeader
         title="系统配置"
-        description="维护前台展示分类、个人测试账号、跳转白名单、语言审核策略、人员权限和审计日志。"
+        description="维护渠道供应商、前台展示分类、个人测试账号、跳转白名单、语言审核策略、人员权限和审计日志。"
       />
       <Tabs
         type="card"
         activeTab={activeTab}
         onChange={(key) => navigate(`/settings?tab=${key}`)}
       >
+        {readableTabs.some((tab) => tab.key === "channels") && (
+          <Tabs.TabPane key="channels" title="渠道配置">
+            <ChannelManagementPage embedded />
+          </Tabs.TabPane>
+        )}
         {readableTabs.some((tab) => tab.key === "categories") && (
           <Tabs.TabPane key="categories" title="前台展示分类">
             <Card bordered={false} className="surface" title="前台展示分类">

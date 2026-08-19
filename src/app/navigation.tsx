@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import {
   IconArchive,
+  IconArrowRise,
   IconBook,
   IconCheckCircle,
   IconDashboard,
@@ -131,6 +132,13 @@ export const navigationGroups: NavigationGroup[] = [
         label: '审核中心',
         icon: <IconCheckCircle />,
         permissionKey: 'operations.approvals',
+      }),
+      groupedItem('operations-governance', '运营与治理', {
+        key: '/analytics',
+        path: '/analytics',
+        label: '数据分析',
+        icon: <IconArrowRise />,
+        permissionKey: 'operations.analytics',
       }),
     ],
   },

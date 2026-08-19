@@ -14,7 +14,7 @@ it('groups navigation by manual, event and governance workflows', () => {
   expect(navigationGroups.map((group) => group.children.map((item) => item.label))).toEqual([
     ['人工消息任务', '人工消息模板', '模板变量'],
     ['事件通知规则', '事件消息模板', '事件目录'],
-    ['多语言审核', '审核中心'],
+    ['多语言审核', '审核中心', '数据分析'],
   ]);
   expect(navigationItems.map((item) => item.path)).not.toContain('/triggers');
   expect(navigationItems.map((item) => item.path)).not.toContain('/deliveries');
@@ -25,6 +25,7 @@ it('groups navigation by manual, event and governance workflows', () => {
   });
   expect(audienceNavigationItem).not.toHaveProperty('groupKey');
   expect(navigationItems.map((item) => item.label)).toContain('系统配置');
+  expect(navigationItems.map((item) => item.path)).toContain('/analytics');
 });
 
 it('resolves the controlled variable library under manual messaging', () => {

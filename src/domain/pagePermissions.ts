@@ -9,6 +9,7 @@ export type PagePermissionKey =
   | "event.catalog"
   | "operations.approvals"
   | "operations.analytics"
+  | "settings.channels"
   | "settings.categories"
   | "settings.links"
   | "settings.languageReview"
@@ -54,6 +55,7 @@ export const pagePermissionGroups: PagePermissionGroup[] = [
     key: "settings",
     label: "系统配置",
     resources: [
+      { key: "settings.channels", label: "渠道配置" },
       { key: "settings.categories", label: "前台展示分类" },
       { key: "settings.links", label: "跳转白名单" },
       { key: "settings.languageReview", label: "语言审核策略" },

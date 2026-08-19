@@ -39,6 +39,10 @@ import type {
 import WritePermissionButton from "../../components/WritePermissionButton";
 import { useCurrentPagePermission } from "../../components/PagePermissionBoundary";
 import { contentWorkflowStageLabel } from "../../domain/contentApprovalWorkflow";
+import {
+  ACTIVE_MESSAGE_CHANNELS,
+  channelDisplayName,
+} from "../../domain/emailChannel";
 
 export default function TemplateListPage() {
   const { canWrite } = useCurrentPagePermission();
@@ -323,12 +327,16 @@ export default function TemplateListPage() {
           )}
         />
         <Select
+          aria-label="模板渠道筛选"
           placeholder="渠道"
           value={channel}
           onChange={setChannel}
           style={{ width: 140 }}
           allowClear
-          options={["站内信", "Push"].map((value) => ({ label: value, value }))}
+          options={ACTIVE_MESSAGE_CHANNELS.map((value) => ({
+            label: channelDisplayName(value),
+            value,
+          }))}
         />
         <Select
           placeholder="状态"

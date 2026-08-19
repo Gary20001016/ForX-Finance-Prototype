@@ -24,7 +24,11 @@ import {
 } from "../../domain/emailChannel";
 import { openDetailedForm } from "../../utils/prototypeActions";
 
-export default function ChannelManagementPage() {
+export default function ChannelManagementPage({
+  embedded = false,
+}: {
+  embedded?: boolean;
+}) {
   const [selected, setSelected] = useState<ChannelProvider>();
   const activeProviders = providers.filter((provider) =>
     ACTIVE_MESSAGE_CHANNELS.includes(provider.channel),
@@ -32,19 +36,21 @@ export default function ChannelManagementPage() {
 
   return (
     <section className="page-stack">
-      <PageHeader
-        title="渠道管理"
-        description="配置站内信、App Push 与 Email 的发送账号、供应商路由、限流、成本和故障切换。"
-        actions={
-          <Button
-            type="primary"
-            icon={<IconPlus />}
-            onClick={() => openDetailedForm("provider", "接入渠道供应商")}
-          >
-            接入供应商
-          </Button>
-        }
-      />
+      {!embedded && (
+        <PageHeader
+          title="渠道管理"
+          description="配置站内信、App Push 与 Email 的发送账号、供应商路由、限流、成本和故障切换。"
+          actions={
+            <Button
+              type="primary"
+              icon={<IconPlus />}
+              onClick={() => openDetailedForm("provider", "接入渠道供应商")}
+            >
+              接入供应商
+            </Button>
+          }
+        />
+      )}
       <Alert
         type="warning"
         content="生产凭证存放在密钥管理系统，后台只展示引用和轮换状态，不回显明文。邮件投递由后台 EmailProviderAdapter 调用服务商，前端不保存 API Key。"

@@ -237,7 +237,7 @@ export default function AnalyticsPage() {
       </div>
 
       <Grid.Row gutter={[16, 16]}>
-        <Grid.Col span={8}>
+        <Grid.Col xs={24} lg={8}>
           <Card
             bordered={false}
             className="surface channel-metric-card"
@@ -262,7 +262,7 @@ export default function AnalyticsPage() {
             </div>
           </Card>
         </Grid.Col>
-        <Grid.Col span={8}>
+        <Grid.Col xs={24} lg={8}>
           <Card
             bordered={false}
             className="surface channel-metric-card"
@@ -291,7 +291,7 @@ export default function AnalyticsPage() {
             </div>
           </Card>
         </Grid.Col>
-        <Grid.Col span={8}>
+        <Grid.Col xs={24} lg={8}>
           <Card
             bordered={false}
             className="surface channel-metric-card"

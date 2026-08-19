@@ -120,3 +120,15 @@ it('keeps the artificial template list focused on artificial usage and publish t
   expect(screen.getByText('07-16 10:30')).toBeVisible();
   expect(screen.queryByText('07-13 11:42')).not.toBeInTheDocument();
 });
+
+it('offers Email in the template channel filter', async () => {
+  const user = userEvent.setup();
+  render(
+    <MemoryRouter initialEntries={['/templates?scope=manual']}>
+      <TemplateListPage />
+    </MemoryRouter>,
+  );
+
+  await user.click(screen.getByRole('combobox', { name: '模板渠道筛选' }));
+  expect(await screen.findByText('Email')).toBeVisible();
+});

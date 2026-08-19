@@ -5,6 +5,7 @@ import {
 } from "../domain/pagePermissions";
 
 export const settingsTabPermissionMap: Record<string, PagePermissionKey> = {
+  channels: "settings.channels",
   categories: "settings.categories",
   links: "settings.links",
   "language-review": "settings.languageReview",
