@@ -1293,7 +1293,17 @@ export const migrateSavedState = (saved: PrototypeState): PrototypeState => {
       (seedItem) => !persisted.some((item) => item.id === seedItem.id),
     ),
   ];
-  const mergedTasks = mergeMissingById(saved.tasks, fresh.tasks).map((task) => {
+  const taskCandidates = mergeMissingById(saved.tasks, fresh.tasks);
+  const emailDemoTaskIds = fresh.tasks
+    .filter((task) => task.id.startsWith("MSG-EMAIL-DEMO-"))
+    .map((task) => task.id);
+  const orderedTaskCandidates = [
+    ...emailDemoTaskIds.flatMap((id) =>
+      taskCandidates.filter((task) => task.id === id),
+    ),
+    ...taskCandidates.filter((task) => !emailDemoTaskIds.includes(task.id)),
+  ];
+  const mergedTasks = orderedTaskCandidates.map((task) => {
     const baseline = fresh.tasks.find((item) => item.id === task.id);
     const triggerType = task.triggerType || baseline?.triggerType || (task.type === "事件触发" ? "event" : "manual");
     return normalizeTaskDisplay({
@@ -1311,7 +1321,7 @@ export const migrateSavedState = (saved: PrototypeState): PrototypeState => {
     (template) => template.code === "order_filled",
   );
   const mergedRuleVersions = normalizeRuleContentVersions(
-    saved.ruleVersions || fresh.ruleVersions,
+    mergeMissingById(saved.ruleVersions, fresh.ruleVersions),
     mergedTemplateCandidates,
   ).map((version) =>
     version.ruleId === "RULE-003" && orderFilledTemplate
@@ -1366,7 +1376,7 @@ export const migrateSavedState = (saved: PrototypeState): PrototypeState => {
       }),
     };
   });
-  const savedRules = saved.rules || fresh.rules;
+  const savedRules = mergeMissingById(saved.rules, fresh.rules);
   const mergedRules = savedRules.map((rule) => {
     const version = mergedRuleVersions.find(
       (item) =>

@@ -98,6 +98,12 @@ describe("prototype store workflow transitions", () => {
     saved.deliveries = saved.deliveries.filter(
       (item) => !item.id.startsWith("DEL-EMAIL-DEMO-"),
     );
+    saved.rules = saved.rules.filter(
+      (item) => item.id !== "RULE-EMAIL-DEMO",
+    );
+    saved.ruleVersions = saved.ruleVersions.filter(
+      (item) => item.ruleId !== "RULE-EMAIL-DEMO",
+    );
 
     const migratedOnce = migrateSavedState(saved);
     const migratedTwice = migrateSavedState(migratedOnce);
@@ -112,6 +118,7 @@ describe("prototype store workflow transitions", () => {
         (item) => item.id === "MSG-EMAIL-DEMO-MANUAL",
       ),
     ).toHaveLength(1);
+    expect(migratedTwice.tasks[0].id).toBe("MSG-EMAIL-DEMO-MANUAL");
     expect(
       migratedTwice.translationBatches.filter(
         (item) => item.id === "MT-EMAIL-DEMO-TEXT",
@@ -125,6 +132,14 @@ describe("prototype store workflow transitions", () => {
     expect(
       migratedTwice.deliveries.filter(
         (item) => item.id === "DEL-EMAIL-DEMO-OPENED",
+      ),
+    ).toHaveLength(1);
+    expect(
+      migratedTwice.rules.filter((item) => item.id === "RULE-EMAIL-DEMO"),
+    ).toHaveLength(1);
+    expect(
+      migratedTwice.ruleVersions.filter(
+        (item) => item.ruleId === "RULE-EMAIL-DEMO",
       ),
     ).toHaveLength(1);
   });

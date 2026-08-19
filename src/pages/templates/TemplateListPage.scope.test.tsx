@@ -149,6 +149,9 @@ it('opens the seeded HTML Email preview from the manual template list', async ()
   expect(screen.getByLabelText('Email 渠道预览')).toBeVisible();
   expect(screen.getByLabelText('Email HTML 桌面预览')).toBeVisible();
   expect(screen.getByTitle('zh-CN HTML 邮件预览')).toBeVisible();
+  expect(
+    screen.queryByText('查看站内信正文 Markdown 源码'),
+  ).not.toBeInTheDocument();
 });
 
 it('shows the seeded text Email template in the event template list', () => {
