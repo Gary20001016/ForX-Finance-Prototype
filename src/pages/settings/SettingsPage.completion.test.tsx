@@ -26,7 +26,9 @@ it('exposes Email provider governance from system settings', async () => {
 
   await user.click(screen.getByRole('tab', { name: '渠道配置' }));
 
-  const emailCard = screen.getByText('SendGrid Primary').closest('.arco-card')!;
+  const emailCard = screen
+    .getByText('SendGrid Primary')
+    .closest<HTMLElement>('.arco-card')!;
   await user.click(within(emailCard).getByRole('button', { name: '配置' }));
   expect(screen.getByText('Email 域名与发送流')).toBeVisible();
   expect(screen.getByText('事务发送流')).toBeVisible();
