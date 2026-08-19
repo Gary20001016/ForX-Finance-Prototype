@@ -20,16 +20,42 @@ export interface PushMessageContent {
   collapseKey?: string;
 }
 
+export type EmailType = "事务邮件" | "营销邮件";
+
+export interface EmailMessageContent {
+  subject: string;
+  preheader?: string;
+  headline: string;
+  body: string;
+  textBody: string;
+  actionText?: string;
+  actionUrl?: string;
+  footerText?: string;
+  unsubscribeText?: string;
+}
+
+export interface EmailChannelConfig {
+  emailType: EmailType;
+  senderProfileId: string;
+  fromName: string;
+  replyTo?: string;
+  trackingEnabled: boolean;
+  unsubscribeRequired: boolean;
+}
+
 export interface LocalizedMessageContent {
   sourceLocale: string;
   locales: string[];
   web: WebMessageContent;
   push: PushMessageContent;
+  email?: EmailMessageContent;
+  emailConfig?: EmailChannelConfig;
 }
 
 export interface TranslationChannelContent {
   web?: Partial<WebMessageContent>;
   push?: Partial<PushMessageContent>;
+  email?: Partial<EmailMessageContent>;
 }
 
 export type TaskTriggerType = "manual" | "event";
@@ -499,6 +525,14 @@ export interface DeliveryRecord {
   retryable?: boolean;
   tokenStatus?: "有效" | "已失效" | "不适用";
   triggerId?: string;
+  recipientEmailMasked?: string;
+  messageStream?: "transactional" | "broadcast";
+  openedAt?: string;
+  bounceType?: "soft" | "hard";
+  bounceReason?: string;
+  complainedAt?: string;
+  unsubscribedAt?: string;
+  providerEventId?: string;
 }
 
 export interface LinkAllowlistEntry {
@@ -518,6 +552,7 @@ export interface OperatorTestAccount {
   id: string;
   operatorId: string;
   uid: string;
+  email?: string;
   remark: string;
   verified: boolean;
   createdAt: string;
@@ -527,6 +562,7 @@ export interface OperatorTestAccount {
 export interface TemplateTestSendResult {
   operatorId: string;
   recipientUids: string[];
+  recipientEmails?: string[];
   accountCount: number;
   channelCount: number;
   totalDeliveries: number;
