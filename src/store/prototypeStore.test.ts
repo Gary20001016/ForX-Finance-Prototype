@@ -50,6 +50,85 @@ import type { LocalizedMessageContent } from "../domain/types";
 describe("prototype store workflow transitions", () => {
   beforeEach(() => resetPrototypeStore());
 
+  it("seeds one linked Email demo for every workflow surface", () => {
+    const state = getPrototypeState();
+
+    expect(state.templates.map((item) => item.id)).toEqual(
+      expect.arrayContaining([
+        "TPL-EMAIL-DEMO-HTML",
+        "TPL-EMAIL-DEMO-EVENT",
+      ]),
+    );
+    expect(state.tasks.map((item) => item.id)).toEqual(
+      expect.arrayContaining([
+        "MSG-EMAIL-DEMO-MANUAL",
+        "MSG-EMAIL-DEMO-EVENT",
+      ]),
+    );
+    expect(state.translationBatches.map((item) => item.id)).toEqual(
+      expect.arrayContaining(["MT-EMAIL-DEMO-HTML", "MT-EMAIL-DEMO-TEXT"]),
+    );
+    expect(state.approvals.map((item) => item.id)).toContain(
+      "APR-EMAIL-DEMO-CONTENT",
+    );
+    expect(state.deliveries.map((item) => item.id)).toEqual(
+      expect.arrayContaining([
+        "DEL-EMAIL-DEMO-OPENED",
+        "DEL-EMAIL-DEMO-BOUNCED",
+      ]),
+    );
+  });
+
+  it("backfills missing Email demos into persisted prototype data once", () => {
+    const saved = JSON.parse(
+      JSON.stringify(getPrototypeState()),
+    ) as ReturnType<typeof getPrototypeState>;
+    saved.templates = saved.templates.filter(
+      (item) => !item.id.startsWith("TPL-EMAIL-DEMO-"),
+    );
+    saved.tasks = saved.tasks.filter(
+      (item) => !item.id.startsWith("MSG-EMAIL-DEMO-"),
+    );
+    saved.translationBatches = saved.translationBatches.filter(
+      (item) => !item.id.startsWith("MT-EMAIL-DEMO-"),
+    );
+    saved.approvals = saved.approvals.filter(
+      (item) => item.id !== "APR-EMAIL-DEMO-CONTENT",
+    );
+    saved.deliveries = saved.deliveries.filter(
+      (item) => !item.id.startsWith("DEL-EMAIL-DEMO-"),
+    );
+
+    const migratedOnce = migrateSavedState(saved);
+    const migratedTwice = migrateSavedState(migratedOnce);
+
+    expect(
+      migratedTwice.templates.filter(
+        (item) => item.id === "TPL-EMAIL-DEMO-HTML",
+      ),
+    ).toHaveLength(1);
+    expect(
+      migratedTwice.tasks.filter(
+        (item) => item.id === "MSG-EMAIL-DEMO-MANUAL",
+      ),
+    ).toHaveLength(1);
+    expect(
+      migratedTwice.translationBatches.filter(
+        (item) => item.id === "MT-EMAIL-DEMO-TEXT",
+      ),
+    ).toHaveLength(1);
+    expect(
+      migratedTwice.approvals.filter(
+        (item) => item.id === "APR-EMAIL-DEMO-CONTENT",
+      ),
+    ).toHaveLength(1);
+    expect(
+      migratedTwice.deliveries.filter(
+        (item) => item.id === "DEL-EMAIL-DEMO-OPENED",
+      ),
+    ).toHaveLength(1);
+  });
+
   it("binds seeded event templates to the event directory", () => {
     const state = getPrototypeState();
 

@@ -44,6 +44,7 @@ import {
   translationBatches,
   userMessages,
 } from "../mocks/data";
+import { createEmailDemoFixtures } from "../mocks/emailDemoFixtures";
 import {
   getManualTaskOperations,
   isManualTaskStatus,
@@ -705,8 +706,10 @@ const createAutomationSeed = (seededTemplates: MessageTemplate[]) => {
   return { rules, versions, triggerRecords };
 };
 
-const enrichTemplates = (): MessageTemplate[] =>
-  templates.map((template) => {
+const enrichTemplates = (
+  additionalTemplates: MessageTemplate[] = [],
+): MessageTemplate[] =>
+  [...templates, ...additionalTemplates].map((template) => {
     const event = template.eventId
       ? eventSeed.find((item) => item.id === template.eventId)
       : undefined;
@@ -856,7 +859,8 @@ const enrichTasks = (seededTemplates: MessageTemplate[]): MessageTask[] =>
     .filter((task) => task.channels.length > 0 && task.type !== "自动化");
 
 const createSeed = (): PrototypeState => {
-  const templateCandidates = enrichTemplates();
+  const emailDemos = createEmailDemoFixtures();
+  const templateCandidates = enrichTemplates(emailDemos.templates);
   const baseTasks = enrichTasks(templateCandidates);
   const pendingTemporaryContent = contentFor(
     "临时提现服务提醒",
@@ -905,7 +909,11 @@ const createSeed = (): PrototypeState => {
       content: pendingTemporaryContent,
     }),
   };
-  const seededTasks = [pendingTemporaryTask, ...baseTasks];
+  const seededTasks = [
+    pendingTemporaryTask,
+    ...emailDemos.tasks,
+    ...baseTasks,
+  ];
   const automation = createAutomationSeed(templateCandidates);
   const seededTemplates = normalizeTemplateTranslationReadiness(
     normalizeManualTemplateStatuses(
@@ -979,7 +987,7 @@ const createSeed = (): PrototypeState => {
     templates: seededTemplates,
     translationBatches: syncTranslationReviewAssignments(
       normalizeTranslationBatches(
-        translationBatches,
+        [...emailDemos.translationBatches, ...translationBatches],
         languageReviewPolicySeed,
         seededTemplates,
       ),
@@ -987,7 +995,7 @@ const createSeed = (): PrototypeState => {
       reviewOperators,
     ),
     languageReviewPolicies: JSON.parse(JSON.stringify(languageReviewPolicySeed)),
-    approvals: firstPhaseApprovals.map((item) => {
+    approvals: [...emailDemos.approvals, ...firstPhaseApprovals].map((item) => {
       const task = seededTasks.find(
         (candidate) => candidate.name === item.name,
       );
@@ -1001,9 +1009,10 @@ const createSeed = (): PrototypeState => {
         ...item,
         status: item.status === "待我审核" ? "待审核" : item.status,
         cost: "站内信 ¥0 · Push ¥0 · Email 按量计费",
-        taskId: task?.id,
-        templateId: task?.templateId || template?.id,
-        templateVersion: task?.templateVersion || template?.version,
+        taskId: item.taskId || task?.id,
+        templateId: item.templateId || task?.templateId || template?.id,
+        templateVersion:
+          item.templateVersion || task?.templateVersion || template?.version,
         category,
         topic,
         sourceType:
@@ -1013,24 +1022,29 @@ const createSeed = (): PrototypeState => {
             : "人工消息",
         triggerType: task?.triggerType,
         eventConfig: task?.eventConfig,
-        channels: task?.channels || template?.channels || ["站内信", "Push"],
-        locales: task?.content?.locales || template?.locales || ["zh-CN"],
+        channels:
+          item.channels || task?.channels || template?.channels || ["站内信", "Push"],
+        locales:
+          item.locales || task?.content?.locales || template?.locales || ["zh-CN"],
         content:
+          item.content ||
           task?.content ||
           template?.content ||
           contentFor(item.name, item.nature),
-        sampleUsers: task?.sampleUsers || [
+        sampleUsers: item.sampleUsers || task?.sampleUsers || [
           "UID 82***19 · zh-CN · iOS",
           "UID 51***02 · en-US · Android",
         ],
-        expiresAt: task?.expiresAt || "2026-07-14 20:00",
+        expiresAt: item.expiresAt || task?.expiresAt || "2026-07-14 20:00",
         changes: item.changes || [
           "新增 App Push 紧急优先级",
           "更新 Deep Link 为已备案路径",
         ],
       };
     }),
-    deliveries: deliveries
+    deliveries: [
+      ...emailDemos.deliveries,
+      ...deliveries
       .filter((record) => ACTIVE_MESSAGE_CHANNELS.includes(record.channel))
       .map((record, index) => {
         const display = inferDisplayLocation(record.task);
@@ -1090,6 +1104,7 @@ const createSeed = (): PrototypeState => {
             record.channel === "邮件" ? `PE-${90001 + index}` : undefined,
         } satisfies DeliveryRecord;
       }),
+    ],
     allowlist: allowlistSeed,
     testAccounts: JSON.parse(JSON.stringify(operatorTestAccounts)),
     events: eventSeed,
@@ -1257,7 +1272,16 @@ export const migrateSavedState = (saved: PrototypeState): PrototypeState => {
         !savedTranslationBatches.some((item) => item.id === batch.id),
     ),
   ];
-  const mergedTasks = (saved.tasks || fresh.tasks).map((task) => {
+  const mergeMissingById = <T extends { id: string }>(
+    persisted: T[] = [],
+    seed: T[] = [],
+  ) => [
+    ...persisted,
+    ...seed.filter(
+      (seedItem) => !persisted.some((item) => item.id === seedItem.id),
+    ),
+  ];
+  const mergedTasks = mergeMissingById(saved.tasks, fresh.tasks).map((task) => {
     const baseline = fresh.tasks.find((item) => item.id === task.id);
     const triggerType = task.triggerType || baseline?.triggerType || (task.type === "事件触发" ? "event" : "manual");
     return normalizeTaskDisplay({
@@ -1384,7 +1408,10 @@ export const migrateSavedState = (saved: PrototypeState): PrototypeState => {
       source: message.source === "系统事件" ? "系统事件" : "人工消息",
     } satisfies UserMessage;
   });
-  const mergedDeliveries = (saved.deliveries || fresh.deliveries).map(
+  const mergedDeliveries = mergeMissingById(
+    saved.deliveries,
+    fresh.deliveries,
+  ).map(
     (record) => {
       const display = normalizeDisplayLocation(
         record.task,
