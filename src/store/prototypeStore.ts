@@ -1045,6 +1045,33 @@ const createSeed = (): PrototypeState => {
             index < automation.triggerRecords.length
               ? automation.triggerRecords[index].id
               : undefined,
+          recipientEmailMasked:
+            record.channel === "邮件" ? record.destination : undefined,
+          messageStream:
+            record.channel === "邮件" &&
+            (record.task.includes("召回") || record.task.includes("引导"))
+              ? "broadcast"
+              : record.channel === "邮件"
+                ? "transactional"
+                : undefined,
+          openedAt:
+            record.channel === "邮件" && record.status === "已打开"
+              ? record.deliveredAt
+              : undefined,
+          bounceType:
+            record.channel === "邮件" && record.status === "已退信"
+              ? "hard"
+              : undefined,
+          bounceReason:
+            record.channel === "邮件" && record.status === "已退信"
+              ? record.error
+              : undefined,
+          unsubscribedAt:
+            record.channel === "邮件" && record.error?.includes("退订")
+              ? record.submittedAt
+              : undefined,
+          providerEventId:
+            record.channel === "邮件" ? `PE-${90001 + index}` : undefined,
         } satisfies DeliveryRecord;
       }),
     allowlist: allowlistSeed,
