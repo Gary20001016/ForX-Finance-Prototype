@@ -76,7 +76,7 @@ export default function TranslationReviewDrawer({
     : undefined;
   const unsubscribeValid = Boolean(
     !isHtmlEmail ||
-      resolvedPreview?.content?.emailConfig?.emailType !== "营销邮件" ||
+      !resolvedPreview?.content?.emailConfig?.unsubscribeRequired ||
       targetHtmlAsset?.sourceHtml.includes("{{ unsubscribe_url }}"),
   );
   const htmlReviewBlocked = Boolean(

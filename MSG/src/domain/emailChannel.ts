@@ -5,19 +5,51 @@ import type {
   EmailHtmlAsset,
   EmailHtmlValidationIssue,
   EmailMessageContent,
-  EmailType,
 } from "./types";
 
 export const ACTIVE_MESSAGE_CHANNELS: Channel[] = ["站内信", "Push", "邮件"];
 
 export const EMAIL_SENDER_PROFILES = [
-  { id: "transaction", name: "ForX Finance 通知", address: "notice@forx.finance" },
-  { id: "marketing", name: "ForX Finance 活动", address: "campaign@forx.finance" },
+  {
+    id: "transaction",
+    name: "ForX Finance 通知",
+    address: "notice@forx.finance",
+    stream: "transactional",
+    defaultReplyMode: "no_reply",
+  },
+  {
+    id: "security",
+    name: "ForX Finance 安全中心",
+    address: "security@forx.finance",
+    stream: "transactional",
+    defaultReplyMode: "no_reply",
+  },
+  {
+    id: "marketing",
+    name: "ForX Finance 活动",
+    address: "campaign@forx.finance",
+    stream: "broadcast",
+    defaultReplyMode: "mailbox",
+    defaultReplyTo: "support@forx.finance",
+  },
+  {
+    id: "support",
+    name: "ForX Finance 客服",
+    address: "support@forx.finance",
+    stream: "transactional",
+    defaultReplyMode: "mailbox",
+    defaultReplyTo: "support@forx.finance",
+  },
 ] as const;
 
-export function createDefaultEmailContent(
-  emailType: EmailType = "事务邮件",
-): EmailMessageContent {
+export function getEmailSenderProfile(senderProfileId: string) {
+  return (
+    EMAIL_SENDER_PROFILES.find((item) => item.id === senderProfileId) ||
+    EMAIL_SENDER_PROFILES[0]
+  );
+}
+
+export function createDefaultEmailContent(): EmailMessageContent {
   return {
     subject: "",
     preheader: "",
@@ -29,8 +61,7 @@ export function createDefaultEmailContent(
     actionText: "查看详情",
     actionUrl: "https://www.forx.finance/",
     footerText: "本邮件由 ForX Finance 自动发送，请勿直接回复。",
-    unsubscribeText:
-      emailType === "营销邮件" ? "如果不想继续接收此类邮件，可取消订阅。" : undefined,
+    unsubscribeText: undefined,
   };
 }
 
@@ -71,9 +102,9 @@ function compactHash(value: string) {
 export function validateEmailHtml(
   html: string,
   {
-    emailType,
+    unsubscribeRequired,
     declaredVariables,
-  }: { emailType: EmailType; declaredVariables: string[] },
+  }: { unsubscribeRequired: boolean; declaredVariables: string[] },
 ): {
   status: "passed" | "blocked";
   issues: EmailHtmlValidationIssue[];
@@ -109,8 +140,8 @@ export function validateEmailHtml(
   usedVariables
     .filter((name) => !allowedVariables.has(name))
     .forEach((name) => addBlock(`HTML 使用了未登记变量 {{ ${name} }}`));
-  if (emailType === "营销邮件" && !usedVariables.includes("unsubscribe_url")) {
-    addBlock("营销邮件 HTML 必须包含 {{ unsubscribe_url }}");
+  if (unsubscribeRequired && !usedVariables.includes("unsubscribe_url")) {
+    addBlock("已开启退订入口，HTML 必须包含 {{ unsubscribe_url }}");
   }
 
   const parser = new DOMParser();
@@ -143,7 +174,7 @@ export function createEmailHtmlAsset({
   fileName,
   fileSize,
   html,
-  emailType,
+  unsubscribeRequired,
   declaredVariables,
   uploadedBy,
   uploadedAt = new Date().toLocaleString("zh-CN", { hour12: false }),
@@ -152,12 +183,15 @@ export function createEmailHtmlAsset({
   fileName: string;
   fileSize: number;
   html: string;
-  emailType: EmailType;
+  unsubscribeRequired: boolean;
   declaredVariables: string[];
   uploadedBy: string;
   uploadedAt?: string;
 }): EmailHtmlAsset {
-  const result = validateEmailHtml(html, { emailType, declaredVariables });
+  const result = validateEmailHtml(html, {
+    unsubscribeRequired,
+    declaredVariables,
+  });
   return {
     locale,
     fileName,
@@ -175,16 +209,38 @@ export function createEmailHtmlAsset({
 }
 
 export function createDefaultEmailConfig(
-  emailType: EmailType = "事务邮件",
+  senderProfileId = "transaction",
 ): EmailChannelConfig {
+  const sender = getEmailSenderProfile(senderProfileId);
   return {
-    emailType,
-    senderProfileId: emailType === "营销邮件" ? "marketing" : "transaction",
-    fromName:
-      emailType === "营销邮件" ? "ForX Finance 活动" : "ForX Finance 通知",
-    replyTo: "support@forx.finance",
+    senderProfileId: sender.id,
+    fromName: sender.name,
+    replyMode: sender.defaultReplyMode,
+    replyTo: "defaultReplyTo" in sender ? sender.defaultReplyTo : undefined,
     trackingEnabled: true,
-    unsubscribeRequired: emailType === "营销邮件",
+    unsubscribeRequired: false,
+  };
+}
+
+export function normalizeEmailChannelConfig(
+  config?: Partial<EmailChannelConfig> & { emailType?: string },
+): EmailChannelConfig {
+  const sender = getEmailSenderProfile(config?.senderProfileId || "transaction");
+  const replyMode =
+    config?.replyMode ||
+    (config?.replyTo ? "mailbox" : sender.defaultReplyMode);
+  return {
+    senderProfileId: sender.id,
+    fromName: config?.fromName?.trim() || sender.name,
+    replyMode,
+    replyTo:
+      replyMode === "mailbox"
+        ? config?.replyTo ||
+          ("defaultReplyTo" in sender ? sender.defaultReplyTo : undefined)
+        : undefined,
+    trackingEnabled: config?.trackingEnabled ?? true,
+    unsubscribeRequired:
+      config?.unsubscribeRequired ?? config?.emailType === "营销邮件",
   };
 }
 
@@ -215,11 +271,11 @@ export function validateEmailContent(
   if (!config.senderProfileId || !config.fromName.trim()) {
     errors.push("请选择发件人身份");
   }
-  if (
-    config.emailType === "营销邮件" &&
-    (!config.unsubscribeRequired || !content.unsubscribeText?.trim())
-  ) {
-    errors.push("营销邮件必须提供退订文案");
+  if (config.replyMode === "mailbox" && !config.replyTo?.trim()) {
+    errors.push("请填写回复邮箱");
+  }
+  if (config.unsubscribeRequired && !content.unsubscribeText?.trim()) {
+    errors.push("已开启退订入口，请填写退订文案");
   }
   return { valid: errors.length === 0, errors };
 }

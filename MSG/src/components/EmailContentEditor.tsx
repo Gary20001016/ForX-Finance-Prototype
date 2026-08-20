@@ -4,7 +4,6 @@ import type {
   EmailBodyMode,
   EmailChannelConfig,
   EmailMessageContent,
-  EmailType,
 } from "../domain/types";
 import { EMAIL_SENDER_PROFILES, getEmailBodyMode } from "../domain/emailChannel";
 import VariableTextArea from "./VariableTextArea";
@@ -27,21 +26,6 @@ export default function EmailContentEditor({
   onContentChange: (changes: Partial<EmailMessageContent>) => void;
   onConfigChange: (changes: Partial<EmailChannelConfig>) => void;
 }) {
-  const changeType = (emailType: EmailType) => {
-    const sender = EMAIL_SENDER_PROFILES.find((item) =>
-      emailType === "营销邮件" ? item.id === "marketing" : item.id === "transaction",
-    );
-    onConfigChange({
-      emailType,
-      senderProfileId: sender?.id || "transaction",
-      fromName: sender?.name || "ForX Finance 通知",
-      unsubscribeRequired: emailType === "营销邮件",
-    });
-    if (emailType === "营销邮件" && !content.unsubscribeText) {
-      onContentChange({ unsubscribeText: "如果不想继续接收此类邮件，可取消订阅。" });
-    }
-  };
-
   const bodyMode = getEmailBodyMode(content);
   const changeBodyMode = (nextMode: EmailBodyMode) => {
     if (nextMode === bodyMode) return;
@@ -65,23 +49,22 @@ export default function EmailContentEditor({
     <div className="email-content-editor">
       <Grid.Row gutter={12}>
         <Grid.Col span={8}>
-          <Form.Item label="邮件类型">
-            <Select
-              aria-label="邮件类型"
-              value={config.emailType}
-              onChange={changeType}
-              options={["事务邮件", "营销邮件"].map((value) => ({ label: value, value }))}
-            />
-          </Form.Item>
-        </Grid.Col>
-        <Grid.Col span={8}>
           <Form.Item label="发件人身份">
             <Select
               aria-label="发件人身份"
               value={config.senderProfileId}
               onChange={(senderProfileId) => {
                 const sender = EMAIL_SENDER_PROFILES.find((item) => item.id === senderProfileId);
-                onConfigChange({ senderProfileId, fromName: sender?.name || config.fromName });
+                if (!sender) return;
+                onConfigChange({
+                  senderProfileId,
+                  fromName: sender.name,
+                  replyMode: sender.defaultReplyMode,
+                  replyTo:
+                    "defaultReplyTo" in sender
+                      ? sender.defaultReplyTo
+                      : undefined,
+                });
               }}
               options={EMAIL_SENDER_PROFILES.map((item) => ({
                 label: `${item.name} <${item.address}>`,
@@ -91,10 +74,33 @@ export default function EmailContentEditor({
           </Form.Item>
         </Grid.Col>
         <Grid.Col span={8}>
-          <Form.Item label="回复地址">
+          <Form.Item label="回复方式">
+            <Select
+              aria-label="邮件回复方式"
+              value={config.replyMode}
+              onChange={(replyMode) =>
+                onConfigChange({
+                  replyMode,
+                  replyTo:
+                    replyMode === "mailbox"
+                      ? config.replyTo || "support@forx.finance"
+                      : undefined,
+                })
+              }
+              options={[
+                { label: "不接收回复", value: "no_reply" },
+                { label: "指定回复邮箱", value: "mailbox" },
+              ]}
+            />
+          </Form.Item>
+        </Grid.Col>
+        <Grid.Col span={8}>
+          <Form.Item label="回复邮箱" required={config.replyMode === "mailbox"}>
             <Input
               aria-label="邮件回复地址"
               value={config.replyTo}
+              disabled={config.replyMode !== "mailbox"}
+              placeholder={config.replyMode === "mailbox" ? "support@forx.finance" : "当前不接收回复"}
               onChange={(replyTo) => onConfigChange({ replyTo })}
             />
           </Form.Item>
@@ -147,15 +153,39 @@ export default function EmailContentEditor({
           locales={locales}
           sourceLocale={sourceLocale}
           assets={content.htmlAssets || {}}
-          emailType={config.emailType}
+          unsubscribeRequired={config.unsubscribeRequired}
           declaredVariables={variables.filter((item) => item.status === "启用").map((item) => item.name)}
           onChange={(htmlAssets) => onContentChange({ htmlAssets })}
         />
       )}
-      <Form.Item label="打开/点击追踪">
-        <Switch checked={config.trackingEnabled} onChange={(trackingEnabled) => onConfigChange({ trackingEnabled })} />
-      </Form.Item>
-      {bodyMode === "text" && config.emailType === "营销邮件" && (
+      <Grid.Row gutter={12}>
+        <Grid.Col span={8}>
+          <Form.Item label="退订入口">
+            <Switch
+              aria-label="退订入口"
+              checked={config.unsubscribeRequired}
+              onChange={(unsubscribeRequired) => {
+                onConfigChange({ unsubscribeRequired });
+                if (unsubscribeRequired && !content.unsubscribeText) {
+                  onContentChange({
+                    unsubscribeText: "如果不想继续接收此类邮件，可取消订阅。",
+                  });
+                }
+              }}
+            />
+          </Form.Item>
+        </Grid.Col>
+        <Grid.Col span={8}>
+          <Form.Item label="打开/点击追踪">
+            <Switch
+              aria-label="打开/点击追踪"
+              checked={config.trackingEnabled}
+              onChange={(trackingEnabled) => onConfigChange({ trackingEnabled })}
+            />
+          </Form.Item>
+        </Grid.Col>
+      </Grid.Row>
+      {config.unsubscribeRequired && (
         <Form.Item label="退订文案" required>
           <Input.TextArea
             aria-label="邮件退订文案"

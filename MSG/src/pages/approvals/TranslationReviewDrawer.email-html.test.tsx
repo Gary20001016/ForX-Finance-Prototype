@@ -28,9 +28,10 @@ const makeContent = (): LocalizedMessageContent => ({
     unsubscribeText: "取消订阅",
   },
   emailConfig: {
-    emailType: "营销邮件",
     senderProfileId: "marketing",
     fromName: "ForX Finance 活动",
+    replyMode: "mailbox",
+    replyTo: "support@forx.finance",
     trackingEnabled: true,
     unsubscribeRequired: true,
   },
@@ -65,7 +66,7 @@ const createHtmlReviewItem = (blocked = false) => {
     fileName: "vip-summer-ja-JP.html",
     fileSize: 720,
     html: "<!doctype html><html><head><title>VIP</title></head><body><p>日本語 HTML 完成稿</p><a href=\"{{ unsubscribe_url }}\">配信停止</a></body></html>",
-    emailType: "营销邮件",
+    unsubscribeRequired: true,
     declaredVariables: [],
     uploadedBy: "operator-01",
   });

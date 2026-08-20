@@ -35,9 +35,9 @@ const sourceContent: LocalizedMessageContent = {
     actionUrl: "https://www.forx.finance/messages/MSG-001",
   },
   emailConfig: {
-    emailType: "事务邮件",
     senderProfileId: "transaction",
     fromName: "ForX Finance 通知",
+    replyMode: "no_reply",
     trackingEnabled: true,
     unsubscribeRequired: false,
   },
@@ -146,7 +146,7 @@ describe("resolveMultilingualPreview", () => {
       fileName: "notice.en-US.html",
       fileSize: 640,
       html: "<!doctype html><html><head><title>Notice</title></head><body><p>English final HTML</p></body></html>",
-      emailType: "事务邮件",
+      unsubscribeRequired: false,
       declaredVariables: [],
       uploadedBy: "Gary",
     });
@@ -185,7 +185,7 @@ describe("resolveMultilingualPreview", () => {
       fileName: "notice.zh-CN.html",
       fileSize: 640,
       html: "<!doctype html><html><head><title>通知</title></head><body><p>中文源文件</p></body></html>",
-      emailType: "事务邮件",
+      unsubscribeRequired: false,
       declaredVariables: [],
       uploadedBy: "Gary",
     });
@@ -194,7 +194,7 @@ describe("resolveMultilingualPreview", () => {
       fileName: "notice.ja-JP.html",
       fileSize: 660,
       html: "<!doctype html><html><head><title>通知</title></head><body><p>日本語完成稿</p></body></html>",
-      emailType: "事务邮件",
+      unsubscribeRequired: false,
       declaredVariables: [],
       uploadedBy: "Gary",
     });

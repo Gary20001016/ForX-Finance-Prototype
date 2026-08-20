@@ -19,5 +19,7 @@ it("authors Email content for a temporary message", async () => {
   expect(screen.getByLabelText("邮件标题")).toBeVisible();
   expect(screen.getByRole("radiogroup", { name: "邮件正文类型" })).toBeVisible();
   expect(screen.getByLabelText("邮件纯文本正文")).toBeVisible();
-  expect(screen.getByLabelText("邮件类型")).toHaveTextContent("事务邮件");
+  expect(screen.queryByLabelText("邮件类型")).not.toBeInTheDocument();
+  expect(screen.getByLabelText("邮件回复方式")).toHaveTextContent("不接收回复");
+  expect(screen.getByRole("switch", { name: "退订入口" })).not.toBeChecked();
 });

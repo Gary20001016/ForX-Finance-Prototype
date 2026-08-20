@@ -20,9 +20,9 @@ it("previews only the active plain-text email body", () => {
           actionText: "查看详情",
         },
         emailConfig: {
-          emailType: "事务邮件",
           senderProfileId: "transaction",
           fromName: "ForX Finance 通知",
+          replyMode: "no_reply",
           trackingEnabled: true,
           unsubscribeRequired: false,
         },
@@ -35,6 +35,8 @@ it("previews only the active plain-text email body", () => {
   ).toBeVisible();
   expect(screen.queryByLabelText("Email 桌面预览")).not.toBeInTheDocument();
   expect(screen.queryByLabelText("Email 移动预览")).not.toBeInTheDocument();
+  expect(screen.getByText("不接收回复")).toBeVisible();
+  expect(screen.queryByText("事务邮件")).not.toBeInTheDocument();
 });
 
 it("previews the localized HTML asset in a sandboxed frame", () => {
@@ -43,7 +45,7 @@ it("previews the localized HTML asset in a sandboxed frame", () => {
     fileName: "withdrawal.zh-CN.html",
     fileSize: 512,
     html: "<!doctype html><html><head><title>邮件</title></head><body><p>提现已完成</p></body></html>",
-    emailType: "事务邮件",
+    unsubscribeRequired: false,
     declaredVariables: [],
     uploadedBy: "Gary",
   });
@@ -64,9 +66,9 @@ it("previews the localized HTML asset in a sandboxed frame", () => {
           textBody: "",
         },
         emailConfig: {
-          emailType: "事务邮件",
           senderProfileId: "transaction",
           fromName: "ForX Finance 通知",
+          replyMode: "no_reply",
           trackingEnabled: true,
           unsubscribeRequired: false,
         },

@@ -20,9 +20,9 @@ export interface PushMessageContent {
   collapseKey?: string;
 }
 
-export type EmailType = "事务邮件" | "营销邮件";
-
 export type EmailBodyMode = "text" | "html";
+export type EmailReplyMode = "no_reply" | "mailbox";
+export type EmailSenderStream = "transactional" | "broadcast";
 
 export interface EmailHtmlValidationIssue {
   level: "阻断" | "警告";
@@ -61,9 +61,9 @@ export interface EmailMessageContent {
 }
 
 export interface EmailChannelConfig {
-  emailType: EmailType;
   senderProfileId: string;
   fromName: string;
+  replyMode: EmailReplyMode;
   replyTo?: string;
   trackingEnabled: boolean;
   unsubscribeRequired: boolean;

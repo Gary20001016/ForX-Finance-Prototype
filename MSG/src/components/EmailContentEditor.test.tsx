@@ -34,6 +34,6 @@ it("uses mutually exclusive plain-text and localized HTML body modes", async () 
   expect(screen.queryByLabelText("邮件纯文本正文")).not.toBeInTheDocument();
   expect(screen.getByText("zh-CN HTML")).toBeVisible();
   expect(screen.getByText("en-US HTML")).toBeVisible();
-  expect(screen.getByText(/HTML 正文不进入外部机翻或多语言审核/)).toBeVisible();
+  expect(screen.getByText(/每种语言直接上传完成稿/)).toBeVisible();
+  expect(screen.getByText(/多语言审核中提供桌面与移动效果预览/)).toBeVisible();
 });
-

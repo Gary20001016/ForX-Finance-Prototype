@@ -1,20 +1,20 @@
 import { useState } from "react";
 import { Alert, Button, Modal, Space, Tag } from "@arco-design/web-react";
 import { createEmailHtmlAsset } from "../domain/emailChannel";
-import type { EmailHtmlAsset, EmailType } from "../domain/types";
+import type { EmailHtmlAsset } from "../domain/types";
 
 export default function EmailHtmlUploadPanel({
   locales,
   sourceLocale,
   assets,
-  emailType,
+  unsubscribeRequired,
   declaredVariables,
   onChange,
 }: {
   locales: string[];
   sourceLocale: string;
   assets: Record<string, EmailHtmlAsset>;
-  emailType: EmailType;
+  unsubscribeRequired: boolean;
   declaredVariables: string[];
   onChange: (assets: Record<string, EmailHtmlAsset>) => void;
 }) {
@@ -29,7 +29,7 @@ export default function EmailHtmlUploadPanel({
       fileName: file.name,
       fileSize: file.size,
       html,
-      emailType,
+      unsubscribeRequired,
       declaredVariables,
       uploadedBy: "当前操作者",
     });
@@ -48,7 +48,7 @@ export default function EmailHtmlUploadPanel({
         type="info"
         showIcon
         title="按语言上传 HTML 完成稿"
-        content="HTML 正文不进入外部机翻或多语言审核；标题和预览文字仍走外部机翻。HTML 上传后进行安全、变量和普通内容审核。"
+        content="HTML 正文不进入外部机翻；每种语言直接上传完成稿。标题和预览文字走外部机翻，目标语言 HTML 在多语言审核中提供桌面与移动效果预览。"
       />
       <div className="email-html-locale-grid">
         {enabledLocales.map((locale) => {
@@ -138,4 +138,3 @@ export default function EmailHtmlUploadPanel({
     </div>
   );
 }
-

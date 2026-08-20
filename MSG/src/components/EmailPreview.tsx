@@ -1,5 +1,5 @@
 import { Tag } from "@arco-design/web-react";
-import { getEmailBodyMode } from "../domain/emailChannel";
+import { getEmailBodyMode, getEmailSenderProfile } from "../domain/emailChannel";
 import type { EmailChannelConfig, EmailMessageContent } from "../domain/types";
 
 export default function EmailPreview({
@@ -11,7 +11,8 @@ export default function EmailPreview({
   config: EmailChannelConfig;
   locale: string;
 }) {
-  const sender = `${config.fromName} <${config.senderProfileId === "marketing" ? "campaign" : "notice"}@forx.finance>`;
+  const senderProfile = getEmailSenderProfile(config.senderProfileId);
+  const sender = `${config.fromName} <${senderProfile.address}>`;
   const bodyMode = getEmailBodyMode(content);
   const htmlAsset = content.htmlAssets?.[locale];
 
@@ -20,8 +21,8 @@ export default function EmailPreview({
       <div className="preview-heading">
         <strong>Email 预览</strong>
         <div>
-          <Tag color={config.emailType === "营销邮件" ? "magenta" : "blue"}>
-            {config.emailType}
+          <Tag color={config.replyMode === "mailbox" ? "green" : "blue"}>
+            {config.replyMode === "mailbox" ? "可回复" : "不接收回复"}
           </Tag>
           <Tag color={bodyMode === "html" ? "purple" : "gray"}>
             {bodyMode === "html" ? "HTML 文件" : "纯文本"}
@@ -37,7 +38,7 @@ export default function EmailPreview({
             <small>{content.preheader || "未填写预览文字"}</small>
           </header>
           <pre>{content.textBody || "请输入邮件纯文本正文"}</pre>
-          {config.emailType === "营销邮件" && (
+          {config.unsubscribeRequired && (
             <small>{content.unsubscribeText || "请配置退订文案"}</small>
           )}
         </article>

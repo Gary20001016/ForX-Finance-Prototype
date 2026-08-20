@@ -106,6 +106,7 @@ import {
   ACTIVE_MESSAGE_CHANNELS,
   createDefaultEmailConfig,
   getEmailBodyMode,
+  normalizeEmailChannelConfig,
   validateEmailContent,
 } from "../domain/emailChannel";
 
@@ -1213,6 +1214,19 @@ const normalizeTaskDisplay = (task: MessageTask): MessageTask => {
 
 export const migrateSavedState = (saved: PrototypeState): PrototypeState => {
   const fresh = createSeed();
+  const normalizeSavedContent = (
+    content?: LocalizedMessageContent,
+  ): LocalizedMessageContent | undefined =>
+    content?.emailConfig
+      ? {
+          ...content,
+          emailConfig: normalizeEmailChannelConfig(
+            content.emailConfig as typeof content.emailConfig & {
+              emailType?: string;
+            },
+          ),
+        }
+      : content;
   const normalizedOperators = normalizeReviewOperators(
     (saved.operators || fresh.operators) as PersistedReviewOperator[],
   );
@@ -1268,6 +1282,7 @@ export const migrateSavedState = (saved: PrototypeState): PrototypeState => {
         {
           ...fresh.templates.find((item) => item.id === template.id),
           ...template,
+          content: normalizeSavedContent(template.content),
         } as MessageTemplate,
         mergedEvents,
       ),
@@ -1309,6 +1324,7 @@ export const migrateSavedState = (saved: PrototypeState): PrototypeState => {
     return normalizeTaskDisplay({
       ...baseline,
       ...task,
+      content: normalizeSavedContent(task.content),
       triggerType,
       type: triggerType === "event" ? "事件触发" : task.type,
       templateId: task.templateId || baseline?.templateId,
@@ -1479,6 +1495,7 @@ export const migrateSavedState = (saved: PrototypeState): PrototypeState => {
       (template?.usageScope === "event" ? "event" : "manual");
     return {
       ...approval,
+      content: normalizeSavedContent(approval.content),
       status: approval.status === "待我审核" ? "待审核" : approval.status,
       category: display.category,
       topic: display.topic,
@@ -1511,7 +1528,12 @@ export const migrateSavedState = (saved: PrototypeState): PrototypeState => {
     testAccounts: saved.testAccounts || fresh.testAccounts,
     translationBatches: syncTranslationReviewAssignments(
       normalizeTranslationBatches(
-        mergedTranslationBatches,
+        mergedTranslationBatches.map((batch) => ({
+          ...batch,
+          sourceChannelContent: normalizeSavedContent(
+            batch.sourceChannelContent,
+          ),
+        })),
         normalizedLanguageReviewPolicies,
         mergedTemplates,
       ),

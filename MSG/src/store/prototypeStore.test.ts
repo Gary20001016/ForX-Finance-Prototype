@@ -148,6 +148,36 @@ describe("prototype store workflow transitions", () => {
     ).toHaveLength(1);
   });
 
+  it("migrates legacy Email type data into independent delivery controls", () => {
+    const saved = JSON.parse(
+      JSON.stringify(getPrototypeState()),
+    ) as ReturnType<typeof getPrototypeState>;
+    const template = saved.templates.find(
+      (item) => item.id === "TPL-EMAIL-DEMO-HTML",
+    )!;
+    template.content!.emailConfig = {
+      emailType: "营销邮件",
+      senderProfileId: "marketing",
+      fromName: "ForX Finance 活动",
+      replyTo: "support@forx.finance",
+      trackingEnabled: true,
+      unsubscribeRequired: true,
+    } as never;
+
+    const migrated = migrateSavedState(saved);
+    const config = migrated.templates.find(
+      (item) => item.id === template.id,
+    )!.content!.emailConfig!;
+
+    expect(config).not.toHaveProperty("emailType");
+    expect(config).toMatchObject({
+      senderProfileId: "marketing",
+      replyMode: "mailbox",
+      replyTo: "support@forx.finance",
+      unsubscribeRequired: true,
+    });
+  });
+
   it("binds seeded event templates to the event directory", () => {
     const state = getPrototypeState();
 
@@ -480,9 +510,9 @@ describe("prototype store workflow transitions", () => {
           textBody: "纯文本正文",
         },
         emailConfig: {
-          emailType: "事务邮件",
           senderProfileId: "transaction",
           fromName: "ForX Finance 通知",
+          replyMode: "no_reply",
           trackingEnabled: true,
           unsubscribeRequired: false,
         },
@@ -508,7 +538,7 @@ describe("prototype store workflow transitions", () => {
         fileName: `notice.${locale}.html`,
         fileSize: 512,
         html: `<!doctype html><html><head><title>Notice</title></head><body><p>${locale}</p></body></html>`,
-        emailType: "事务邮件",
+        unsubscribeRequired: false,
         declaredVariables: [],
         uploadedBy: "Gary",
       });
@@ -531,9 +561,9 @@ describe("prototype store workflow transitions", () => {
         textBody: "",
       },
       emailConfig: {
-        emailType: "事务邮件" as const,
         senderProfileId: "transaction",
         fromName: "ForX Finance 通知",
+        replyMode: "no_reply" as const,
         trackingEnabled: true,
         unsubscribeRequired: false,
       },
@@ -657,7 +687,7 @@ describe("prototype store workflow transitions", () => {
       fileName: "notice.en-US.html",
       fileSize: 512,
       html: "<!doctype html><html><head><title>Notice</title></head><body><p>Final English HTML</p></body></html>",
-      emailType: "事务邮件",
+      unsubscribeRequired: false,
       declaredVariables: [],
       uploadedBy: "Gary",
     });
@@ -681,9 +711,9 @@ describe("prototype store workflow transitions", () => {
         textBody: "",
       },
       emailConfig: {
-        emailType: "事务邮件" as const,
         senderProfileId: "transaction",
         fromName: "ForX Finance 通知",
+        replyMode: "no_reply" as const,
         trackingEnabled: true,
         unsubscribeRequired: false,
       },

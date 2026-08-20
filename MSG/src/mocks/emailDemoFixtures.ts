@@ -163,7 +163,10 @@ const createHtmlTemplate = (): MessageTemplate => {
       footerText: "ForX Finance VIP 运营团队",
       unsubscribeText: "取消订阅营销邮件",
     },
-    emailConfig: createDefaultEmailConfig("营销邮件"),
+    emailConfig: {
+      ...createDefaultEmailConfig("marketing"),
+      unsubscribeRequired: true,
+    },
   };
 
   return {
@@ -211,7 +214,7 @@ const createEventTemplate = (): MessageTemplate => {
       actionUrl: "https://www.forx.finance/assets/deposit-history",
       footerText: "本邮件由 ForX Finance 资产系统自动发送。",
     },
-    emailConfig: createDefaultEmailConfig("事务邮件"),
+    emailConfig: createDefaultEmailConfig("transaction"),
   };
   return {
     id: eventTemplateId,

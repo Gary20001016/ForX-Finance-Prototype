@@ -1480,7 +1480,7 @@ export default function CreateTaskPage() {
                 <Alert
                   type="info"
                   title="Email 正式发送检查"
-                  content="发送前按用户主邮箱、邮箱验证状态、退订与投诉抑制名单计算可发送人数；事务与营销邮件使用独立发送流，并依赖服务商 Webhook 回传送达、退信、投诉和退订。"
+                  content="发送前按用户主邮箱、邮箱验证状态、退订与投诉抑制名单计算可发送人数；系统按发件人身份自动路由独立发送流，并依赖服务商 Webhook 回传送达、退信、投诉和退订。"
                 />
               )}
               <MessagePreview
