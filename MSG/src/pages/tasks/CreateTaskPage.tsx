@@ -87,6 +87,7 @@ import {
   getEmailVariableSourceText,
   validateEmailContent,
 } from "../../domain/emailChannel";
+import { calculateTaskAudienceEstimate } from "../../domain/taskEstimate";
 
 const FormItem = Form.Item;
 const supportedLocales = [
@@ -360,6 +361,7 @@ export default function CreateTaskPage() {
               }
             : audienceMap.segment
           : audienceMap[audienceType];
+  const audienceEstimate = calculateTaskAudienceEstimate(audience.count);
   const translationReady =
     contentMode === "template"
       ? selectedTemplate?.translationReadiness === "已通过"
@@ -1344,14 +1346,14 @@ export default function CreateTaskPage() {
                     <div>
                       <span>规则过滤</span>
                       <strong>
-                        - {Math.round(audience.count * 0.047).toLocaleString()}
+                        - {audienceEstimate.filteredCount.toLocaleString()}
                       </strong>
                     </div>
                     <i>→</i>
                     <div>
                       <span>预计可发送</span>
                       <strong>
-                        {Math.round(audience.count * 0.953).toLocaleString()}
+                        {audienceEstimate.finalSendCount.toLocaleString()}
                       </strong>
                     </div>
                     <Button

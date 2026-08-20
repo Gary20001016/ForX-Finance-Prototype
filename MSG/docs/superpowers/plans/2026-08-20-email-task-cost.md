@@ -27,17 +27,17 @@
 - Consumes: `Channel` from `MSG/src/domain/types.ts`.
 - Produces: `calculateTaskAudienceEstimate(audienceCount: number)`, `formatTaskEstimatedCost(channels: Channel[], audienceCount: number)`, `EMAIL_UNIT_COST_CNY`.
 
-- [ ] **Step 1: Write failing domain tests**
+- [x] **Step 1: Write failing domain tests**
 
 Cover an audience of `300000`, Email-only channel output, mixed selected-channel order, and zero recipients. Expected Email-only output is `Email 预计 ¥1,143.6（285,900 封 × ¥0.004）`.
 
-- [ ] **Step 2: Run the domain test and verify RED**
+- [x] **Step 2: Run the domain test and verify RED**
 
 Run: `npm test -- --run src/domain/taskEstimate.test.ts`
 
 Expected: FAIL because `taskEstimate.ts` does not exist.
 
-- [ ] **Step 3: Implement the minimal helper**
+- [x] **Step 3: Implement the minimal helper**
 
 ```ts
 export const COMPLIANCE_FILTER_RATE = 0.047;
@@ -60,7 +60,7 @@ export function formatTaskEstimatedCost(
 }
 ```
 
-- [ ] **Step 4: Run the domain test and verify GREEN**
+- [x] **Step 4: Run the domain test and verify GREEN**
 
 Run: `npm test -- --run src/domain/taskEstimate.test.ts`
 
@@ -77,21 +77,21 @@ Expected: all tests PASS.
 - Consumes: `calculateTaskAudienceEstimate` and `formatTaskEstimatedCost` from Task 1.
 - Produces: task summary and audience preview values derived from one calculation contract.
 
-- [ ] **Step 1: Write a failing TaskSummary component test**
+- [x] **Step 1: Write a failing TaskSummary component test**
 
 Render an Email-only task with `audienceCount: 300000` and assert the summary contains `Email 预计 ¥1,143.6（285,900 封 × ¥0.004）` while omitting `Web ¥0` and `Push ¥0`.
 
-- [ ] **Step 2: Run the component test and verify RED**
+- [x] **Step 2: Run the component test and verify RED**
 
 Run: `npm test -- --run src/pages/tasks/TaskSummary.email-cost.test.tsx`
 
 Expected: FAIL because the component still renders `Web ¥0 · Push ¥0`.
 
-- [ ] **Step 3: Replace inline calculations**
+- [x] **Step 3: Replace inline calculations**
 
 In `TaskSummary.tsx`, derive `filtered`, `deliverable`, and the “预计成本” value through the shared helper. In `CreateTaskPage.tsx`, use `calculateTaskAudienceEstimate(audience.count)` for the audience preview instead of separate `0.047` and `0.953` formulas.
 
-- [ ] **Step 4: Run focused UI tests and verify GREEN**
+- [x] **Step 4: Run focused UI tests and verify GREEN**
 
 Run: `npm test -- --run src/pages/tasks/TaskSummary.email-cost.test.tsx src/pages/tasks/CreateTaskPage.email.test.tsx`
 
@@ -107,17 +107,17 @@ Expected: all tests PASS.
 - Consumes: `formatTaskEstimatedCost` from Task 1.
 - Produces: task-linked `ApprovalItem.cost` identical to the task summary value.
 
-- [ ] **Step 1: Add a failing store test**
+- [x] **Step 1: Add a failing store test**
 
 Submit an Email-only task with `audienceCount: 300000`, find its linked approval, and expect `approval.cost` to equal `Email 预计 ¥1,143.6（285,900 封 × ¥0.004）`.
 
-- [ ] **Step 2: Run the store test and verify RED**
+- [x] **Step 2: Run the store test and verify RED**
 
 Run: `npm test -- --run src/store/prototypeStore.test.ts -t "freezes the Email estimate"`
 
 Expected: FAIL with the existing fixed `Web ¥0 · Push ¥0` value.
 
-- [ ] **Step 3: Reuse the shared formatter in store flows**
+- [x] **Step 3: Reuse the shared formatter in store flows**
 
 Set new task approval costs with:
 
@@ -127,7 +127,7 @@ cost: formatTaskEstimatedCost(task.channels, task.audienceCount),
 
 When normalizing seeded approvals linked to tasks, derive their channels once and calculate the same frozen task cost; preserve the original cost for approvals that are not linked to a task.
 
-- [ ] **Step 4: Run store and focused feature tests**
+- [x] **Step 4: Run store and focused feature tests**
 
 Run: `npm test -- --run src/store/prototypeStore.test.ts src/domain/taskEstimate.test.ts src/pages/tasks/TaskSummary.email-cost.test.tsx`
 
@@ -142,22 +142,22 @@ Expected: all tests PASS.
 - Consumes: completed implementation from Tasks 1–3.
 - Produces: verified Git commit, synchronized GitHub `main`, and server release.
 
-- [ ] **Step 1: Run full verification**
+- [x] **Step 1: Run full verification**
 
 Run: `npm test -- --run && npm run build && git diff --check`
 
 Expected: all tests pass, production build succeeds, and diff check is clean.
 
-- [ ] **Step 2: Commit and push only MSG changes**
+- [x] **Step 2: Commit and push only MSG changes**
 
 Commit message: `feat(msg): estimate email task cost`
 
 Push through the configured SSH remote to `origin/main` without adding root `dist`, `node_modules`, or `.superpowers`.
 
-- [ ] **Step 3: Deploy atomically**
+- [x] **Step 3: Deploy atomically**
 
 Upload `MSG/dist` to `/opt/forx-finance-msg/releases/release-<commit>`, atomically repoint `/opt/forx-finance-msg/current`, restart `forx-msg.service`, and retain the previous release.
 
-- [ ] **Step 4: Verify production**
+- [x] **Step 4: Verify production**
 
 Confirm `forx-msg.service` is active, public task routes return HTTP 200, and local/server `index.html` SHA-256 values match.

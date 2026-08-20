@@ -19,6 +19,10 @@ import type {
   TaskTriggerType,
 } from "../../domain/types";
 import { formatDisplayLocation } from "../../domain/messageDisplayTaxonomy";
+import {
+  calculateTaskAudienceEstimate,
+  formatTaskEstimatedCost,
+} from "../../domain/taskEstimate";
 
 export interface TaskSummaryData {
   name: string;
@@ -40,8 +44,8 @@ export interface TaskSummaryData {
 }
 
 export default function TaskSummary({ data }: { data: TaskSummaryData }) {
-  const filtered = Math.max(0, Math.round(data.audienceCount * 0.047));
-  const deliverable = Math.max(0, data.audienceCount - filtered);
+  const { filteredCount: filtered, finalSendCount: deliverable } =
+    calculateTaskAudienceEstimate(data.audienceCount);
   return (
     <div className="summary-grid">
       <div className="summary-main">
@@ -145,7 +149,13 @@ export default function TaskSummary({ data }: { data: TaskSummaryData }) {
               { label: "受众", value: data.audienceLabel },
               { label: "发送时间", value: data.schedule },
               { label: "正式渠道", value: data.channels.join(" + ") },
-              { label: "预计成本", value: "Web ¥0 · Push ¥0" },
+              {
+                label: "预计成本",
+                value: formatTaskEstimatedCost(
+                  data.channels,
+                  data.audienceCount,
+                ),
+              },
               { label: "有效期", value: data.expiresAt || "未设置" },
             ]}
           />

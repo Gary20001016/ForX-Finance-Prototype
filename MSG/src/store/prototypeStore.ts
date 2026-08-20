@@ -109,6 +109,7 @@ import {
   normalizeEmailChannelConfig,
   validateEmailContent,
 } from "../domain/emailChannel";
+import { formatTaskEstimatedCost } from "../domain/taskEstimate";
 
 export interface PrototypeState {
   messages: UserMessage[];
@@ -1018,10 +1019,20 @@ const createSeed = (): PrototypeState => {
       const display = inferDisplayLocation(item.name);
       const category = task?.category || template?.category || display.category;
       const topic = task?.topic || template?.topic || display.topic;
+      const resolvedChannels =
+        item.channels ||
+        task?.channels ||
+        template?.channels ||
+        (["站内信", "Push"] as Channel[]);
       return {
         ...item,
         status: item.status === "待我审核" ? "待审核" : item.status,
-        cost: "站内信 ¥0 · Push ¥0 · Email 按量计费",
+        cost: task
+          ? formatTaskEstimatedCost(
+              resolvedChannels,
+              task.audienceCount,
+            )
+          : item.cost,
         taskId: item.taskId || task?.id,
         templateId: item.templateId || task?.templateId || template?.id,
         templateVersion:
@@ -1035,8 +1046,7 @@ const createSeed = (): PrototypeState => {
             : "人工消息",
         triggerType: task?.triggerType,
         eventConfig: task?.eventConfig,
-        channels:
-          item.channels || task?.channels || template?.channels || ["站内信", "Push"],
+        channels: resolvedChannels,
         locales:
           item.locales || task?.content?.locales || template?.locales || ["zh-CN"],
         content:
@@ -2872,7 +2882,7 @@ export const submitTask = (input: TaskSubmission, existingTaskId?: string) => {
     topic: task.topic,
     sourceType: task.triggerType === "event" ? "系统事件" : "人工消息",
     audience: task.audienceCount,
-    cost: "Web ¥0 · Push ¥0",
+    cost: formatTaskEstimatedCost(task.channels, task.audienceCount),
     schedule: task.schedule,
     step:
       task.risk === "高" || task.risk === "关键"

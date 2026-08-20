@@ -1170,6 +1170,30 @@ describe("prototype store workflow transitions", () => {
     ).toBe(true);
   });
 
+  it("freezes the Email estimate into the linked approval", () => {
+    const task = submitTask({
+      name: "Email 成本冻结测试",
+      category: "announcement",
+      topic: "maintenance",
+      nature: "事务",
+      risk: "低",
+      template: "邮件模板",
+      channels: ["邮件"],
+      audience: "全部有效用户",
+      audienceCount: 300_000,
+      schedule: "立即",
+      creator: "Gary Ma",
+      team: "消息运营",
+    });
+    const approval = getPrototypeState().approvals.find(
+      (item) => item.taskId === task.id,
+    );
+
+    expect(approval?.cost).toBe(
+      "Email 预计 ¥1,143.6（285,900 封 × ¥0.004）",
+    );
+  });
+
   it("rejects approval from a reviewer who is not assigned", () => {
     const approval = getPrototypeState().approvals.find(
       (item) => item.id === "APR-8812",
